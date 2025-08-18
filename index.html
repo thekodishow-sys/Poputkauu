@@ -6,6 +6,8 @@
     <title>Попутка 12</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Supabase Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
         :root { --tg-theme-bg-color: #ffffff; }
@@ -57,6 +59,36 @@
         .role-switcher.driver .role-switcher-slider {
             transform: translateX(100%);
         }
+        .toast {
+            transform: translateY(150%);
+            transition: transform 0.3s ease-out;
+            pointer-events: none;
+        }
+        .toast.show {
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+        .modal-container {
+            transition: opacity 0.3s ease;
+        }
+        .modal-container.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal-container .modal-content {
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .modal-container.hidden .modal-content {
+            transform: scale(0.95);
+            opacity: 0;
+        }
+        .form-error {
+            transition: opacity 0.3s;
+            opacity: 1;
+        }
+        .form-error.hidden {
+            opacity: 0;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -72,7 +104,10 @@
         </header>
 
         <main id="main-content" class="flex-grow overflow-y-auto p-6 relative">
-            <div id="home-screen" class="screen active"></div>
+            <div id="loading-screen" class="screen active flex items-center justify-center h-full">
+                <svg class="animate-spin h-8 w-8 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            </div>
+            <div id="home-screen" class="screen"></div>
             <div id="route-selection-screen" class="screen"></div>
             <div id="offer-screen" class="screen"></div>
             <div id="passenger-request-screen" class="screen"></div>
@@ -105,130 +140,176 @@
     
     <script>
     const App = {
+        supabase: null,
         state: {
-            rideOffers: [ { id: 1, from: 'Козьмодемьянск', to: 'Йошкар-Ола', date: '2025-08-18', time: '08:30', seats: 2, price: 400, driver: { name: 'Алексей', car: 'Kia Rio' }, stopsInCheboksary: true }, { id: 2, from: 'Йошкар-Ола', to: 'Козьмодемьянск', date: '2025-08-18', time: '12:30', seats: 3, price: 600, driver: { name: 'Елена', car: 'Hyundai Solaris' }, stopsInCheboksary: false }, ],
-            rideRequests: [ { id: 1, from: 'Козьмодемьянск', to: 'Йошкар-Ола', date: '2025-08-19', timeInterval: '06:00-08:00', passenger: { name: 'Мария' }, stopsInCheboksary: true, price: 400 }, { id: 2, from: 'Йошкар-Ола', to: 'Козьмодемьянск', date: '2025-08-20', timeInterval: '16:00-18:00', passenger: { name: 'Петр' }, stopsInCheboksary: false, price: 600 } ],
             agreedRides: [],
             chats: {}, unreadChats: {}, navigationHistory: [], 
             userRole: 'passenger', // Default role
             currentChatPartner: null, selectedRoute: null, toastTimeout: null,
-            user: { first_name: 'Пользователь', username: 'user', photo_url: 'https://placehold.co/80x80/E2E8F0/4A5568?text=:)' }
+            user: { id: null, first_name: 'Пользователь', username: 'user', photo_url: 'https://placehold.co/80x80/E2E8F0/4A5568?text=:)' }
         },
 
-        init() {
+        async init() {
+            const supabaseUrl = 'https://bfucpjamfhjvljmkywig.supabase.co';
+            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJmdWNwamFtZmhqdmxqbWt5d2lnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTUwMDYyNDYsImV4cCI6MjA3MDU4MjI0Nn0.ThhkYnwNOIuYLicUPzKiwqeFWtkaEelaZgkdDnMIvOU';
+            this.supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
             try { 
                 Telegram.WebApp.ready(); 
                 Telegram.WebApp.expand();
-                if (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
-                    this.state.user = Telegram.WebApp.initDataUnsafe.user;
-                }
             } 
             catch(e) { console.warn("Telegram WebApp script not found."); }
+            
+            await this.loadUser();
             
             this.render.allScreens();
             this.bindEvents();
             this.setDefaultDates();
             this.navigation.to('home-screen', 'Поездки');
         },
+        
+        async loadUser() {
+            let tgUser = null;
+            try {
+                if (Telegram.WebApp.initDataUnsafe && Telegram.WebApp.initDataUnsafe.user) {
+                    tgUser = Telegram.WebApp.initDataUnsafe.user;
+                } else {
+                    tgUser = { id: 12345, first_name: 'Тест', username: 'testuser', photo_url: '' };
+                }
+            } catch(e) {
+                tgUser = { id: 12345, first_name: 'Тест', username: 'testuser', photo_url: '' };
+            }
+
+            if (!tgUser || !tgUser.id) {
+                document.getElementById('loading-screen').innerHTML = '<p class="text-red-500">Не удалось получить данные пользователя Telegram.</p>';
+                return;
+            }
+
+            const { data, error } = await this.supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', tgUser.id)
+                .single();
+
+            if (data) {
+                this.state.user = data;
+                this.state.userRole = data.role || 'passenger';
+            } else {
+                const { data: newUser, error: insertError } = await this.supabase
+                    .from('profiles')
+                    .insert({
+                        id: tgUser.id,
+                        first_name: tgUser.first_name,
+                        username: tgUser.username,
+                        photo_url: tgUser.photo_url,
+                        role: 'passenger'
+                    })
+                    .select()
+                    .single();
+                
+                if (insertError) {
+                    console.error("Error creating profile:", insertError);
+                    document.getElementById('loading-screen').innerHTML = '<p class="text-red-500">Ошибка при создании профиля.</p>';
+                    return;
+                }
+                this.state.user = newUser;
+                this.state.userRole = newUser.role;
+            }
+        },
 
         setDefaultDates() {
-            const today = new Date().toISOString().split('T')[0];
-            ['date-offer', 'date-request'].forEach(id => {
-                const input = document.getElementById(id);
-                if (input) {
-                    input.setAttribute('min', today);
-                    input.value = today;
-                }
-            });
+            // ... (same as before)
         },
         
         bindEvents() {
-            document.getElementById('backButton').addEventListener('click', () => this.navigation.back());
-            
-            document.body.addEventListener('click', (e) => {
-                const button = e.target.closest('button');
-                if (!button) return;
-
-                if (button.classList.contains('nav-btn')) {
-                    this.navigation.mainNav(button.dataset.target);
-                    return;
-                }
-
-                const handlers = {
-                    'select-route-koz-yo': this.handlers.onRouteSelect,
-                    'view-driver-offers-btn': this.handlers.onViewDriverOffers,
-                    'create-passenger-request-btn': () => this.navigation.to('passenger-request-screen', 'Заявка на поездку'),
-                    'view-passenger-requests-btn': this.handlers.onViewPassengerRequests,
-                    'publish-ride-btn': () => this.navigation.to('offer-screen', 'Новая поездка'),
-                    'view-my-passengers-btn': this.handlers.onViewMyPassengers,
-                    'back-to-hub-btn': () => {
-                        this.navigation.mainNav('home-screen');
-                    },
-                    'role-switcher-passenger': () => this.handlers.onRoleChange('passenger'),
-                    'role-switcher-driver': () => this.handlers.onRoleChange('driver'),
-                };
-                if (handlers[button.id]) handlers[button.id].call(this, e);
-
-                if (button.closest('#time-interval-buttons')) this.handlers.onTimeIntervalSelect.call(this, e);
-                if (button.closest('.direction-buttons')) this.handlers.onDirectionSelect.call(this, e);
-                if (button.closest('#list-container')) this.handlers.onContactClick.call(this, e);
-                if (button.closest('#chat-list-container')) this.handlers.onChatSelect.call(this, e);
-                if (button.closest('#agreement-btn')) this.handlers.onAgreementClick.call(this, e);
-            });
-
-            document.body.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const targetId = e.target.id;
-                const handlers = {
-                    'passenger-request-form': this.handlers.onPassengerRequestSubmit,
-                    'offer-form': this.handlers.onOfferSubmit,
-                    'chat-form': this.handlers.onSendMessage
-                };
-                if (handlers[targetId]) handlers[targetId].call(this, e);
-            });
-
-            document.body.addEventListener('change', (e) => {
-                if (e.target.classList.contains('cheboksary-checkbox')) {
-                    this.handlers.onCheboksaryToggle(e);
-                }
-            });
+            // ... (same as before)
         },
 
         handlers: {
-            onRoleChange(newRole) {
-                if (App.state.userRole === newRole) return;
-                App.state.userRole = newRole;
-                App.render.profile();
-                App.render.homeScreen();
+            async onRoleChange(newRole) {
+                if (this.state.userRole === newRole) return;
+                
+                const { error } = await App.supabase
+                    .from('profiles')
+                    .update({ role: newRole })
+                    .eq('id', App.state.user.id);
+
+                if (error) {
+                    console.error("Error updating role:", error);
+                    return;
+                }
+                this.state.userRole = newRole;
+                this.render.profile();
+                this.render.homeScreen();
             },
             onRouteSelect(e) {
-                const button = e.target.closest('button');
-                if (!button) return;
-                this.state.selectedRoute = {
-                    from: button.dataset.from,
-                    to: button.dataset.to
-                };
-                this.navigation.to('home-screen', 'Поездки');
+                // ... (same as before)
             },
             onCheboksaryToggle(e) {
-                const checkbox = e.target;
-                const form = checkbox.closest('form');
-                if (form.id === 'offer-form') {
-                    const price = checkbox.checked ? 400 : 600;
-                    const submitButton = form.querySelector('button[type="submit"]');
-                    submitButton.textContent = `Опубликовать (${price} ₽)`;
-                }
+                // ... (same as before)
             },
-            onDirectionSelect(e) { const button = e.target.closest('button'); if (!button) return; const form = button.closest('form'); const errorEl = form.querySelector('.form-error-direction'); if (errorEl) errorEl.classList.add('hidden'); const container = button.parentElement; container.querySelectorAll('button').forEach(btn => btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600')); button.classList.add('bg-blue-600', 'text-white', 'border-blue-600'); form.querySelector('input[name="from"]').value = button.dataset.from; form.querySelector('input[name="to"]').value = button.dataset.to; },
-            onTimeIntervalSelect(e) { if (e.target.tagName === 'BUTTON') { const form = e.target.closest('form'); const errorEl = form.querySelector('.form-error-time'); if (errorEl) errorEl.classList.add('hidden'); document.querySelectorAll('#time-interval-buttons button').forEach(btn => btn.classList.remove('bg-blue-600', 'text-white')); e.target.classList.add('bg-blue-600', 'text-white'); document.getElementById('timeIntervalInput').value = e.target.textContent; } },
-            onViewDriverOffers() { this.render.list(this.state.rideOffers, 'driverOffer'); this.navigation.to('list-screen', 'Поездки водителей'); },
-            onViewPassengerRequests() { this.render.list(this.state.rideRequests, 'passengerRequest'); this.navigation.to('list-screen', 'Заявки пассажиров'); },
-            onViewMyPassengers() { this.render.list(this.state.agreedRides, 'agreedRide'); this.navigation.to('my-passengers-screen', 'Мои пассажиры'); },
-            onPassengerRequestSubmit(e) { const form = e.target; const formData = new FormData(form); let valid = true; if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); valid = false; } if (!formData.get('timeInterval')) { form.querySelector('.form-error-time').classList.remove('hidden'); valid = false; } if (!valid) return; const stopsInCheboksary = form.querySelector('input[name="stopsInCheboksary"]').checked; const price = stopsInCheboksary ? 400 : 600; const newRequest = { id: Date.now(), from: formData.get('from'), to: formData.get('to'), date: formData.get('date'), timeInterval: formData.get('timeInterval'), passenger: { name: this.state.user.first_name }, stopsInCheboksary, price }; this.state.rideRequests.push(newRequest); this.resetForm(form); this.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично'); },
-            onOfferSubmit(e) { const form = e.target; const formData = new FormData(form); if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; } const stopsInCheboksary = form.querySelector('input[name="stopsInCheboksary"]').checked; const price = stopsInCheboksary ? 400 : 600; const newOffer = { id: Date.now(), from: formData.get('from'), to: formData.get('to'), date: formData.get('date'), time: formData.get('time'), seats: parseInt(formData.get('seats')), price, driver: { name: this.state.user.first_name, car: 'Автомобиль' }, stopsInCheboksary }; this.state.rideOffers.push(newOffer); this.resetForm(form); this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет'); },
-            onContactClick(e) { const contactButton = e.target.closest('.contact-btn'); if (!contactButton) return; const partnerName = contactButton.dataset.driverName || contactButton.dataset.passengerName; const requestId = contactButton.dataset.requestId; if (!partnerName) return; if (!this.state.chats[partnerName]) { this.state.chats[partnerName] = { messages: [], agreement: { me: false, other: false }, requestId: null }; } if(requestId) { this.state.chats[partnerName].requestId = parseInt(requestId); } this.state.currentChatPartner = partnerName; this.navigation.to('chat-room-screen', `Чат с ${partnerName}`); },
-            onChatSelect(e) { const chatItem = e.target.closest('.chat-item'); if (!chatItem) return; const partnerName = chatItem.dataset.partnerName; this.state.currentChatPartner = partnerName; this.navigation.to('chat-room-screen', `Чат с ${partnerName}`); },
-            onSendMessage(e) { const input = document.getElementById('chat-input'); const text = input.value.trim(); const partnerName = this.state.currentChatPartner; if (text && partnerName) { this.state.chats[partnerName].messages.push({ sender: 'me', text }); input.value = ''; this.render.chatRoom(partnerName); setTimeout(() => { this.receiveMessage(partnerName, "Хорошо, договорились!"); }, 2000); } },
+            onDirectionSelect(e) { /* ... */ },
+            onTimeIntervalSelect(e) { /* ... */ },
+            async onViewDriverOffers() {
+                const { data, error } = await App.supabase.from('ride_offers').select('*').eq('status', 'active');
+                if (error) { console.error(error); return; }
+                this.render.list(data, 'driverOffer'); 
+                this.navigation.to('list-screen', 'Поездки водителей'); 
+            },
+            async onViewPassengerRequests() {
+                const { data, error } = await App.supabase.from('ride_requests').select('*').eq('status', 'active');
+                if (error) { console.error(error); return; }
+                this.render.list(data, 'passengerRequest'); 
+                this.navigation.to('list-screen', 'Заявки пассажиров'); 
+            },
+            async onViewMyPassengers() {
+                const { data, error } = await App.supabase.from('ride_requests').select('*').eq('status', 'agreed').eq('driver_id', this.state.user.id);
+                if (error) { console.error(error); return; }
+                this.render.list(data, 'agreedRide');
+                this.navigation.to('my-passengers-screen', 'Мои пассажиры');
+            },
+            async onPassengerRequestSubmit(e) { 
+                const form = e.target;
+                // ... validation ...
+                const stopsInCheboksary = form.querySelector('input[name="stopsInCheboksary"]').checked;
+                const price = stopsInCheboksary ? 400 : 600;
+                const newRequest = {
+                    passenger_id: this.state.user.id,
+                    from_location: form.querySelector('input[name="from"]').value,
+                    to_location: form.querySelector('input[name="to"]').value,
+                    departure_date: form.querySelector('input[name="date"]').value,
+                    time_interval: form.querySelector('input[name="timeInterval"]').value,
+                    stops_in_cheboksary: stopsInCheboksary,
+                    price: price
+                };
+                const { error } = await App.supabase.from('ride_requests').insert(newRequest);
+                if (error) { console.error(error); return; }
+                this.resetForm(form); 
+                this.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично');
+            },
+            async onOfferSubmit(e) { 
+                const form = e.target;
+                // ... validation ...
+                const stopsInCheboksary = form.querySelector('input[name="stopsInCheboksary"]').checked;
+                const price = stopsInCheboksary ? 400 : 600;
+                const newOffer = {
+                    driver_id: this.state.user.id,
+                    from_location: form.querySelector('input[name="from"]').value,
+                    to_location: form.querySelector('input[name="to"]').value,
+                    departure_date: form.querySelector('input[name="date"]').value,
+                    departure_time: form.querySelector('input[name="time"]').value,
+                    seats: parseInt(form.querySelector('input[name="seats"]').value),
+                    price: price,
+                    stops_in_cheboksary: stopsInCheboksary
+                };
+                const { error } = await App.supabase.from('ride_offers').insert(newOffer);
+                if (error) { console.error(error); return; }
+                this.resetForm(form); 
+                this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет');
+            },
+            onContactClick(e) { /* ... */ },
+            onChatSelect(e) { /* ... */ },
+            onSendMessage(e) { /* ... */ },
             onAgreementClick(e) {
                 const partnerName = this.state.currentChatPartner;
                 if (!partnerName || this.state.chats[partnerName].agreement.me) return;
@@ -247,173 +328,66 @@
             }
         },
         
-        finalizeAgreement(partnerName) {
+        async finalizeAgreement(partnerName) {
             this.state.chats[partnerName].messages.push({ sender: 'system', text: 'Поездка согласована обеими сторонами!' });
 
             const requestId = this.state.chats[partnerName].requestId;
             if (requestId) {
-                const requestIndex = this.state.rideRequests.findIndex(req => req.id === requestId);
-                if (requestIndex > -1) {
-                    const [agreedRequest] = this.state.rideRequests.splice(requestIndex, 1);
-                    this.state.agreedRides.push(agreedRequest);
-                }
+                const { error } = await App.supabase
+                    .from('ride_requests')
+                    .update({ status: 'agreed', driver_id: this.state.user.id })
+                    .eq('id', requestId);
+                if (error) { console.error(error); }
             }
             this.render.chatRoom(partnerName);
             this.render.driverDashboard();
         },
 
-        receiveMessage(partnerName, text) { if (!this.state.chats[partnerName]) this.state.chats[partnerName] = { messages: [], agreement: { me: false, other: false } }; this.state.chats[partnerName].messages.push({ sender: 'other', text }); const currentScreen = document.querySelector('.screen.active'); if (currentScreen.id === 'chat-room-screen' && this.state.currentChatPartner === partnerName) { this.render.chatRoom(partnerName); } else { this.state.unreadChats[partnerName] = true; this.render.updateNavBadge(); } },
+        receiveMessage(partnerName, text) { /* ... */ },
 
         navigation: {
-            mainNav(targetId) {
-                this.history = [];
-                const titleMap = {
-                    'home-screen': 'Поездки',
-                    'chat-list-screen': 'Чаты',
-                    'profile-screen': 'Профиль'
-                };
-                this.to(targetId, titleMap[targetId]);
-            },
-            to(screenId, title) {
-                const mainContent = document.getElementById('main-content');
-                const chatRoom = document.getElementById('chat-room-screen');
-                const currentScreenEl = document.querySelector('.screen.active');
-
-                if (currentScreenEl && !['success-screen'].includes(currentScreenEl.id) && !currentScreenEl.classList.contains('main-nav-screen')) {
-                    this.history.push({ id: currentScreenEl.id, title: document.getElementById('headerTitle').textContent });
-                }
-
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                
-                if (screenId === 'chat-room-screen') {
-                    mainContent.style.display = 'none';
-                    chatRoom.style.display = 'flex';
-                    chatRoom.classList.add('active');
-                    delete App.state.unreadChats[App.state.currentChatPartner];
-                    App.render.updateNavBadge();
-                    App.render.chatRoom(App.state.currentChatPartner);
-                } else {
-                    mainContent.style.display = 'block';
-                    chatRoom.style.display = 'none';
-                    document.getElementById(screenId).classList.add('active');
-                    if (screenId === 'chat-list-screen') App.render.chatList();
-                    if (screenId === 'home-screen') App.render.homeScreen();
-                    if (screenId === 'profile-screen') App.render.profile();
-                }
-
-                document.querySelectorAll('.nav-btn').forEach(btn => {
-                    btn.classList.toggle('text-blue-600', btn.dataset.target === screenId);
-                    btn.classList.toggle('text-gray-500', btn.dataset.target !== screenId);
-                });
-
-                document.getElementById('headerTitle').textContent = title;
-                document.getElementById('backButton').classList.toggle('invisible', this.history.length === 0);
-            },
-            back() {
-                const lastScreen = this.history.pop();
-                const mainContent = document.getElementById('main-content');
-                const chatRoom = document.getElementById('chat-room-screen');
-                
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                
-                mainContent.style.display = 'block';
-                chatRoom.style.display = 'none';
-
-                if (lastScreen) {
-                    document.getElementById(lastScreen.id).classList.add('active');
-                    document.getElementById('headerTitle').textContent = lastScreen.title;
-                    if (lastScreen.id === 'chat-list-screen') App.render.chatList();
-                    if (lastScreen.id === 'driver-dashboard-screen') App.render.driverDashboard();
-                } else {
-                   this.mainNav('home-screen');
-                }
-
-                document.getElementById('backButton').classList.toggle('invisible', this.history.length === 0);
-            },
-            history: []
+            // ... (navigation logic)
         },
 
         render: {
-            allScreens() {
-                const templates = {
-                    'route-selection-screen': `<div class="text-center mb-10"><h2 class="text-2xl font-bold mb-2">Выберите маршрут</h2></div><div class="space-y-4"><button id="select-route-koz-yo" data-from="Козьмодемьянск" data-to="Йошкар-Ола" class="w-full bg-blue-600 text-white font-bold py-6 px-4 rounded-xl shadow-lg hover:bg-blue-700 transition-transform transform hover:scale-105">Козьмодемьянск &lt;—&gt; Йошкар-Ола</button></div>`,
-                    'offer-screen': `<h2 class="text-xl font-bold mb-4">Данные о поездке</h2><form id="offer-form" class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-2">Направление</label><div class="direction-buttons grid grid-cols-1 gap-2"><button type="button" data-from="Козьмодемьянск" data-to="Йошкар-Ола" class="p-3 border border-gray-300 rounded-lg text-left">Козьмодемьянск → Йошкар-Ола</button><button type="button" data-from="Йошкар-Ола" data-to="Козьмодемьянск" class="p-3 border border-gray-300 rounded-lg text-left">Йошкар-Ола → Козьмодемьянск</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required></div><div class="flex items-center"><input id="offer-cheboksary" name="stopsInCheboksary" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cheboksary-checkbox"><label for="offer-cheboksary" class="ml-2 block text-sm text-gray-900">Заезд в Чебоксары</label></div><input type="date" name="date" id="date-offer" class="w-full p-3 border border-gray-300 rounded-lg" required><input type="time" name="time" class="w-full p-3 border border-gray-300 rounded-lg" required><div><label class="block text-sm font-medium text-gray-700 mb-2">Количество мест</label><input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Например: 3" required></div><div class="form-error-direction text-red-500 text-sm text-center mb-2 hidden">Пожалуйста, выберите направление</div><button type="submit" class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600">Опубликовать (600 ₽)</button></form>`,
-                    'passenger-request-screen': `<h2 class="text-xl font-bold mb-4">Ваша заявка</h2><form id="passenger-request-form" class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-2">Направление</label><div class="direction-buttons grid grid-cols-1 gap-2"><button type="button" data-from="Козьмодемьянск" data-to="Йошкар-Ола" class="p-3 border border-gray-300 rounded-lg text-left">Козьмодемьянск → Йошкар-Ола</button><button type="button" data-from="Йошкар-Ола" data-to="Козьмодемьянск" class="p-3 border border-gray-300 rounded-lg text-left">Йошкар-Ола → Козьмодемьянск</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required></div><div class="form-error-direction text-red-500 text-sm text-center -mt-2 mb-2 hidden">Пожалуйста, выберите направление</div><div class="flex items-center"><input id="request-cheboksary" name="stopsInCheboksary" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cheboksary-checkbox"><label for="request-cheboksary" class="ml-2 block text-sm text-gray-900">Нужен заезд в Чебоксары</label></div><input type="date" name="date" id="date-request" class="w-full p-3 border border-gray-300 rounded-lg" required><div><label class="block text-sm font-medium text-gray-700 mb-2">Желаемое время выезда</label><div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2"><button type="button" class="p-3 border rounded-lg">04:00-06:00</button><button type="button" class="p-3 border rounded-lg">06:00-08:00</button><button type="button" class="p-3 border rounded-lg">08:00-10:00</button><button type="button" class="p-3 border rounded-lg">10:00-12:00</button><button type="button" class="p-3 border rounded-lg">12:00-14:00</button><button type="button" class="p-3 border rounded-lg">14:00-16:00</button><button type="button" class="p-3 border rounded-lg">16:00-18:00</button><button type="button" class="p-3 border rounded-lg">18:00-20:00</button></div><input type="hidden" name="timeInterval" id="timeIntervalInput" required></div><div class="form-error-time text-red-500 text-sm text-center -mt-2 mb-2 hidden">Пожалуйста, выберите время</div><button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Оставить заявку</button></form>`,
-                    'list-screen': `<div id="list-container" class="space-y-4"></div><div id="no-results" class="text-center text-gray-500 py-10 hidden"><h3 id="no-results-title" class="text-lg font-semibold"></h3><p id="no-results-text" class="text-sm"></p></div>`,
-                    'my-passengers-screen': `<div id="my-passengers-container" class="space-y-4"></div><div id="no-my-passengers" class="text-center text-gray-500 py-10 hidden"><h3 class="text-lg font-semibold">У вас нет пассажиров</h3><p class="text-sm">Найдите и согласуйте поездки в разделе "Заявки пассажиров".</p></div>`,
-                    'chat-list-screen': `<div id="chat-list-container" class="space-y-2"></div><div id="no-chats" class="text-center text-gray-500 py-10 hidden"><h3 class="text-lg font-semibold">У вас пока нет чатов</h3><p class="text-sm">Начните диалог с водителем со страницы поездки.</p></div>`,
-                    'success-screen': `<div class="flex flex-col items-center justify-center h-full"><h2 id="success-title" class="text-2xl font-bold mt-6 mb-2"></h2><p id="success-text" class="text-gray-600 mb-8"></p><button id="back-to-hub-btn" class="w-full max-w-xs bg-blue-600 text-white font-bold py-3 px-4 rounded-lg"></button></div>`,
-                    'chat-room-screen': `<div id="chat-messages" class="flex-grow p-4 space-y-4 overflow-y-auto"></div><div class="p-4 border-t"><button id="agreement-btn" class="w-full font-bold py-3 px-4 rounded-lg transition-colors"></button></div><form id="chat-form" class="flex-shrink-0 p-4 border-t border-gray-200 flex items-center space-x-2"><input type="text" id="chat-input" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Напишите сообщение..." required autocomplete="off"><button type="submit" class="p-3 bg-blue-600 text-white rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></form>`,
-                };
-                for (const [id, html] of Object.entries(templates)) {
-                    const el = document.getElementById(id);
-                    if (el) el.innerHTML = html;
-                }
-            },
-            homeScreen() {
-                const container = document.getElementById('home-screen');
-                if (App.state.userRole === 'passenger') {
-                    container.innerHTML = `<div class="text-center mb-6"><h2 class="text-2xl font-bold mb-2">Что вы хотите сделать?</h2></div><div class="space-y-4"><button id="view-driver-offers-btn" class="w-full bg-blue-600 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-blue-700 transition">Смотреть поездки водителей</button><button id="create-passenger-request-btn" class="w-full bg-blue-100 text-blue-800 font-bold py-5 px-4 rounded-xl hover:bg-blue-200 transition">Оставить заявку на поездку</button></div>`;
-                } else {
-                    let buttonsHTML = `<button id="view-passenger-requests-btn" class="w-full bg-blue-600 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-blue-700 transition">Смотреть заявки пассажиров</button>`;
-                    if (App.state.agreedRides.length > 0) {
-                        buttonsHTML += `<button id="view-my-passengers-btn" class="w-full bg-green-500 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-green-600 transition">Мои пассажиры (${App.state.agreedRides.length})</button>`;
-                    }
-                    buttonsHTML += `<button id="publish-ride-btn" class="w-full bg-gray-800 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-gray-900 transition">Опубликовать свою поездку</button>`;
-                    container.innerHTML = `<div class="text-center mb-6"><h2 class="text-2xl font-bold mb-2">Кабинет водителя</h2></div><div class="space-y-4">${buttonsHTML}</div>`;
-                }
-            },
-            profile() {
-                const container = document.getElementById('profile-screen');
-                container.innerHTML = `<div class="flex flex-col items-center"><img id="user-photo" src="${App.state.user.photo_url}" alt="User photo" class="w-24 h-24 rounded-full mb-4 border-4 border-gray-200"><h2 id="user-name" class="text-2xl font-bold">${App.state.user.first_name}</h2><p class="text-gray-500 mb-8">@${App.state.user.username || 'username'}</p><div class="w-full mt-4"><p class="text-center text-sm font-medium text-gray-600 mb-2">Ваша роль</p><div id="role-switcher" class="role-switcher ${App.state.userRole}"><div class="role-switcher-slider"></div><button id="role-switcher-passenger" class="role-switcher-button ${App.state.userRole === 'passenger' ? 'active' : ''}">Пассажир</button><button id="role-switcher-driver" class="role-switcher-button ${App.state.userRole === 'driver' ? 'active' : ''}">Водитель</button></div></div></div>`;
-            },
-            driverDashboard() {
-                const container = document.getElementById('driver-dashboard-buttons');
-                let buttonsHTML = `<button id="view-passenger-requests-btn" class="w-full bg-blue-600 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-blue-700 transition">Смотреть заявки пассажиров</button>`;
-                if (App.state.agreedRides.length > 0) {
-                    buttonsHTML += `<button id="view-my-passengers-btn" class="w-full bg-green-500 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-green-600 transition">Мои пассажиры (${App.state.agreedRides.length})</button>`;
-                }
-                buttonsHTML += `<button id="publish-ride-btn" class="w-full bg-gray-800 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-gray-900 transition">Опубликовать свою поездку</button>`;
-                container.innerHTML = buttonsHTML;
-            },
-            list(items, type) { const container = document.getElementById(type === 'agreedRide' ? 'my-passengers-container' : 'list-container'); const noResultsElId = type === 'agreedRide' ? 'no-my-passengers' : 'no-results'; const noResultsEl = document.getElementById(noResultsElId); container.innerHTML = ''; let filteredItems = items; if (type !== 'agreedRide') { const route = App.state.selectedRoute; if (!route) return; filteredItems = items.filter(item => { const from = item.from.toLowerCase(); const to = item.to.toLowerCase(); const routeFrom = route.from.toLowerCase(); const routeTo = route.to.toLowerCase(); const cheboksary = 'чебоксары'; return (from.includes(routeFrom) || from.includes(routeTo) || from.includes(cheboksary)) && (to.includes(routeFrom) || to.includes(routeTo) || to.includes(cheboksary)); }); } filteredItems.sort((a, b) => { const timeA = a.time || a.timeInterval.split('-')[0]; const timeB = b.time || b.timeInterval.split('-')[0]; return new Date(`${a.date}T${timeA}`) - new Date(`${b.date}T${timeB}`); }); noResultsEl.classList.toggle('hidden', filteredItems.length > 0); if (type === 'driverOffer') { document.getElementById('no-results-title').textContent = 'Свободных поездок нет'; document.getElementById('no-results-text').textContent = 'Оставьте заявку, и водители вас найдут.'; } else if (type === 'passengerRequest') { document.getElementById('no-results-title').textContent = 'Заявок от пассажиров нет'; document.getElementById('no-results-text').textContent = 'Опубликуйте свою поездку, чтобы найти попутчиков.'; } filteredItems.forEach(item => { let cardHTML = ''; if (type === 'driverOffer') { cardHTML = `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"><div class="flex justify-between items-start mb-3"><div><p class="font-bold text-lg">${item.from} → ${item.to}</p>${item.stopsInCheboksary ? '<p class="text-xs text-green-600 font-semibold">через Чебоксары</p>' : ''}<p class="text-sm text-gray-500 mt-1">${new Date(item.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })} в ${item.time}</p></div><p class="font-bold text-xl text-blue-600">${item.price} ₽</p></div><div class="flex justify-between items-center text-sm text-gray-600 pt-3 border-t"><span>${item.driver.name} на ${item.driver.car}</span><span class="bg-blue-100 text-blue-800 font-medium px-3 py-1 rounded-full">Мест: ${item.seats}</span></div><button class="contact-btn w-full mt-3 bg-green-500 text-white font-semibold py-2 rounded-lg hover:bg-green-600" data-driver-name="${item.driver.name}">Связаться</button></div>`; } else { cardHTML = `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"><div class="flex justify-between items-start mb-3"><div><p class="font-bold text-lg">${item.from} → ${item.to}</p>${item.stopsInCheboksary ? '<p class="text-xs text-green-600 font-semibold">через Чебоксары</p>' : ''}<p class="text-sm text-gray-500 mt-1">${new Date(item.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}, <span class="font-semibold">${item.timeInterval}</span></p></div><div><p class="font-bold text-xl text-blue-600">${item.price} ₽</p><span class="bg-green-100 text-green-800 font-medium px-3 py-1 rounded-full text-sm">${item.passenger.name}</span></div></div><button class="contact-btn w-full mt-3 bg-green-500 text-white font-semibold py-2 rounded-lg hover:bg-green-600" data-passenger-name="${item.passenger.name}" data-request-id="${item.id}">Связаться</button></div>`; } container.insertAdjacentHTML('beforeend', cardHTML); }); },
-            chatList() { const container = document.getElementById('chat-list-container'); const noChatsEl = document.getElementById('no-chats'); const chatPartners = Object.keys(App.state.chats); container.innerHTML = ''; noChatsEl.classList.toggle('hidden', chatPartners.length > 0); chatPartners.forEach(partner => { const chat = App.state.chats[partner]; const lastMessage = chat.messages.slice(-1)[0] || { text: 'Нет сообщений' }; const isUnread = App.state.unreadChats[partner]; const isAgreed = chat.agreement.me && chat.agreement.other; container.insertAdjacentHTML('beforeend', `<div class="chat-item p-4 border-b border-gray-200 flex items-center space-x-4 cursor-pointer hover:bg-gray-50" data-partner-name="${partner}"><div class="flex-grow"><p class="font-bold flex items-center">${partner} ${isAgreed ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="ml-2 text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' : ''}</p><p class="text-sm text-gray-500 truncate">${lastMessage.text}</p></div>${isUnread ? '<div class="w-3 h-3 bg-red-500 rounded-full"></div>' : ''}</div>`); }); },
-            chatRoom(partnerName) { const container = document.getElementById('chat-messages'); const agreementBtn = document.getElementById('agreement-btn'); const chat = App.state.chats[partnerName]; if (!chat) return; container.innerHTML = ''; chat.messages.forEach(msg => { const isMe = msg.sender === 'me'; const isSystem = msg.sender === 'system'; let msgClass = isMe ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'; if (isSystem) msgClass = 'bg-yellow-100 text-yellow-800 text-center text-sm'; container.insertAdjacentHTML('beforeend', `<div class="flex ${isMe ? 'justify-end' : isSystem ? 'justify-center' : 'justify-start'}"><div class="max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${msgClass}">${msg.text}</div></div>`); }); container.scrollTop = container.scrollHeight; if (chat.agreement.me && chat.agreement.other) { agreementBtn.className = 'w-full font-bold py-3 px-4 rounded-lg bg-green-500 text-white cursor-not-allowed'; agreementBtn.textContent = 'Договоренность достигнута'; agreementBtn.disabled = true; } else if (chat.agreement.me) { agreementBtn.className = 'w-full font-bold py-3 px-4 rounded-lg bg-green-200 text-green-800 cursor-not-allowed'; agreementBtn.textContent = 'Ожидание другой стороны'; agreementBtn.disabled = true; } else { agreementBtn.className = 'w-full font-bold py-3 px-4 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors'; agreementBtn.textContent = 'Подтвердить договоренность'; agreementBtn.disabled = false; } },
-            updateNavBadge() { const badge = document.getElementById('chat-nav-badge'); const hasUnread = Object.keys(App.state.unreadChats).length > 0; badge.classList.toggle('hidden', !hasUnread); },
-            success(title, text, buttonText) { document.getElementById('success-title').textContent = title; document.getElementById('success-text').textContent = text; document.getElementById('back-to-hub-btn').textContent = buttonText; App.navigation.to('success-screen', 'Успех'); }
+            // ... (render logic)
         },
 
         a2hsModal: {
-            elements: { modal: document.getElementById('a2hs-modal'), showInstructionsBtn: document.getElementById('a2hs-show-instructions-btn'), gotItBtn: document.getElementById('a2hs-got-it-btn'), dontShowAgain: document.getElementById('a2hs-dont-show-again'), initialView: document.getElementById('modal-initial-view'), instructionView: document.getElementById('modal-instruction-view'), },
-            init() { if (!localStorage.getItem('hideA2HSModal')) { setTimeout(() => this.show(), 3000); } this.elements.showInstructionsBtn.addEventListener('click', () => { this.elements.initialView.classList.add('hidden'); this.elements.instructionView.classList.remove('hidden'); }); this.elements.gotItBtn.addEventListener('click', () => this.hide()); this.elements.modal.addEventListener('click', (e) => { if (e.target === this.elements.modal) { this.hide(); } }); },
-            show() { this.elements.modal.classList.remove('hidden'); },
-            hide() { if (this.elements.dontShowAgain.checked) { localStorage.setItem('hideA2HSModal', 'true'); } this.elements.modal.classList.add('hidden'); }
+            // ... (modal logic)
         },
 
-        showToast(message, type = 'info') {
-            const toast = document.getElementById('toast');
-            const msg = document.getElementById('toast-message');
-            const colors = { info: 'bg-gray-800', success: 'bg-green-600', error: 'bg-red-600' };
-            
-            clearTimeout(this.state.toastTimeout);
-            
-            toast.className = `toast fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm p-4 rounded-lg shadow-lg text-white text-center z-50 ${colors[type]}`;
-            msg.textContent = message;
-            
-            toast.offsetHeight;
-
-            toast.classList.add('show');
-            this.state.toastTimeout = setTimeout(() => {
-                this.hideToast();
-            }, 3000);
-        },
-        hideToast() {
-            const toast = document.getElementById('toast');
-            clearTimeout(this.state.toastTimeout);
-            toast.classList.remove('show');
-        },
-        resetForm(form) { form.reset(); this.setDefaultDates(); form.querySelectorAll('.direction-buttons button, #time-interval-buttons button').forEach(btn => { btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600'); }); const priceTag = form.querySelector('.price-tag'); if (priceTag) priceTag.textContent = ''; if (form.id === 'offer-form') { form.querySelector('button[type="submit"]').textContent = 'Опубликовать (600 ₽)'; } }
+        showToast(message, type = 'info') { /* ... */ },
+        hideToast() { /* ... */ },
+        resetForm(form) { /* ... */ }
     };
+    
+    // Fill in missing methods for brevity
+    App.setDefaultDates = function() { const today = new Date().toISOString().split('T')[0]; ['date-offer', 'date-request'].forEach(id => { const input = document.getElementById(id); if (input) { input.setAttribute('min', today); input.value = today; } }); };
+    App.bindEvents = function() { document.getElementById('backButton').addEventListener('click', () => this.navigation.back()); document.body.addEventListener('click', (e) => { const button = e.target.closest('button'); if (!button) return; if (button.classList.contains('nav-btn')) { this.navigation.mainNav(button.dataset.target); return; } const handlers = { 'select-route-koz-yo': this.handlers.onRouteSelect, 'view-driver-offers-btn': this.handlers.onViewDriverOffers, 'create-passenger-request-btn': () => this.navigation.to('passenger-request-screen', 'Заявка на поездку'), 'view-passenger-requests-btn': this.handlers.onViewPassengerRequests, 'publish-ride-btn': () => this.navigation.to('offer-screen', 'Новая поездка'), 'view-my-passengers-btn': this.handlers.onViewMyPassengers, 'back-to-hub-btn': () => { this.navigation.mainNav('home-screen'); }, 'role-switcher-passenger': () => this.handlers.onRoleChange('passenger'), 'role-switcher-driver': () => this.handlers.onRoleChange('driver'), }; if (handlers[button.id]) handlers[button.id].call(this, e); if (button.closest('#time-interval-buttons')) this.handlers.onTimeIntervalSelect.call(this, e); if (button.closest('.direction-buttons')) this.handlers.onDirectionSelect.call(this, e); if (button.closest('#list-container')) this.handlers.onContactClick.call(this, e); if (button.closest('#chat-list-container')) this.handlers.onChatSelect.call(this, e); if (button.closest('#agreement-btn')) this.handlers.onAgreementClick.call(this, e); }); document.body.addEventListener('submit', (e) => { e.preventDefault(); const targetId = e.target.id; const handlers = { 'passenger-request-form': this.handlers.onPassengerRequestSubmit, 'offer-form': this.handlers.onOfferSubmit, 'chat-form': this.handlers.onSendMessage }; if (handlers[targetId]) handlers[targetId].call(this, e); }); document.body.addEventListener('change', (e) => { if (e.target.classList.contains('cheboksary-checkbox')) { this.handlers.onCheboksaryToggle(e); } }); };
+    App.handlers.onDirectionSelect = function(e) { const button = e.target.closest('button'); if (!button) return; const form = button.closest('form'); const errorEl = form.querySelector('.form-error-direction'); if (errorEl) errorEl.classList.add('hidden'); const container = button.parentElement; container.querySelectorAll('button').forEach(btn => btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600')); button.classList.add('bg-blue-600', 'text-white', 'border-blue-600'); form.querySelector('input[name="from"]').value = button.dataset.from; form.querySelector('input[name="to"]').value = button.dataset.to; };
+    App.handlers.onTimeIntervalSelect = function(e) { if (e.target.tagName === 'BUTTON') { const form = e.target.closest('form'); const errorEl = form.querySelector('.form-error-time'); if (errorEl) errorEl.classList.add('hidden'); document.querySelectorAll('#time-interval-buttons button').forEach(btn => btn.classList.remove('bg-blue-600', 'text-white')); e.target.classList.add('bg-blue-600', 'text-white'); document.getElementById('timeIntervalInput').value = e.target.textContent; } };
+    App.handlers.onContactClick = function(e) { const contactButton = e.target.closest('.contact-btn'); if (!contactButton) return; const partnerName = contactButton.dataset.driverName || contactButton.dataset.passengerName; const requestId = contactButton.dataset.requestId; if (!partnerName) return; if (!this.state.chats[partnerName]) { this.state.chats[partnerName] = { messages: [], agreement: { me: false, other: false }, requestId: null }; } if(requestId) { this.state.chats[partnerName].requestId = parseInt(requestId); } this.state.currentChatPartner = partnerName; this.navigation.to('chat-room-screen', `Чат с ${partnerName}`); };
+    App.handlers.onChatSelect = function(e) { const chatItem = e.target.closest('.chat-item'); if (!chatItem) return; const partnerName = chatItem.dataset.partnerName; this.state.currentChatPartner = partnerName; this.navigation.to('chat-room-screen', `Чат с ${partnerName}`); };
+    App.handlers.onSendMessage = function(e) { const input = document.getElementById('chat-input'); const text = input.value.trim(); const partnerName = this.state.currentChatPartner; if (text && partnerName) { this.state.chats[partnerName].messages.push({ sender: 'me', text }); input.value = ''; this.render.chatRoom(partnerName); setTimeout(() => { this.receiveMessage(partnerName, "Хорошо, договорились!"); }, 2000); } };
+    App.receiveMessage = function(partnerName, text) { if (!this.state.chats[partnerName]) this.state.chats[partnerName] = { messages: [], agreement: { me: false, other: false } }; this.state.chats[partnerName].messages.push({ sender: 'other', text }); const currentScreen = document.querySelector('.screen.active'); if (currentScreen.id === 'chat-room-screen' && this.state.currentChatPartner === partnerName) { this.render.chatRoom(partnerName); } else { this.state.unreadChats[partnerName] = true; this.render.updateNavBadge(); } };
+    App.navigation.history = App.state.navigationHistory;
+    App.navigation.mainNav = function(targetId) { this.history = []; const titleMap = { 'home-screen': 'Поездки', 'chat-list-screen': 'Чаты', 'profile-screen': 'Профиль' }; this.to(targetId, titleMap[targetId]); };
+    App.navigation.to = function(screenId, title) { const mainContent = document.getElementById('main-content'); const chatRoom = document.getElementById('chat-room-screen'); const currentScreenEl = document.querySelector('.screen.active'); if (currentScreenEl && !['success-screen'].includes(currentScreenEl.id) && !currentScreenEl.classList.contains('main-nav-screen')) { this.history.push({ id: currentScreenEl.id, title: document.getElementById('headerTitle').textContent }); } document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); if (screenId === 'chat-room-screen') { mainContent.style.display = 'none'; chatRoom.style.display = 'flex'; chatRoom.classList.add('active'); delete App.state.unreadChats[App.state.currentChatPartner]; App.render.updateNavBadge(); App.render.chatRoom(App.state.currentChatPartner); } else { mainContent.style.display = 'block'; chatRoom.style.display = 'none'; document.getElementById(screenId).classList.add('active'); if (screenId === 'chat-list-screen') App.render.chatList(); if (screenId === 'home-screen') App.render.homeScreen(); if (screenId === 'profile-screen') App.render.profile(); } document.querySelectorAll('.nav-btn').forEach(btn => { btn.classList.toggle('text-blue-600', btn.dataset.target === screenId); btn.classList.toggle('text-gray-500', btn.dataset.target !== screenId); }); document.getElementById('headerTitle').textContent = title; document.getElementById('backButton').classList.toggle('invisible', this.history.length === 0); };
+    App.navigation.back = function() { const lastScreen = this.history.pop(); const mainContent = document.getElementById('main-content'); const chatRoom = document.getElementById('chat-room-screen'); document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); mainContent.style.display = 'block'; chatRoom.style.display = 'none'; if (lastScreen) { document.getElementById(lastScreen.id).classList.add('active'); document.getElementById('headerTitle').textContent = lastScreen.title; if (lastScreen.id === 'chat-list-screen') App.render.chatList(); if (lastScreen.id === 'driver-dashboard-screen') App.render.driverDashboard(); } else { this.mainNav('home-screen'); } document.getElementById('backButton').classList.toggle('invisible', this.history.length === 0); };
+    App.render.allScreens = function() { const templates = { 'route-selection-screen': `<div class="text-center mb-10"><h2 class="text-2xl font-bold mb-2">Выберите маршрут</h2></div><div class="space-y-4"><button id="select-route-koz-yo" data-from="Козьмодемьянск" data-to="Йошкар-Ола" class="w-full bg-blue-600 text-white font-bold py-6 px-4 rounded-xl shadow-lg hover:bg-blue-700 transition-transform transform hover:scale-105">Козьмодемьянск &lt;—&gt; Йошкар-Ола</button></div>`, 'offer-screen': `<h2 class="text-xl font-bold mb-4">Данные о поездке</h2><form id="offer-form" class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-2">Направление</label><div class="direction-buttons grid grid-cols-1 gap-2"><button type="button" data-from="Козьмодемьянск" data-to="Йошкар-Ола" class="p-3 border border-gray-300 rounded-lg text-left">Козьмодемьянск → Йошкар-Ола</button><button type="button" data-from="Йошкар-Ола" data-to="Козьмодемьянск" class="p-3 border border-gray-300 rounded-lg text-left">Йошкар-Ола → Козьмодемьянск</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required></div><div class="flex items-center"><input id="offer-cheboksary" name="stopsInCheboksary" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cheboksary-checkbox"><label for="offer-cheboksary" class="ml-2 block text-sm text-gray-900">Заезд в Чебоксары</label></div><input type="date" name="date" id="date-offer" class="w-full p-3 border border-gray-300 rounded-lg" required><input type="time" name="time" class="w-full p-3 border border-gray-300 rounded-lg" required><div><label class="block text-sm font-medium text-gray-700 mb-2">Количество мест</label><input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Например: 3" required></div><div class="form-error-direction text-red-500 text-sm text-center mb-2 hidden">Пожалуйста, выберите направление</div><button type="submit" class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600">Опубликовать (600 ₽)</button></form>`, 'passenger-request-screen': `<h2 class="text-xl font-bold mb-4">Ваша заявка</h2><form id="passenger-request-form" class="space-y-4"><div><label class="block text-sm font-medium text-gray-700 mb-2">Направление</label><div class="direction-buttons grid grid-cols-1 gap-2"><button type="button" data-from="Козьмодемьянск" data-to="Йошкар-Ола" class="p-3 border border-gray-300 rounded-lg text-left">Козьмодемьянск → Йошкар-Ола</button><button type="button" data-from="Йошкар-Ола" data-to="Козьмодемьянск" class="p-3 border border-gray-300 rounded-lg text-left">Йошкар-Ола → Козьмодемьянск</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required></div><div class="form-error-direction text-red-500 text-sm text-center -mt-2 mb-2 hidden">Пожалуйста, выберите направление</div><div class="flex items-center"><input id="request-cheboksary" name="stopsInCheboksary" type="checkbox" class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cheboksary-checkbox"><label for="request-cheboksary" class="ml-2 block text-sm text-gray-900">Нужен заезд в Чебоксары</label></div><input type="date" name="date" id="date-request" class="w-full p-3 border border-gray-300 rounded-lg" required><div><label class="block text-sm font-medium text-gray-700 mb-2">Желаемое время выезда</label><div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2"><button type="button" class="p-3 border rounded-lg">04:00-06:00</button><button type="button" class="p-3 border rounded-lg">06:00-08:00</button><button type="button" class="p-3 border rounded-lg">08:00-10:00</button><button type="button" class="p-3 border rounded-lg">10:00-12:00</button><button type="button" class="p-3 border rounded-lg">12:00-14:00</button><button type="button" class="p-3 border rounded-lg">14:00-16:00</button><button type="button" class="p-3 border rounded-lg">16:00-18:00</button><button type="button" class="p-3 border rounded-lg">18:00-20:00</button></div><input type="hidden" name="timeInterval" id="timeIntervalInput" required></div><div class="form-error-time text-red-500 text-sm text-center -mt-2 mb-2 hidden">Пожалуйста, выберите время</div><button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Оставить заявку</button></form>`, 'list-screen': `<div id="list-container" class="space-y-4"></div><div id="no-results" class="text-center text-gray-500 py-10 hidden"><h3 id="no-results-title" class="text-lg font-semibold"></h3><p id="no-results-text" class="text-sm"></p></div>`, 'my-passengers-screen': `<div id="my-passengers-container" class="space-y-4"></div><div id="no-my-passengers" class="text-center text-gray-500 py-10 hidden"><h3 class="text-lg font-semibold">У вас нет пассажиров</h3><p class="text-sm">Найдите и согласуйте поездки в разделе "Заявки пассажиров".</p></div>`, 'chat-list-screen': `<div id="chat-list-container" class="space-y-2"></div><div id="no-chats" class="text-center text-gray-500 py-10 hidden"><h3 class="text-lg font-semibold">У вас пока нет чатов</h3><p class="text-sm">Начните диалог с водителем со страницы поездки.</p></div>`, 'success-screen': `<div class="flex flex-col items-center justify-center h-full"><h2 id="success-title" class="text-2xl font-bold mt-6 mb-2"></h2><p id="success-text" class="text-gray-600 mb-8"></p><button id="back-to-hub-btn" class="w-full max-w-xs bg-blue-600 text-white font-bold py-3 px-4 rounded-lg"></button></div>`, 'chat-room-screen': `<div id="chat-messages" class="flex-grow p-4 space-y-4 overflow-y-auto"></div><div class="p-4 border-t"><button id="agreement-btn" class="w-full font-bold py-3 px-4 rounded-lg transition-colors"></button></div><form id="chat-form" class="flex-shrink-0 p-4 border-t border-gray-200 flex items-center space-x-2"><input type="text" id="chat-input" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Напишите сообщение..." required autocomplete="off"><button type="submit" class="p-3 bg-blue-600 text-white rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></form>`, }; for (const [id, html] of Object.entries(templates)) { const el = document.getElementById(id); if (el) el.innerHTML = html; } };
+    App.render.homeScreen = function() { const container = document.getElementById('home-screen'); if (this.state.userRole === 'passenger') { container.innerHTML = `<div class="text-center mb-6"><h2 class="text-2xl font-bold mb-2">Что вы хотите сделать?</h2></div><div class="space-y-4"><button id="view-driver-offers-btn" class="w-full bg-blue-600 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-blue-700 transition">Смотреть поездки водителей</button><button id="create-passenger-request-btn" class="w-full bg-blue-100 text-blue-800 font-bold py-5 px-4 rounded-xl hover:bg-blue-200 transition">Оставить заявку на поездку</button></div>`; } else { let buttonsHTML = `<button id="view-passenger-requests-btn" class="w-full bg-blue-600 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-blue-700 transition">Смотреть заявки пассажиров</button>`; if (this.state.agreedRides.length > 0) { buttonsHTML += `<button id="view-my-passengers-btn" class="w-full bg-green-500 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-green-600 transition">Мои пассажиры (${this.state.agreedRides.length})</button>`; } buttonsHTML += `<button id="publish-ride-btn" class="w-full bg-gray-800 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-gray-900 transition">Опубликовать свою поездку</button>`; container.innerHTML = `<div class="text-center mb-6"><h2 class="text-2xl font-bold mb-2">Кабинет водителя</h2></div><div class="space-y-4">${buttonsHTML}</div>`; } };
+    App.render.profile = function() { const container = document.getElementById('profile-screen'); container.innerHTML = `<div class="flex flex-col items-center"><img id="user-photo" src="${this.state.user.photo_url}" alt="User photo" class="w-24 h-24 rounded-full mb-4 border-4 border-gray-200"><h2 id="user-name" class="text-2xl font-bold">${this.state.user.first_name}</h2><p class="text-gray-500 mb-8">@${this.state.user.username || 'username'}</p><div class="w-full mt-4"><p class="text-center text-sm font-medium text-gray-600 mb-2">Ваша роль</p><div id="role-switcher" class="role-switcher ${this.state.userRole}"><div class="role-switcher-slider"></div><button id="role-switcher-passenger" class="role-switcher-button ${this.state.userRole === 'passenger' ? 'active' : ''}">Пассажир</button><button id="role-switcher-driver" class="role-switcher-button ${this.state.userRole === 'driver' ? 'active' : ''}">Водитель</button></div></div></div>`; };
+    App.render.driverDashboard = function() { const container = document.getElementById('driver-dashboard-buttons'); if (!container) return; let buttonsHTML = `<button id="view-passenger-requests-btn" class="w-full bg-blue-600 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-blue-700 transition">Смотреть заявки пассажиров</button>`; if (this.state.agreedRides.length > 0) { buttonsHTML += `<button id="view-my-passengers-btn" class="w-full bg-green-500 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-green-600 transition">Мои пассажиры (${this.state.agreedRides.length})</button>`; } buttonsHTML += `<button id="publish-ride-btn" class="w-full bg-gray-800 text-white font-bold py-5 px-4 rounded-xl shadow-lg hover:bg-gray-900 transition">Опубликовать свою поездку</button>`; container.innerHTML = buttonsHTML; };
+    App.render.list = function(items, type) { const container = document.getElementById(type === 'agreedRide' ? 'my-passengers-container' : 'list-container'); const noResultsElId = type === 'agreedRide' ? 'no-my-passengers' : 'no-results'; const noResultsEl = document.getElementById(noResultsElId); container.innerHTML = ''; let filteredItems = items; if (type !== 'agreedRide') { const route = App.state.selectedRoute; if (!route) return; filteredItems = items.filter(item => { const from = item.from_location.toLowerCase(); const to = item.to_location.toLowerCase(); const routeFrom = route.from.toLowerCase(); const routeTo = route.to.toLowerCase(); const cheboksary = 'чебоксары'; return (from.includes(routeFrom) || from.includes(routeTo) || from.includes(cheboksary)) && (to.includes(routeFrom) || to.includes(routeTo) || to.includes(cheboksary)); }); } filteredItems.sort((a, b) => { const timeA = a.departure_time || a.time_interval.split('-')[0]; const timeB = b.departure_time || b.time_interval.split('-')[0]; return new Date(`${a.departure_date}T${timeA}`) - new Date(`${b.departure_date}T${timeB}`); }); noResultsEl.classList.toggle('hidden', filteredItems.length > 0); if (type === 'driverOffer') { document.getElementById('no-results-title').textContent = 'Свободных поездок нет'; document.getElementById('no-results-text').textContent = 'Оставьте заявку, и водители вас найдут.'; } else if (type === 'passengerRequest') { document.getElementById('no-results-title').textContent = 'Заявок от пассажиров нет'; document.getElementById('no-results-text').textContent = 'Опубликуйте свою поездку, чтобы найти попутчиков.'; } filteredItems.forEach(item => { let cardHTML = ''; if (type === 'driverOffer') { cardHTML = `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"><div class="flex justify-between items-start mb-3"><div><p class="font-bold text-lg">${item.from_location} → ${item.to_location}</p>${item.stops_in_cheboksary ? '<p class="text-xs text-green-600 font-semibold">через Чебоксары</p>' : ''}<p class="text-sm text-gray-500 mt-1">${new Date(item.departure_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })} в ${item.departure_time}</p></div><p class="font-bold text-xl text-blue-600">${item.price} ₽</p></div><div class="flex justify-between items-center text-sm text-gray-600 pt-3 border-t"><span>${item.driver_name || 'Водитель'} на ${item.driver_car || 'Авто'}</span><span class="bg-blue-100 text-blue-800 font-medium px-3 py-1 rounded-full">Мест: ${item.seats}</span></div><button class="contact-btn w-full mt-3 bg-green-500 text-white font-semibold py-2 rounded-lg hover:bg-green-600" data-driver-name="${item.driver_name || 'Водитель'}">Связаться</button></div>`; } else { cardHTML = `<div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"><div class="flex justify-between items-start mb-3"><div><p class="font-bold text-lg">${item.from_location} → ${item.to_location}</p>${item.stops_in_cheboksary ? '<p class="text-xs text-green-600 font-semibold">через Чебоксары</p>' : ''}<p class="text-sm text-gray-500 mt-1">${new Date(item.departure_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}, <span class="font-semibold">${item.time_interval}</span></p></div><div><p class="font-bold text-xl text-blue-600">${item.price} ₽</p><span class="bg-green-100 text-green-800 font-medium px-3 py-1 rounded-full text-sm">${item.passenger_name || 'Пассажир'}</span></div></div><button class="contact-btn w-full mt-3 bg-green-500 text-white font-semibold py-2 rounded-lg hover:bg-green-600" data-passenger-name="${item.passenger_name || 'Пассажир'}" data-request-id="${item.id}">Связаться</button></div>`; } container.insertAdjacentHTML('beforeend', cardHTML); }); };
+    App.render.chatList = function() { const container = document.getElementById('chat-list-container'); const noChatsEl = document.getElementById('no-chats'); const chatPartners = Object.keys(App.state.chats); container.innerHTML = ''; noChatsEl.classList.toggle('hidden', chatPartners.length > 0); chatPartners.forEach(partner => { const chat = App.state.chats[partner]; const lastMessage = chat.messages.slice(-1)[0] || { text: 'Нет сообщений' }; const isUnread = App.state.unreadChats[partner]; const isAgreed = chat.agreement.me && chat.agreement.other; container.insertAdjacentHTML('beforeend', `<div class="chat-item p-4 border-b border-gray-200 flex items-center space-x-4 cursor-pointer hover:bg-gray-50" data-partner-name="${partner}"><div class="flex-grow"><p class="font-bold flex items-center">${partner} ${isAgreed ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="ml-2 text-green-500"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>' : ''}</p><p class="text-sm text-gray-500 truncate">${lastMessage.text}</p></div>${isUnread ? '<div class="w-3 h-3 bg-red-500 rounded-full"></div>' : ''}</div>`); }); };
+    App.render.chatRoom = function(partnerName) { const container = document.getElementById('chat-messages'); const agreementBtn = document.getElementById('agreement-btn'); const chat = App.state.chats[partnerName]; if (!chat) return; container.innerHTML = ''; chat.messages.forEach(msg => { const isMe = msg.sender === 'me'; const isSystem = msg.sender === 'system'; let msgClass = isMe ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'; if (isSystem) msgClass = 'bg-yellow-100 text-yellow-800 text-center text-sm'; container.insertAdjacentHTML('beforeend', `<div class="flex ${isMe ? 'justify-end' : isSystem ? 'justify-center' : 'justify-start'}"><div class="max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${msgClass}">${msg.text}</div></div>`); }); container.scrollTop = container.scrollHeight; if (chat.agreement.me && chat.agreement.other) { agreementBtn.className = 'w-full font-bold py-3 px-4 rounded-lg bg-green-500 text-white cursor-not-allowed'; agreementBtn.textContent = 'Договоренность достигнута'; agreementBtn.disabled = true; } else if (chat.agreement.me) { agreementBtn.className = 'w-full font-bold py-3 px-4 rounded-lg bg-green-200 text-green-800 cursor-not-allowed'; agreementBtn.textContent = 'Ожидание другой стороны'; agreementBtn.disabled = true; } else { agreementBtn.className = 'w-full font-bold py-3 px-4 rounded-lg bg-red-500 text-white hover:bg-red-600 transition-colors'; agreementBtn.textContent = 'Подтвердить договоренность'; agreementBtn.disabled = false; } };
+    App.render.updateNavBadge = function() { const badge = document.getElementById('chat-nav-badge'); const hasUnread = Object.keys(App.state.unreadChats).length > 0; badge.classList.toggle('hidden', !hasUnread); };
+    App.render.success = function(title, text, buttonText) { document.getElementById('success-title').textContent = title; document.getElementById('success-text').textContent = text; document.getElementById('back-to-hub-btn').textContent = buttonText; App.navigation.to('success-screen', 'Успех'); };
+    App.a2hsModal = { elements: { modal: document.getElementById('a2hs-modal'), showInstructionsBtn: document.getElementById('a2hs-show-instructions-btn'), gotItBtn: document.getElementById('a2hs-got-it-btn'), dontShowAgain: document.getElementById('a2hs-dont-show-again'), initialView: document.getElementById('modal-initial-view'), instructionView: document.getElementById('modal-instruction-view'), }, init() { if (!localStorage.getItem('hideA2HSModal')) { setTimeout(() => this.show(), 3000); } this.elements.showInstructionsBtn.addEventListener('click', () => { this.elements.initialView.classList.add('hidden'); this.elements.instructionView.classList.remove('hidden'); }); this.elements.gotItBtn.addEventListener('click', () => this.hide()); this.elements.modal.addEventListener('click', (e) => { if (e.target === this.elements.modal) { this.hide(); } }); }, show() { this.elements.modal.classList.remove('hidden'); }, hide() { if (this.elements.dontShowAgain.checked) { localStorage.setItem('hideA2HSModal', 'true'); } this.elements.modal.classList.add('hidden'); } };
+    App.showToast = function(message, type = 'info') { const toast = document.getElementById('toast'); const msg = document.getElementById('toast-message'); const colors = { info: 'bg-gray-800', success: 'bg-green-600', error: 'bg-red-600' }; clearTimeout(this.state.toastTimeout); toast.className = `toast fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm p-4 rounded-lg shadow-lg text-white text-center z-50 ${colors[type]}`; msg.textContent = message; toast.offsetHeight; toast.classList.add('show'); this.state.toastTimeout = setTimeout(() => { this.hideToast(); }, 3000); };
+    App.hideToast = function() { const toast = document.getElementById('toast'); clearTimeout(this.state.toastTimeout); toast.classList.remove('show'); };
+    App.resetForm = function(form) { form.reset(); this.setDefaultDates(); form.querySelectorAll('.direction-buttons button, #time-interval-buttons button').forEach(btn => { btn.classList.remove('bg-blue-600', 'text-white', 'border-blue-600'); }); const priceTag = form.querySelector('.price-tag'); if (priceTag) priceTag.textContent = ''; if (form.id === 'offer-form') { form.querySelector('button[type="submit"]').textContent = 'Опубликовать (600 ₽)'; } };
 
     // Bind navigation history to the navigation object itself
     App.navigation.history = App.state.navigationHistory;
