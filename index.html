@@ -176,30 +176,89 @@
         <div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm p-4 rounded-lg shadow-lg text-white text-center z-50"><p id="toast-message"></p></div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+    const SUPABASE_URL = 'https://scqkpvmmoaolahpxinja.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw';
+
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     const App = {
         state: {
-            rideOffers: [ 
-                { id: 1, from: 'Козьмодемьянск', to: 'Йошкар-Ола', date: '2025-08-18', time: '08:30', seats: 2, price: 400, driver: { name: 'Алексей', car: 'Kia Rio' }, toCheboksary: true, passengers: [], parcels: [], viaFerry: false, takesParcel: true }, 
-                { id: 2, from: 'Йошкар-Ола', to: 'Козьмодемьянск', date: '2025-08-18', time: '12:30', seats: 3, price: 700, driver: { name: 'Елена', car: 'Hyundai Solaris' }, toCheboksary: false, passengers: [], parcels: [], viaFerry: true, takesParcel: false }, 
-            ],
-            rideRequests: [ 
-                { id: 1, from: 'Козьмодемьянск', to: 'Йошкар-Ола', date: '2025-08-19', timeInterval: '06:00-08:00', passenger: { name: 'Мария' }, toCheboksary: true, price: 400, viaFerry: false }, 
-            ],
-            parcelRequests: [
-                { id: 1, from: 'Козьмодемьянск', to: 'Йошкар-Ола', date: '2025-08-20', senderName: 'Отправитель', price: 300 },
-            ],
-            chats: {}, unreadChats: {}, navigationHistory: [], userRole: null, currentChatPartner: null, selectedRoute: null, toastTimeout: null,
+            rideOffers: [],
+            rideRequests: [],
+            parcelRequests: [],
+            chats: {}, 
+            unreadChats: {}, 
+            navigationHistory: [], 
+            userRole: null, 
+            currentUser: null,
+            currentChatPartner: null, 
+            selectedRoute: null, 
+            toastTimeout: null,
         },
 
-        init() {
-            try { Telegram.WebApp.ready(); Telegram.WebApp.expand(); } 
-            catch(e) { console.warn("Telegram WebApp script not found."); }
+        async init() {
+            try { 
+                Telegram.WebApp.ready(); 
+                Telegram.WebApp.expand(); 
+            } catch(e) { 
+                console.warn("Telegram WebApp script not found or running in browser."); 
+            }
             
+            await this.auth.login();
             this.render.allScreens();
             this.bindEvents();
             this.setDefaultDates();
             this.a2hsModal.init();
+        },
+        
+        auth: {
+            async login() {
+                try {
+                    const tgUser = Telegram.WebApp.initDataUnsafe?.user;
+                    const tgInitData = Telegram.WebApp.initData;
+
+                    if (!tgUser || !tgInitData) {
+                        App.state.currentUser = { id: 12345, first_name: 'Тест', username: 'testuser' };
+                        console.log('Using mock user:', App.state.currentUser);
+                        return;
+                    }
+                    
+                    const { data: authData, error: authError } = await supabaseClient.functions.invoke('telegram-auth', {
+                        body: { initData: tgInitData },
+                    });
+
+                    if (authError) throw authError;
+
+                    const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
+                        access_token: authData.accessToken,
+                        refresh_token: 'placeholder_because_we_rely_on_tg_reauth'
+                    });
+
+                    if (sessionError) throw sessionError;
+
+                    const { data, error } = await supabaseClient
+                        .from('profiles')
+                        .upsert({ 
+                            id: tgUser.id, 
+                            first_name: tgUser.first_name,
+                            last_name: tgUser.last_name,
+                            username: tgUser.username
+                        })
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    
+                    App.state.currentUser = data;
+                    console.log('Logged in as:', App.state.currentUser);
+
+                } catch (error) {
+                    console.error('Login error:', error);
+                    App.showToast('Ошибка входа', 'error');
+                }
+            }
         },
 
         setDefaultDates() {
@@ -338,16 +397,16 @@
                 form.querySelector('input[name="to"]').value = button.dataset.to; 
             },
             onTimeIntervalSelect(e) { if (e.target.tagName === 'BUTTON') { const form = e.target.closest('form'); const errorEl = form.querySelector('.form-error-time'); if (errorEl) errorEl.classList.add('hidden'); document.querySelectorAll('#time-interval-buttons button').forEach(btn => btn.classList.remove('bg-slate-800', 'text-white')); e.target.classList.add('bg-slate-800', 'text-white'); document.getElementById('timeIntervalInput').value = e.target.textContent; } },
-            onViewDriverOffers() { this.render.list(this.state.rideOffers, 'driverOffer'); this.navigation.to('list-screen', 'Поездки водителей'); },
-            onViewPassengerRequests() { 
+            async onViewDriverOffers() { this.render.list(this.state.rideOffers, 'driverOffer'); this.navigation.to('list-screen', 'Поездки водителей'); },
+            async onViewPassengerRequests() { 
                 const allRequests = [...this.state.rideRequests, ...this.state.parcelRequests];
                 allRequests.sort((a,b) => new Date(a.date) - new Date(b.date));
                 this.render.list(allRequests, 'passengerRequest'); 
                 this.navigation.to('list-screen', 'Заявки от пассажиров'); 
             },
-            onPassengerRequestSubmit(e) { const form = e.target; const formData = new FormData(form); let valid = true; if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); valid = false; } if (!formData.get('timeInterval')) { form.querySelector('.form-error-time').classList.remove('hidden'); valid = false; } if (!formData.get('passengerName').trim()) { valid = false; this.showToast('Пожалуйста, укажите ваше имя', 'error'); } if (!valid) return; const toCheboksary = form.querySelector('input[name="toCheboksary"]').checked; const viaFerry = form.querySelector('input[name="viaFerry"]').checked; let price = 600; if (toCheboksary) { price = 400; } else if (viaFerry) { price = 700; } const newRequest = { id: this.state.rideRequests.length + 1, from: formData.get('from'), to: formData.get('to'), date: formData.get('date'), timeInterval: formData.get('timeInterval'), passenger: { name: formData.get('passengerName') }, toCheboksary, viaFerry, price }; this.state.rideRequests.push(newRequest); this.resetForm(form); this.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично'); },
-            onParcelRequestSubmit(e) { const form = e.target; const formData = new FormData(form); if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; } const newRequest = { id: this.state.parcelRequests.length + 1, from: formData.get('from'), to: formData.get('to'), date: formData.get('date'), senderName: 'Отправитель', price: 300 }; this.state.parcelRequests.push(newRequest); this.resetForm(form); this.render.success('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично'); },
-            onOfferSubmit(e) { const form = e.target; const formData = new FormData(form); if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; } if (!formData.get('driverName').trim() || !formData.get('driverCar').trim()) { this.showToast('Укажите имя и машину', 'error'); return; } const toCheboksary = form.querySelector('input[name="toCheboksary"]').checked; const viaFerry = form.querySelector('input[name="viaFerry"]').checked; const takesParcel = form.querySelector('input[name="takesParcel"]').checked; let price = 600; if (viaFerry) { price = 700; } const newOffer = { id: this.state.rideOffers.length + 1, from: formData.get('from'), to: formData.get('to'), date: formData.get('date'), time: formData.get('time'), seats: parseInt(formData.get('seats')), price, driver: { name: formData.get('driverName'), car: formData.get('driverCar') }, toCheboksary, viaFerry, takesParcel, passengers: [], parcels: [] }; this.state.rideOffers.push(newOffer); this.resetForm(form); this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет'); },
+            async onPassengerRequestSubmit(e) { const form = e.target; const formData = new FormData(form); let valid = true; if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); valid = false; } if (!formData.get('timeInterval')) { form.querySelector('.form-error-time').classList.remove('hidden'); valid = false; } if (!formData.get('passengerName').trim()) { valid = false; this.showToast('Пожалуйста, укажите ваше имя', 'error'); } if (!valid) return; const toCheboksary = form.querySelector('input[name="toCheboksary"]').checked; const viaFerry = form.querySelector('input[name="viaFerry"]').checked; let price = 600; if (toCheboksary) { price = 400; } else if (viaFerry) { price = 700; } const newRequest = { id: this.state.rideRequests.length + 1, from: formData.get('from'), to: formData.get('to'), date: formData.get('date'), timeInterval: formData.get('timeInterval'), passenger: { name: formData.get('passengerName') }, toCheboksary, viaFerry, price }; this.state.rideRequests.push(newRequest); this.resetForm(form); this.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично'); },
+            async onParcelRequestSubmit(e) { const form = e.target; const formData = new FormData(form); if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; } const newRequest = { id: this.state.parcelRequests.length + 1, from: formData.get('from'), to: formData.get('to'), date: formData.get('date'), senderName: 'Отправитель', price: 300 }; this.state.parcelRequests.push(newRequest); this.resetForm(form); this.render.success('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично'); },
+            async onOfferSubmit(e) { const form = e.target; const formData = new FormData(form); if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; } if (!formData.get('driverName').trim() || !formData.get('driverCar').trim()) { this.showToast('Укажите имя и машину', 'error'); return; } const toCheboksary = form.querySelector('input[name="toCheboksary"]').checked; const viaFerry = form.querySelector('input[name="viaFerry"]').checked; const takesParcel = form.querySelector('input[name="takesParcel"]').checked; let price = 600; if (viaFerry) { price = 700; } const newOffer = { id: this.state.rideOffers.length + 1, from: formData.get('from'), to: formData.get('to'), date: formData.get('date'), time: formData.get('time'), seats: parseInt(formData.get('seats')), price, driver: { name: formData.get('driverName'), car: formData.get('driverCar') }, toCheboksary, viaFerry, takesParcel, passengers: [], parcels: [] }; this.state.rideOffers.push(newOffer); this.resetForm(form); this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет'); },
             onContactClick(e) { 
                 const contactButton = e.target.closest('.contact-btn'); 
                 if (!contactButton) return; 
