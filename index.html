@@ -655,6 +655,9 @@
                     document.getElementById(screenId).classList.add('active');
                     if (screenId === 'driver-dashboard-screen') App.render.driverDashboard();
                     if (screenId === 'chat-list-screen') App.render.chatList();
+                    if (screenId === 'passenger-request-screen' || screenId === 'offer-screen') {
+                        App.render.populateUserData(screenId);
+                    }
                 }
 
                 document.getElementById('headerTitle').textContent = title;
