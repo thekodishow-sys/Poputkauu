@@ -107,7 +107,7 @@
                     <h2 class="text-3xl font-bold mb-2">Попутка 12</h2>
                     <p class="text-slate-500 mb-8">Найдите попутчиков или отправьте посылку</p>
                 </div>
-                <button id="login-btn" class="btn w-full max-w-xs bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/10 hover:bg-blue-600 flex items-center justify-center">
+                <button id="login-btn" class="btn w-full max-w-xs mx-auto bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/10 hover:bg-blue-600 flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
                     Войти через Telegram
                 </button>
@@ -246,7 +246,8 @@
                         body: { initData: tgInitData },
                     });
 
-                    if (authError) throw authError;
+                    if (authError) throw new Error(`Ошибка функции: ${authError.message}`);
+                    if (authData.error) throw new Error(`Ошибка функции: ${authData.error}`);
 
                     const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
                         access_token: authData.accessToken,
@@ -274,9 +275,9 @@
 
                 } catch (error) {
                     console.error('Login error:', error);
-                    App.showToast('Ошибка входа', 'error');
+                    App.showToast(`${error.message}`, 'error');
                     loginBtn.disabled = false;
-                    loginBtn.textContent = 'Войти через Telegram';
+                    loginBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> Войти через Telegram`;
                 }
             }
         },
@@ -294,7 +295,7 @@
         
         bindEvents() {
             document.getElementById('login-btn').addEventListener('click', this.auth.login);
-
+            
             document.getElementById('role-selector').addEventListener('click', (e) => {
                 const target = e.target.closest('.role-btn');
                 if (!target) return;
@@ -661,7 +662,7 @@
                 }
 
                 document.getElementById('headerTitle').textContent = title;
-                document.getElementById('backButton').classList.toggle('invisible', screenId === 'main-screen' || this.history.length === 0);
+                document.getElementById('backButton').classList.toggle('invisible', screenId === 'main-screen' || this.history.length === 0 || screenId === 'login-screen');
             },
             back() {
                 const lastScreen = this.history.pop();
@@ -820,7 +821,18 @@
                 agreementContainer.style.display = agreementContainer.innerHTML === '' ? 'none' : 'block';
             },
             updateNavBadge() { const badge = document.getElementById('chat-nav-badge'); const hasUnread = Object.keys(App.state.unreadChats).length > 0; badge.classList.toggle('hidden', !hasUnread); },
-            success(title, text, buttonText) { document.getElementById('success-title').textContent = title; document.getElementById('success-text').textContent = text; document.getElementById('back-to-hub-btn').textContent = buttonText; App.navigation.to('success-screen', 'Успех'); }
+            success(title, text, buttonText) { document.getElementById('success-title').textContent = title; document.getElementById('success-text').textContent = text; document.getElementById('back-to-hub-btn').textContent = buttonText; App.navigation.to('success-screen', 'Успех'); },
+            populateUserData(screenId) {
+                if (!this.state.currentUser) return;
+                
+                if (screenId === 'passenger-request-screen') {
+                    const nameInput = document.getElementById('passenger-name');
+                    if (nameInput) nameInput.value = this.state.currentUser.first_name || '';
+                } else if (screenId === 'offer-screen') {
+                    const nameInput = document.getElementById('driver-name');
+                    if (nameInput) nameInput.value = this.state.currentUser.first_name || '';
+                }
+            }
         },
 
         a2hsModal: {
