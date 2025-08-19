@@ -176,30 +176,135 @@
         <div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm p-4 rounded-lg shadow-lg text-white text-center z-50"><p id="toast-message"></p></div>
     </div>
     
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+    // 1. СЮДА НУЖНО ВСТАВИТЬ ВАШИ КЛЮЧИ ИЗ SUPABASE
+    const SUPABASE_URL = 'СЮДА_ВАШ_URL_ИЗ_НАСТРОЕК';
+    const SUPABASE_ANON_KEY = 'СЮДА_ВАШ_ANON_KEY_ИЗ_НАСТРОЕК';
+
+    // 2. СОЗДАЙТЕ ТАБЛИЦЫ В SUPABASE SQL EDITOR, ВЫПОЛНИВ ЭТОТ КОД:
+    /*
+    -- Таблица для хранения профилей пользователей
+    CREATE TABLE profiles (
+      id BIGINT PRIMARY KEY, -- Telegram ID
+      first_name TEXT,
+      last_name TEXT,
+      username TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Таблица для поездок, предложенных водителями
+    CREATE TABLE ride_offers (
+      id SERIAL PRIMARY KEY,
+      driver_id BIGINT REFERENCES profiles(id),
+      "from" TEXT NOT NULL,
+      "to" TEXT NOT NULL,
+      ride_date DATE NOT NULL,
+      ride_time TIME NOT NULL,
+      seats INT NOT NULL,
+      price INT NOT NULL,
+      to_cheboksary BOOLEAN DEFAULT false,
+      via_ferry BOOLEAN DEFAULT false,
+      takes_parcel BOOLEAN DEFAULT false,
+      driver_name TEXT,
+      driver_car TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Таблица для заявок от пассажиров
+    CREATE TABLE ride_requests (
+      id SERIAL PRIMARY KEY,
+      passenger_id BIGINT REFERENCES profiles(id),
+      "from" TEXT NOT NULL,
+      "to" TEXT NOT NULL,
+      ride_date DATE NOT NULL,
+      time_interval TEXT,
+      passenger_name TEXT,
+      to_cheboksary BOOLEAN DEFAULT false,
+      via_ferry BOOLEAN DEFAULT false,
+      price INT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    -- Таблица для заявок на посылки
+    CREATE TABLE parcel_requests (
+      id SERIAL PRIMARY KEY,
+      sender_id BIGINT REFERENCES profiles(id),
+      "from" TEXT NOT NULL,
+      "to" TEXT NOT NULL,
+      ride_date DATE NOT NULL,
+      sender_name TEXT,
+      price INT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    */
+
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     const App = {
         state: {
-            rideOffers: [ 
-                { id: 1, from: 'Козьмодемьянск', to: 'Йошкар-Ола', date: '2025-08-18', time: '08:30', seats: 2, price: 400, driver: { name: 'Алексей', car: 'Kia Rio' }, toCheboksary: true, passengers: [], parcels: [], viaFerry: false, takesParcel: true }, 
-                { id: 2, from: 'Йошкар-Ола', to: 'Козьмодемьянск', date: '2025-08-18', time: '12:30', seats: 3, price: 700, driver: { name: 'Елена', car: 'Hyundai Solaris' }, toCheboksary: false, passengers: [], parcels: [], viaFerry: true, takesParcel: false }, 
-            ],
-            rideRequests: [ 
-                { id: 1, from: 'Козьмодемьянск', to: 'Йошкар-Ола', date: '2025-08-19', timeInterval: '06:00-08:00', passenger: { name: 'Мария' }, toCheboksary: true, price: 400, viaFerry: false }, 
-            ],
-            parcelRequests: [
-                { id: 1, from: 'Козьмодемьянск', to: 'Йошкар-Ола', date: '2025-08-20', senderName: 'Отправитель', price: 300 },
-            ],
-            chats: {}, unreadChats: {}, navigationHistory: [], userRole: null, currentChatPartner: null, selectedRoute: null, toastTimeout: null,
+            rideOffers: [],
+            rideRequests: [],
+            parcelRequests: [],
+            chats: {}, 
+            unreadChats: {}, 
+            navigationHistory: [], 
+            userRole: null, 
+            currentUser: null, // Здесь будет храниться информация о пользователе
+            currentChatPartner: null, 
+            selectedRoute: null, 
+            toastTimeout: null,
         },
 
-        init() {
-            try { Telegram.WebApp.ready(); Telegram.WebApp.expand(); } 
-            catch(e) { console.warn("Telegram WebApp script not found."); }
+        async init() {
+            try { 
+                Telegram.WebApp.ready(); 
+                Telegram.WebApp.expand(); 
+            } catch(e) { 
+                console.warn("Telegram WebApp script not found."); 
+            }
             
+            await this.auth.login(); // Аутентификация пользователя при запуске
             this.render.allScreens();
             this.bindEvents();
             this.setDefaultDates();
             this.a2hsModal.init();
+        },
+        
+        auth: {
+            async login() {
+                try {
+                    const tgUser = Telegram.WebApp.initDataUnsafe?.user;
+
+                    if (!tgUser) {
+                        // Симуляция для тестирования в браузере
+                        App.state.currentUser = { id: 12345, first_name: 'Тест', username: 'testuser' };
+                        console.log('Using mock user:', App.state.currentUser);
+                        return;
+                    }
+
+                    // Upsert (update or insert) пользователя в базу
+                    const { data, error } = await supabase
+                        .from('profiles')
+                        .upsert({ 
+                            id: tgUser.id, 
+                            first_name: tgUser.first_name,
+                            last_name: tgUser.last_name,
+                            username: tgUser.username
+                        })
+                        .select()
+                        .single();
+
+                    if (error) throw error;
+                    
+                    App.state.currentUser = data;
+                    console.log('Logged in as:', App.state.currentUser);
+
+                } catch (error) {
+                    console.error('Login error:', error);
+                    App.showToast('Ошибка входа', 'error');
+                }
+            }
         },
 
         setDefaultDates() {
@@ -338,16 +443,125 @@
                 form.querySelector('input[name="to"]').value = button.dataset.to; 
             },
             onTimeIntervalSelect(e) { if (e.target.tagName === 'BUTTON') { const form = e.target.closest('form'); const errorEl = form.querySelector('.form-error-time'); if (errorEl) errorEl.classList.add('hidden'); document.querySelectorAll('#time-interval-buttons button').forEach(btn => btn.classList.remove('bg-slate-800', 'text-white')); e.target.classList.add('bg-slate-800', 'text-white'); document.getElementById('timeIntervalInput').value = e.target.textContent; } },
-            onViewDriverOffers() { this.render.list(this.state.rideOffers, 'driverOffer'); this.navigation.to('list-screen', 'Поездки водителей'); },
-            onViewPassengerRequests() { 
-                const allRequests = [...this.state.rideRequests, ...this.state.parcelRequests];
-                allRequests.sort((a,b) => new Date(a.date) - new Date(b.date));
+            async onViewDriverOffers() {
+                const { data, error } = await supabase.from('ride_offers').select('*').order('ride_date', { ascending: true }).order('ride_time', { ascending: true });
+                if (error) {
+                    console.error('Error fetching ride offers:', error);
+                    return;
+                }
+                this.state.rideOffers = data;
+                this.render.list(this.state.rideOffers, 'driverOffer'); 
+                this.navigation.to('list-screen', 'Поездки водителей'); 
+            },
+            async onViewPassengerRequests() { 
+                const { data: rides, error: ridesError } = await supabase.from('ride_requests').select('*');
+                const { data: parcels, error: parcelsError } = await supabase.from('parcel_requests').select('*');
+                
+                if (ridesError || parcelsError) {
+                    console.error('Error fetching requests:', ridesError || parcelsError);
+                    return;
+                }
+
+                const allRequests = [...rides, ...parcels];
+                allRequests.sort((a,b) => new Date(a.ride_date) - new Date(b.ride_date));
+                
                 this.render.list(allRequests, 'passengerRequest'); 
                 this.navigation.to('list-screen', 'Заявки от пассажиров'); 
             },
-            onPassengerRequestSubmit(e) { const form = e.target; const formData = new FormData(form); let valid = true; if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); valid = false; } if (!formData.get('timeInterval')) { form.querySelector('.form-error-time').classList.remove('hidden'); valid = false; } if (!formData.get('passengerName').trim()) { valid = false; this.showToast('Пожалуйста, укажите ваше имя', 'error'); } if (!valid) return; const toCheboksary = form.querySelector('input[name="toCheboksary"]').checked; const viaFerry = form.querySelector('input[name="viaFerry"]').checked; let price = 600; if (toCheboksary) { price = 400; } else if (viaFerry) { price = 700; } const newRequest = { id: this.state.rideRequests.length + 1, from: formData.get('from'), to: formData.get('to'), date: formData.get('date'), timeInterval: formData.get('timeInterval'), passenger: { name: formData.get('passengerName') }, toCheboksary, viaFerry, price }; this.state.rideRequests.push(newRequest); this.resetForm(form); this.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично'); },
-            onParcelRequestSubmit(e) { const form = e.target; const formData = new FormData(form); if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; } const newRequest = { id: this.state.parcelRequests.length + 1, from: formData.get('from'), to: formData.get('to'), date: formData.get('date'), senderName: 'Отправитель', price: 300 }; this.state.parcelRequests.push(newRequest); this.resetForm(form); this.render.success('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично'); },
-            onOfferSubmit(e) { const form = e.target; const formData = new FormData(form); if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; } if (!formData.get('driverName').trim() || !formData.get('driverCar').trim()) { this.showToast('Укажите имя и машину', 'error'); return; } const toCheboksary = form.querySelector('input[name="toCheboksary"]').checked; const viaFerry = form.querySelector('input[name="viaFerry"]').checked; const takesParcel = form.querySelector('input[name="takesParcel"]').checked; let price = 600; if (viaFerry) { price = 700; } const newOffer = { id: this.state.rideOffers.length + 1, from: formData.get('from'), to: formData.get('to'), date: formData.get('date'), time: formData.get('time'), seats: parseInt(formData.get('seats')), price, driver: { name: formData.get('driverName'), car: formData.get('driverCar') }, toCheboksary, viaFerry, takesParcel, passengers: [], parcels: [] }; this.state.rideOffers.push(newOffer); this.resetForm(form); this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет'); },
+            async onPassengerRequestSubmit(e) { 
+                const form = e.target; 
+                const formData = new FormData(form); 
+                let valid = true; 
+                if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); valid = false; } 
+                if (!formData.get('timeInterval')) { form.querySelector('.form-error-time').classList.remove('hidden'); valid = false; } 
+                if (!formData.get('passengerName').trim()) { valid = false; this.showToast('Пожалуйста, укажите ваше имя', 'error'); } 
+                if (!valid) return; 
+                
+                const toCheboksary = form.querySelector('input[name="toCheboksary"]').checked; 
+                const viaFerry = form.querySelector('input[name="viaFerry"]').checked; 
+                let price = 600; 
+                if (toCheboksary) { price = 400; } else if (viaFerry) { price = 700; } 
+                
+                const { error } = await supabase.from('ride_requests').insert({
+                    passenger_id: this.state.currentUser.id,
+                    "from": formData.get('from'),
+                    "to": formData.get('to'),
+                    ride_date: formData.get('date'),
+                    time_interval: formData.get('timeInterval'),
+                    passenger_name: formData.get('passengerName'),
+                    to_cheboksary: toCheboksary,
+                    via_ferry: viaFerry,
+                    price: price
+                });
+
+                if (error) {
+                    console.error('Error creating request:', error);
+                    this.showToast('Ошибка создания заявки', 'error');
+                    return;
+                }
+                
+                this.resetForm(form); 
+                this.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично'); 
+            },
+            async onParcelRequestSubmit(e) { 
+                const form = e.target; 
+                const formData = new FormData(form); 
+                if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; } 
+                
+                const { error } = await supabase.from('parcel_requests').insert({
+                    sender_id: this.state.currentUser.id,
+                    "from": formData.get('from'),
+                    "to": formData.get('to'),
+                    ride_date: formData.get('date'),
+                    sender_name: this.state.currentUser.first_name || 'Отправитель',
+                    price: 300
+                });
+
+                if (error) {
+                    console.error('Error creating parcel request:', error);
+                    this.showToast('Ошибка создания заявки', 'error');
+                    return;
+                }
+                
+                this.resetForm(form); 
+                this.render.success('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично'); 
+            },
+            async onOfferSubmit(e) { 
+                const form = e.target; 
+                const formData = new FormData(form); 
+                if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; } 
+                if (!formData.get('driverName').trim() || !formData.get('driverCar').trim()) { this.showToast('Укажите имя и машину', 'error'); return; } 
+                
+                const toCheboksary = form.querySelector('input[name="toCheboksary"]').checked; 
+                const viaFerry = form.querySelector('input[name="viaFerry"]').checked; 
+                const takesParcel = form.querySelector('input[name="takesParcel"]').checked; 
+                let price = 600; 
+                if (viaFerry) { price = 700; } 
+
+                const { error } = await supabase.from('ride_offers').insert({
+                    driver_id: this.state.currentUser.id,
+                    "from": formData.get('from'),
+                    "to": formData.get('to'),
+                    ride_date: formData.get('date'),
+                    ride_time: formData.get('time'),
+                    seats: parseInt(formData.get('seats')),
+                    price: price,
+                    driver_name: formData.get('driverName'),
+                    driver_car: formData.get('driverCar'),
+                    to_cheboksary: toCheboksary,
+                    via_ferry: viaFerry,
+                    takes_parcel: takesParcel
+                });
+
+                if (error) {
+                    console.error('Error creating offer:', error);
+                    this.showToast('Ошибка публикации', 'error');
+                    return;
+                }
+                
+                this.resetForm(form); 
+                this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет'); 
+            },
             onContactClick(e) { 
                 const contactButton = e.target.closest('.contact-btn'); 
                 if (!contactButton) return; 
