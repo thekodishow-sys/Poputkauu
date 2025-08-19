@@ -88,7 +88,7 @@
 
     <div id="app-container" class="h-screen w-screen max-w-md mx-auto bg-white flex flex-col">
         <!-- Верхний бар -->
-        <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0 hidden">
+        <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0">
             <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             </button>
@@ -100,17 +100,13 @@
         </header>
 
         <main id="main-content" class="flex-grow overflow-y-auto p-5 relative">
-            <!-- Экран входа -->
-            <div id="login-screen" class="screen active flex flex-col justify-center items-center h-full">
-                 <div class="text-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-slate-800 mb-4"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08v0c.82.82 2.13.82 2.94 0l.02-.02.02-.02c.82-.82.82-2.13 0-2.94L12 5Z"/></svg>
-                    <h2 class="text-3xl font-bold mb-2">Попутка 12</h2>
-                    <p class="text-slate-500 mb-8">Найдите попутчиков или отправьте посылку</p>
-                </div>
-                <button id="login-btn" class="btn w-full max-w-xs mx-auto bg-blue-500 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/10 hover:bg-blue-600 flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
-                    Войти через Telegram
-                </button>
+            <!-- Экран загрузки -->
+             <div id="loading-screen" class="screen active flex flex-col justify-center items-center h-full">
+                <svg class="animate-spin h-8 w-8 text-slate-800" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p class="mt-4 text-slate-500">Подключаемся...</p>
             </div>
 
             <!-- Главный экран выбора роли -->
@@ -211,7 +207,7 @@
             toastTimeout: null,
         },
 
-        init() {
+        async init() {
             try { 
                 Telegram.WebApp.ready(); 
                 Telegram.WebApp.expand(); 
@@ -219,6 +215,7 @@
                 console.warn("Telegram WebApp script not found or running in browser."); 
             }
             
+            await this.auth.login();
             this.render.allScreens();
             this.bindEvents();
             this.setDefaultDates();
@@ -227,34 +224,15 @@
         
         auth: {
             async login() {
-                const loginBtn = document.getElementById('login-btn');
-                loginBtn.disabled = true;
-                loginBtn.textContent = 'Входим...';
-                
                 try {
                     const tgUser = Telegram.WebApp.initDataUnsafe?.user;
-                    const tgInitData = Telegram.WebApp.initData;
 
-                    if (!tgUser || !tgInitData) {
+                    if (!tgUser) {
                         App.state.currentUser = { id: 12345, first_name: 'Тест', username: 'testuser' };
                         console.log('Using mock user:', App.state.currentUser);
                         App.navigation.to('main-screen', 'Попутка 12');
                         return;
                     }
-                    
-                    const { data: authData, error: authError } = await supabaseClient.functions.invoke('telegram-auth', {
-                        body: { initData: tgInitData },
-                    });
-
-                    if (authError) throw new Error(`Ошибка функции: ${authError.message}`);
-                    if (authData.error) throw new Error(`Ошибка функции: ${authData.error}`);
-
-                    const { data: sessionData, error: sessionError } = await supabaseClient.auth.setSession({
-                        access_token: authData.accessToken,
-                        refresh_token: 'placeholder_because_we_rely_on_tg_reauth'
-                    });
-
-                    if (sessionError) throw sessionError;
 
                     const { data, error } = await supabaseClient
                         .from('profiles')
@@ -275,9 +253,7 @@
 
                 } catch (error) {
                     console.error('Login error:', error);
-                    App.showToast(`${error.message}`, 'error');
-                    loginBtn.disabled = false;
-                    loginBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> Войти через Telegram`;
+                    App.showToast('Ошибка входа: ' + error.message, 'error');
                 }
             }
         },
@@ -294,8 +270,6 @@
         },
         
         bindEvents() {
-            document.getElementById('login-btn').addEventListener('click', this.auth.login);
-            
             document.getElementById('role-selector').addEventListener('click', (e) => {
                 const target = e.target.closest('.role-btn');
                 if (!target) return;
