@@ -20,8 +20,6 @@
             from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .toast { transform: translateY(150%); transition: transform 0.3s ease-out; pointer-events: none; }
-        .toast.show { transform: translateY(0); pointer-events: auto; }
         .role-btn.active, .direction-buttons button.active, #time-interval-buttons button.active {
             background-color: #1e293b; /* slate-800 */
             color: white;
@@ -90,7 +88,6 @@
             <div id="profile-screen" class="screen"></div>
         </main>
         
-        <div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm p-4 rounded-lg shadow-lg text-white text-center z-50"><p id="toast-message"></p></div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -108,7 +105,6 @@
             userProfile: null,
             userRole: 'passenger', // Default role
             selectedRoute: null,
-            toastTimeout: null,
             navigationHistory: ['route-selection-screen'], // New default screen
             currentConversation: {
                 id: null,
@@ -177,13 +173,11 @@
 
                 if (insertError) {
                     console.error('Error creating user profile:', insertError);
-                    this.showToast('Ошибка создания профиля', 'error');
                     return;
                 }
                 profile = newProfile;
             } else if (fetchError) {
                 console.error('Error fetching user profile:', fetchError);
-                this.showToast('Ошибка загрузки профиля', 'error');
                 return;
             }
             
@@ -312,7 +306,7 @@
             
             onPublishRideClick() {
                 if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
-                    this.showToast('Пожалуйста, укажите данные вашего автомобиля в профиле', 'error');
+                    console.error('Driver car info missing');
                     this.navigation.to('profile-screen', 'Мой профиль');
                 } else {
                     this.navigation.to('offer-screen', 'Новая поездка');
@@ -327,7 +321,7 @@
                     .order('ride_date', { ascending: true })
                     .order('ride_time', { ascending: true });
 
-                if (error) { this.showToast('Ошибка загрузки поездок', 'error'); console.error(error); return; }
+                if (error) { console.error(error); return; }
                 this.render.list(data, 'driverOffer');
                 this.navigation.to('list-screen', 'Поездки водителей');
             },
@@ -339,7 +333,7 @@
                 const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
                     .select('*').gte('ride_date', today).order('ride_date', { ascending: true });
 
-                if (ridesError || parcelsError) { this.showToast('Ошибка загрузки заявок', 'error'); console.error(ridesError || parcelsError); return; }
+                if (ridesError || parcelsError) { console.error(ridesError || parcelsError); return; }
                 const allRequests = [
                     ...rides.map(r => ({...r, type: 'ride'})), 
                     ...parcels.map(p => ({...p, type: 'parcel'}))
@@ -362,7 +356,7 @@
                         .gte('ride_date', new Date().toISOString().split('T')[0])
                         .order('ride_date', { ascending: true });
                     
-                    if (error) { this.showToast('Ошибка загрузки ваших поездок', 'error'); console.error(error); return; }
+                    if (error) { console.error(error); return; }
                     this.render.myTrips(offers, 'driver');
                 } else { // Passenger
                     const { data: bookings, error: bookingsError } = await supabaseClient.from('bookings')
@@ -377,7 +371,7 @@
                         .gte('ride_date', new Date().toISOString().split('T')[0])
                         .order('created_at', { ascending: false });
 
-                    if (bookingsError || requestsError) { this.showToast('Ошибка загрузки ваших поездок', 'error'); console.error(bookingsError || requestsError); return; }
+                    if (bookingsError || requestsError) { console.error(bookingsError || requestsError); return; }
                     this.render.myTrips({ bookings, requests }, 'passenger');
                 }
             },
@@ -385,7 +379,7 @@
             async onOfferSubmit(form) {
                 const formData = new FormData(form);
                 if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; }
-                if (!this.state.userProfile.full_name || !this.state.userProfile.driver_car) { this.showToast('Укажите имя и машину в профиле', 'error'); return; }
+                if (!this.state.userProfile.full_name || !this.state.userProfile.driver_car) { console.error('Profile info missing'); return; }
                 
                 const viaCheboksary = form.querySelector('#via-cheboksary-toggle').checked;
                 const viaFerry = form.querySelector('#via-ferry-toggle').checked;
@@ -400,7 +394,7 @@
                     price: finalPrice, driver_name: this.state.userProfile.full_name, driver_car: this.state.userProfile.driver_car,
                     via_cheboksary: viaCheboksary, via_ferry: viaFerry
                 });
-                if (error) { this.showToast('Ошибка публикации', 'error'); console.error(error); return; }
+                if (error) { console.error(error); return; }
                 this.resetForm(form);
                 this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет');
             },
@@ -417,7 +411,7 @@
                     "from": formData.get('from'), "to": formData.get('to'), ride_date: formData.get('date'),
                     time_interval: formData.get('timeInterval'), passenger_name: this.state.userProfile.full_name, price: this.config.prices.base
                 });
-                if (error) { this.showToast('Ошибка создания заявки', 'error'); console.error(error); return; }
+                if (error) { console.error(error); return; }
                 this.resetForm(form);
                 this.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично');
             },
@@ -430,7 +424,7 @@
                     "from": formData.get('from'), "to": formData.get('to'), ride_date: formData.get('date'),
                     sender_name: this.state.userProfile.full_name, price: this.config.prices.parcel
                 });
-                if (error) { this.showToast('Ошибка создания заявки', 'error'); console.error(error); return; }
+                if (error) { console.error(error); return; }
                 this.resetForm(form);
                 this.render.success('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично');
             },
@@ -440,7 +434,7 @@
                 const fullName = formData.get('fullName').trim();
                 const driverCar = formData.get('driverCar').trim();
                 if (!fullName) { 
-                    this.showToast('Пожалуйста, укажите ваше имя', 'error'); 
+                    console.error('Full name is required'); 
                     return; 
                 }
 
@@ -454,24 +448,22 @@
                     .single();
 
                 if (error) {
-                    this.showToast('Ошибка сохранения профиля', 'error');
                     console.error('Profile save error:', error);
                     return;
                 }
                 this.state.userProfile = data;
-                this.showToast('Профиль сохранен!', 'success');
                 this.navigation.back();
             },
             
             async onRequestBooking(offerId) {
                 if (!this.state.userProfile) {
-                    this.showToast('Профиль не загружен. Перезапустите приложение.', 'error');
+                    console.error('Profile not loaded');
                     return;
                 }
                 const { data: existingBooking } = await supabaseClient.from('bookings')
                     .select('id').eq('offer_id', offerId).eq('passenger_id', this.state.currentUser.id);
                 if (existingBooking && existingBooking.length > 0) {
-                    this.showToast('Вы уже отправили заявку на эту поездку', 'error'); return;
+                    console.warn('Booking already exists'); return;
                 }
                 
                 const { error } = await supabaseClient.from('bookings').insert({
@@ -479,7 +471,7 @@
                     passenger_id: this.state.currentUser.id,
                     status: 'pending'
                 });
-                if (error) { this.showToast('Не удалось отправить заявку', 'error'); console.error('Booking insert error:', error); return; }
+                if (error) { console.error('Booking insert error:', error); return; }
                 
                 // --- Уведомление водителю ---
                 const { data: offer, error: offerError } = await supabaseClient.from('ride_offers').select('driver_id, from, to, ride_date').eq('id', offerId).single();
@@ -503,7 +495,7 @@
             
             async onUpdateBookingStatus(bookingId, status) {
                 const { error } = await supabaseClient.from('bookings').update({ status }).eq('id', bookingId);
-                if (error) { this.showToast('Ошибка. Не удалось обновить статус.', 'error'); return; }
+                if (error) { console.error('Failed to update booking status'); return; }
                 
                 // --- Уведомление пассажиру ---
                 const { data: booking, error: bookingError } = await supabaseClient
@@ -541,30 +533,24 @@
                 }
                 // --- Конец уведомления ---
 
-                this.showToast(status === 'confirmed' ? 'Пассажир принят!' : 'Заявка отклонена.', 'success');
                 this.handlers.onMyTripsClick(); // Refresh the list
             },
             
             async onCancelBooking(bookingId) {
                 const { error } = await supabaseClient.from('bookings').delete().eq('id', bookingId);
-                if (error) { this.showToast('Ошибка отмены', 'error'); return; }
-                this.showToast('Бронирование отменено', 'success');
+                if (error) { console.error('Failed to cancel booking'); return; }
                 this.handlers.onMyTripsClick();
             },
             
             async onDeleteOffer(offerId) {
-                // REMOVED: if (!confirm('Вы уверены, что хотите удалить эту поездку? Все бронирования будут отменены.')) return;
                 const { error } = await supabaseClient.from('ride_offers').delete().eq('id', offerId);
-                if (error) { this.showToast('Ошибка удаления', 'error'); return; }
-                this.showToast('Поездка удалена', 'success');
+                if (error) { console.error('Failed to delete offer'); return; }
                 this.handlers.onMyTripsClick();
             },
             
             async onCancelRequest(requestId) {
-                // REMOVED: if (!confirm('Вы уверены, что хотите отменить заявку?')) return;
                 const { error } = await supabaseClient.from('ride_requests').delete().eq('id', requestId);
-                 if (error) { this.showToast('Ошибка отмены', 'error'); return; }
-                this.showToast('Заявка отменена', 'success');
+                 if (error) { console.error('Failed to cancel request'); return; }
                 this.handlers.onMyTripsClick();
             },
 
@@ -988,26 +974,6 @@
             if (form.id === 'offer-form') {
                 this.render.updateOfferOptionsUI(form);
             }
-        },
-        
-        showToast(message, type = 'success') {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-message').textContent = message;
-            toast.className = 'toast fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm p-4 rounded-lg shadow-lg text-white text-center z-50';
-            toast.classList.add(type === 'error' ? 'bg-red-500' : 'bg-green-500');
-            
-            // Immediately apply the 'show' class to trigger the transition
-            requestAnimationFrame(() => {
-                toast.classList.add('show');
-            });
-
-            if (this.state.toastTimeout) {
-                clearTimeout(this.state.toastTimeout);
-            }
-
-            this.state.toastTimeout = setTimeout(() => {
-                toast.classList.remove('show');
-            }, 3000);
         }
     };
 
