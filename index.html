@@ -141,6 +141,7 @@
                 const targetButton = e.target.closest('button');
                 if (!targetButton) return;
 
+                // Role Selector
                 if (targetButton.matches('.role-btn') && targetButton.parentElement.id === 'role-selector') {
                     document.querySelectorAll('#role-selector .role-btn').forEach(btn => btn.classList.remove('active'));
                     targetButton.classList.add('active');
@@ -149,6 +150,7 @@
                     return;
                 }
 
+                // Continue Button
                 if (targetButton.id === 'continue-btn') {
                     if (this.state.userRole) {
                         this.navigation.to('route-selection-screen', 'Выберите маршрут');
@@ -156,11 +158,13 @@
                     return;
                 }
                 
+                // Back Button
                 if (targetButton.closest('#backButton')) {
                     this.navigation.back();
                     return;
                 }
 
+                // Other button handlers
                 const handlers = {
                     'select-route-koz-yo': this.handlers.onRouteSelect,
                     'view-driver-offers-btn': this.handlers.onViewDriverOffers,
@@ -417,7 +421,8 @@
                     };
                     title = titles[lastScreen] || 'Попутка 12';
                 }
-                this.to(lastScreen, title);
+                // FIXED: Correctly call the 'to' method from within the 'navigation' object
+                App.navigation.to(lastScreen, title);
             }
         },
 
