@@ -30,14 +30,20 @@
         .message.sent { align-self: flex-end; background-color: #3b82f6; color: white; } /* blue-500 */
         .message.received { align-self: flex-start; background-color: #e5e7eb; color: #1f2937; } /* gray-200 */
         
-        /* Role Switcher Styles */
+        /* Role Switcher Styles - UPDATED */
         #role-switcher { position: relative; }
         #role-bg {
+            position: absolute;
             width: 36px; height: 36px;
+            top: 2px;
+            left: 2px;
+            background-color: white;
+            border-radius: 9999px;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
             transform: translateX(0px);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        #role-switcher.driver #role-bg { transform: translateX(40px); }
+        #role-switcher.driver #role-bg { transform: translateX(32px); } /* Corrected translation */
         #role-passenger-icon, #role-driver-icon { transition: color 0.3s ease; }
         #role-switcher.passenger #role-passenger-icon { color: #1e293b; }
         #role-switcher.passenger #role-driver-icon { color: #94a3b8; }
@@ -59,7 +65,7 @@
             </button>
             <h1 id="headerTitle" class="text-lg font-semibold text-slate-800 text-center flex-grow">Попутка 12</h1>
             <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
-                <div id="role-bg" class="absolute bg-white shadow rounded-full"></div>
+                <div id="role-bg"></div>
                 <div id="role-passenger-icon" class="relative z-10 p-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </div>
@@ -351,7 +357,7 @@
 
                 if (this.state.userRole === 'driver') {
                     const { data: offers, error } = await supabaseClient.from('ride_offers')
-                        .select(`*, bookings(*, profiles(full_name))`)
+                        .select(`*, bookings(*, profiles(full_name, username))`) // <-- Fetch username
                         .eq('driver_id', this.state.currentUser.id)
                         .gte('ride_date', new Date().toISOString().split('T')[0])
                         .order('ride_date', { ascending: true });
@@ -824,9 +830,14 @@
                         ` : ''}
                         ${confirmedBookings.length > 0 ? `
                             <h4 class="font-semibold mt-2">Подтвержденные пассажиры:</h4>
-                            <ul class="list-disc list-inside">
-                                ${confirmedBookings.map(b => `<li>${b.profiles?.full_name || 'Пассажир'}</li>`).join('')}
-                            </ul>
+                            <div class="space-y-2">
+                                ${confirmedBookings.map(b => `
+                                    <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
+                                        <span>${b.profiles?.full_name || 'Пассажир'}</span>
+                                        ${b.profiles?.username ? `<a href="https://t.me/${b.profiles.username}" target="_blank" class="text-xs bg-blue-500 text-white font-semibold py-1 px-2 rounded-md hover:bg-blue-600">Написать</a>` : ''}
+                                    </div>
+                                `).join('')}
+                            </div>
                         ` : ''}
                     `;
                 }
@@ -875,7 +886,10 @@
                     </div>
                      <div class="flex justify-between items-center mt-2">
                         <span class="text-sm font-semibold px-2.5 py-0.5 rounded-full ${statusClasses[booking.status]}">${statusText[booking.status]}</span>
-                        ${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-sm text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}
+                        <div class="flex items-center gap-3">
+                            ${booking.status === 'confirmed' && offer.driver_username ? `<a href="https://t.me/${offer.driver_username}" target="_blank" class="text-sm text-blue-600 hover:underline font-semibold">Написать водителю</a>` : ''}
+                            ${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-sm text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}
+                        </div>
                     </div>
                 `;
             },
