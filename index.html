@@ -54,6 +54,18 @@
             object-fit: cover;
         }
 
+        /* Modal Styles */
+        .modal-overlay {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+        }
+        .modal.show {
+            transform: translateY(0);
+        }
+
         /* Custom scrollbar for better look */
         #main-content::-webkit-scrollbar { width: 4px; }
         #main-content::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
@@ -100,6 +112,17 @@
             <div id="my-trips-screen" class="screen"></div>
             <div id="profile-screen" class="screen"></div>
         </main>
+    </div>
+
+    <!-- Booking Options Modal -->
+    <div id="booking-modal-overlay" class="modal-overlay fixed inset-0 bg-black bg-opacity-40 z-40 hidden"></div>
+    <div id="booking-modal" class="modal fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-transparent z-50 transform translate-y-full transition-transform duration-300">
+        <div class="p-4">
+            <div id="booking-options-container" class="space-y-2 bg-slate-100 rounded-xl">
+                <!-- Booking options will be rendered here by JS -->
+            </div>
+            <button id="booking-modal-cancel-btn" class="w-full p-3 mt-2 bg-white rounded-xl text-blue-500 text-lg font-semibold">Отмена</button>
+        </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -210,18 +233,13 @@
         // --- EVENT BINDING ---
         bindEvents() {
             document.body.addEventListener('click', (e) => {
-                const button = e.target.closest('button, #role-switcher');
+                const button = e.target.closest('button, #role-switcher, #booking-modal-overlay');
                 if (!button) return;
 
                 const { id, classList, dataset } = button;
 
                 if (id === 'role-switcher') {
                     this.handlers.onRoleSwitch();
-                    return;
-                }
-
-                if (button.closest('.direction-buttons')) {
-                    this.handlers.onDirectionSelect(button);
                     return;
                 }
                 
@@ -241,6 +259,8 @@
                     'my-trips-btn': this.handlers.onMyTripsClick,
                     'back-to-hub-btn': this.handlers.onBackToHub,
                     'profile-avatar-btn': () => this.navigation.to('profile-screen', 'Мой профиль'),
+                    'booking-modal-cancel-btn': this.handlers.onBookingModalCancel,
+                    'booking-modal-overlay': this.handlers.onBookingModalCancel,
                 };
 
                 if (clickHandlers[id]) {
@@ -249,6 +269,8 @@
                 }
 
                 if (classList.contains('request-booking-btn')) this.handlers.onRequestBooking(dataset.offerId);
+                if (classList.contains('detour-booking-btn')) this.handlers.onDetourBookingClick(dataset.offer);
+                if (classList.contains('confirm-booking-segment-btn')) this.handlers.onConfirmBookingSegment(dataset);
                 if (classList.contains('cancel-booking-btn')) this.handlers.onCancelBooking(dataset.bookingId);
                 if (classList.contains('accept-booking-btn')) this.handlers.onUpdateBookingStatus(dataset.bookingId, 'confirmed');
                 if (classList.contains('reject-booking-btn')) this.handlers.onUpdateBookingStatus(dataset.bookingId, 'rejected');
@@ -270,8 +292,8 @@
             });
             
             document.body.addEventListener('change', (e) => {
-                if (e.target.id === 'via-ferry-toggle') {
-                    this.render.updateOfferOptionsUI(e.target.closest('form'));
+                if (e.target.id === 'via-ferry-toggle' || e.target.id === 'via-cheboksary-detour-toggle') {
+                    this.handlers.onRouteOptionChange(e.target);
                 }
                 if (e.target.name === 'from-select' || e.target.name === 'to-select') {
                     this.handlers.onRouteDropdownChange(e.target);
@@ -292,6 +314,19 @@
                 this.navigation.to(newScreen, newTitle);
             },
 
+            onRouteOptionChange(checkbox) {
+                const form = checkbox.closest('form');
+                const ferryToggle = form.querySelector('#via-ferry-toggle');
+                const detourToggle = form.querySelector('#via-cheboksary-detour-toggle');
+
+                if (checkbox.id === 'via-ferry-toggle' && checkbox.checked) {
+                    detourToggle.checked = false;
+                    form.querySelector('#cheboksary-detour-container').classList.add('hidden');
+                }
+                
+                this.handlers.onRouteDropdownChange(form.querySelector('select'));
+            },
+
             onRouteDropdownChange(selectElement) {
                 const form = selectElement.closest('form');
                 const fromSelect = form.querySelector('select[name="from-select"]');
@@ -302,26 +337,30 @@
                 form.querySelector('input[name="from"]').value = fromValue;
                 form.querySelector('input[name="to"]').value = toValue;
 
-                Array.from(toSelect.options).forEach(opt => {
-                    opt.disabled = opt.value === fromValue;
-                });
-                Array.from(fromSelect.options).forEach(opt => {
-                    opt.disabled = opt.value === toValue;
-                });
+                Array.from(toSelect.options).forEach(opt => { opt.disabled = opt.value === fromValue; });
+                Array.from(fromSelect.options).forEach(opt => { opt.disabled = opt.value === toValue; });
 
+                const isKozYoRoute = (fromValue === 'Козьмодемьянск' && toValue === 'Йошкар-Ола') || (fromValue === 'Йошкар-Ола' && toValue === 'Козьмодемьянск');
+                
                 const ferryContainer = form.querySelector('#ferry-toggle-container');
-                if (ferryContainer) {
-                    const isKozYoRoute = (fromValue === 'Козьмодемьянск' && toValue === 'Йошкар-Ола') ||
-                                         (fromValue === 'Йошкар-Ола' && toValue === 'Козьмодемьянск');
-                    
-                    if (isKozYoRoute) {
-                        ferryContainer.classList.remove('hidden');
+                const detourContainer = form.querySelector('#cheboksary-detour-container');
+                const ferryToggle = form.querySelector('#via-ferry-toggle');
+
+                if (isKozYoRoute) {
+                    ferryContainer.classList.remove('hidden');
+                    if (!ferryToggle.checked) {
+                        detourContainer.classList.remove('hidden');
                     } else {
-                        ferryContainer.classList.add('hidden');
-                        form.querySelector('#via-ferry-toggle').checked = false;
+                        detourContainer.classList.add('hidden');
                     }
-                    this.render.updateOfferOptionsUI(form);
+                } else {
+                    ferryContainer.classList.add('hidden');
+                    ferryToggle.checked = false;
+                    detourContainer.classList.add('hidden');
+                    form.querySelector('#via-cheboksary-detour-toggle').checked = false;
                 }
+
+                this.render.updateOfferOptionsUI(form);
 
                 if (fromValue && toValue) {
                     form.querySelector('.form-error-direction').classList.add('hidden');
@@ -460,6 +499,7 @@
                 }
                 
                 const viaFerry = form.querySelector('#via-ferry-toggle').checked;
+                const viaCheboksaryDetour = form.querySelector('#via-cheboksary-detour-toggle').checked;
                 const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
                 
                 let finalPrice = this.config.prices.base;
@@ -475,7 +515,8 @@
                     ride_time: formData.get('time'), seats: parseInt(formData.get('seats')),
                     price: finalPrice, driver_name: this.state.userProfile.full_name, driver_car: this.state.userProfile.driver_car,
                     via_cheboksary: isCheboksaryRoute, 
-                    via_ferry: !isCheboksaryRoute && viaFerry
+                    via_ferry: !isCheboksaryRoute && viaFerry,
+                    via_cheboksary_detour: !isCheboksaryRoute && !viaFerry && viaCheboksaryDetour
                 });
                 if (error) { console.error(error); return; }
                 this.resetForm(form);
@@ -556,7 +597,7 @@
                 this.navigation.back();
             },
             
-            async onRequestBooking(offerId) {
+            async onRequestBooking(offerId, bookingDetails = null) {
                 if (!this.state.userProfile) {
                     console.error('Profile not loaded');
                     return;
@@ -566,15 +607,24 @@
                 if (existingBooking && existingBooking.length > 0) {
                     console.warn('Booking already exists'); return;
                 }
+
+                const { data: offer, error: offerError } = await supabaseClient.from('ride_offers').select('*').eq('id', offerId).single();
+                if(offerError || !offer) { console.error("Offer not found"); return; }
                 
-                const { error } = await supabaseClient.from('bookings').insert({
+                const bookingData = {
                     offer_id: offerId,
                     passenger_id: this.state.currentUser.id,
-                    status: 'pending'
-                });
-                if (error) { console.error('Booking insert error:', error); return; }
+                    status: 'pending',
+                    booking_segment: bookingDetails ? bookingDetails.segment : 'full',
+                    price: bookingDetails ? bookingDetails.price : offer.price,
+                    from_city: bookingDetails ? bookingDetails.from : offer.from,
+                    to_city: bookingDetails ? bookingDetails.to : offer.to,
+                };
                 
-                const { data: offer, error: offerError } = await supabaseClient.from('ride_offers').select('driver_id, from, to, ride_date').eq('id', offerId).single();
+                const { error: insertError } = await supabaseClient.from('bookings').insert(bookingData);
+
+                if (insertError) { console.error('Booking insert error:', insertError); return; }
+                
                 if (offer) {
                     const passengerName = this.state.userProfile.full_name || 'Новый пассажир';
                     const message = `
@@ -590,6 +640,32 @@
                 }
 
                 this.render.success('Заявка отправлена', 'Водитель рассмотрит вашу заявку. Вы можете отслеживать ее статус в разделе "Мои поездки".', 'Отлично');
+            },
+
+            onDetourBookingClick(offerData) {
+                const offer = JSON.parse(decodeURIComponent(offerData));
+                this.render.bookingOptionsModal(offer);
+            },
+
+            onConfirmBookingSegment(dataset) {
+                this.handlers.onBookingModalCancel();
+                const bookingDetails = {
+                    segment: dataset.segment,
+                    price: parseInt(dataset.price),
+                    from: dataset.from,
+                    to: dataset.to,
+                };
+                this.handlers.onRequestBooking(dataset.offerId, bookingDetails);
+            },
+
+            onBookingModalCancel() {
+                const overlay = document.getElementById('booking-modal-overlay');
+                const modal = document.getElementById('booking-modal');
+                overlay.classList.remove('show');
+                modal.classList.remove('show');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 300);
             },
             
             async onUpdateBookingStatus(bookingId, status) {
@@ -872,6 +948,49 @@
                 
                 form.querySelector('#publish-price').textContent = price;
             },
+
+            bookingOptionsModal(offer) {
+                const container = document.getElementById('booking-options-container');
+                const priceFull = App.config.prices.base;
+                const pricePart = App.config.prices.cheboksary;
+
+                container.innerHTML = `
+                    <button class="confirm-booking-segment-btn w-full text-center p-3 text-blue-500 text-lg"
+                        data-offer-id="${offer.id}"
+                        data-segment="full"
+                        data-price="${priceFull}"
+                        data-from="${offer.from}"
+                        data-to="${offer.to}">
+                        ${offer.from} → ${offer.to} (${priceFull} ₽)
+                    </button>
+                    <div class="h-px bg-slate-200"></div>
+                    <button class="confirm-booking-segment-btn w-full text-center p-3 text-blue-500 text-lg"
+                        data-offer-id="${offer.id}"
+                        data-segment="start_to_cheb"
+                        data-price="${pricePart}"
+                        data-from="${offer.from}"
+                        data-to="Чебоксары">
+                        ${offer.from} → Чебоксары (${pricePart} ₽)
+                    </button>
+                    <div class="h-px bg-slate-200"></div>
+                     <button class="confirm-booking-segment-btn w-full text-center p-3 text-blue-500 text-lg"
+                        data-offer-id="${offer.id}"
+                        data-segment="cheb_to_end"
+                        data-price="${pricePart}"
+                        data-from="Чебоксары"
+                        data-to="${offer.to}">
+                        Чебоксары → ${offer.to} (${pricePart} ₽)
+                    </button>
+                `;
+
+                const overlay = document.getElementById('booking-modal-overlay');
+                const modal = document.getElementById('booking-modal');
+                overlay.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    overlay.classList.add('show');
+                    modal.classList.add('show');
+                });
+            },
             
             getDriverOfferCard(item) {
                 const seatsLeft = item.seats_left;
@@ -889,12 +1008,23 @@
                     const buttonDisabled = seatsLeft <= 0 ? 'disabled' : '';
                     const buttonClass = seatsLeft <= 0 ? 'bg-slate-300' : 'bg-blue-500 hover:bg-blue-600';
                     const buttonText = seatsLeft <= 0 ? 'Мест нет' : 'Забронировать';
-                    buttonHtml = `
-                        <button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm ${buttonClass}"
-                            data-offer-id="${item.id}" ${buttonDisabled}>
-                            ${buttonText}
-                        </button>
-                    `;
+
+                    if (item.via_cheboksary_detour) {
+                        const offerData = encodeURIComponent(JSON.stringify(item));
+                        buttonHtml = `
+                            <button class="detour-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm ${buttonClass}"
+                                data-offer='${offerData}' ${buttonDisabled}>
+                                ${buttonText}
+                            </button>
+                        `;
+                    } else {
+                         buttonHtml = `
+                            <button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm ${buttonClass}"
+                                data-offer-id="${item.id}" ${buttonDisabled}>
+                                ${buttonText}
+                            </button>
+                        `;
+                    }
                 }
 
                 return `
@@ -908,6 +1038,7 @@
                         <p><strong>Свободно:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsText}</span></p>
                     </div>
                     ${item.via_ferry ? `<div class="text-xs font-semibold text-blue-800 bg-blue-100 rounded-full px-3 py-1 text-center">⛴️ Через паром</div>` : ''}
+                    ${item.via_cheboksary_detour ? `<div class="text-xs font-semibold text-orange-800 bg-orange-100 rounded-full px-3 py-1 text-center"> detour via Cheboksary</div>` : ''}
                     ${item.via_cheboksary ? `<div class="text-xs font-semibold text-green-800 bg-green-100 rounded-full px-3 py-1 text-center">До/Из Чебоксар</div>` : ''}
                     ${buttonHtml}
                 `;
@@ -1004,11 +1135,11 @@
                 return `
                     <div class="flex justify-between items-start">
                         <div>
-                            <div class="font-bold text-base">${offer.from} → ${offer.to}</div>
+                            <div class="font-bold text-base">${booking.from_city} → ${booking.to_city}</div>
                             <div class="text-xs text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
                             <div class="text-xs text-slate-500">Водитель: ${offer.driver_name} (${offer.driver_car})</div>
                         </div>
-                        <div class="text-base font-semibold">${offer.price} ₽</div>
+                        <div class="text-base font-semibold">${booking.price} ₽</div>
                     </div>
                      <div class="flex justify-between items-center mt-2">
                         <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusClasses[booking.status]}">${statusText[booking.status]}</span>
@@ -1072,8 +1203,16 @@
                     </div>
                     <input type="hidden" name="from" required><input type="hidden" name="to" required>
                     <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
-                    <div id="ferry-toggle-container" class="hidden">
-                         <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-ferry-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label><div class="flex items-center space-x-3"><span id="ferry-price-increase" class="text-sm text-slate-800 font-semibold hidden">(+${App.config.prices.ferrySurcharge} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-ferry-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div>
+                    <div id="ferry-toggle-container" class="hidden p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
+                        <label for="via-ferry-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label>
+                        <div class="flex items-center space-x-3">
+                            <span id="ferry-price-increase" class="text-sm text-slate-800 font-semibold hidden">(+${App.config.prices.ferrySurcharge} ₽)</span>
+                            <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-ferry-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label>
+                        </div>
+                    </div>
+                    <div id="cheboksary-detour-container" class="hidden p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
+                        <label for="via-cheboksary-detour-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Заезжаю в Чебоксары</label>
+                        <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-cheboksary-detour-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div></label>
                     </div>
                     <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Дата</label><input type="date" name="date" id="date-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div><div><label class="block text-xs font-medium text-slate-600 mb-2">Время</label><input type="time" name="time" id="time-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div></div><input type="hidden" name="driverName" id="driver-name"><input type="hidden" name="driverCar" id="driver-car"><div><label class="block text-xs font-medium text-slate-600 mb-2">Количество мест</label><input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Например: 3" required></div><button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Опубликовать (<span id="publish-price">${App.config.prices.base}</span> ₽)</button></form></div>`;
             },
@@ -1193,6 +1332,10 @@
             const ferryContainer = form.querySelector('#ferry-toggle-container');
             if(ferryContainer) {
                 ferryContainer.classList.add('hidden');
+            }
+            const detourContainer = form.querySelector('#cheboksary-detour-container');
+            if(detourContainer) {
+                detourContainer.classList.add('hidden');
             }
         }
     };
