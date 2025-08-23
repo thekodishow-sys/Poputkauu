@@ -63,7 +63,7 @@
             <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             </button>
-            <h1 id="headerTitle" class="text-lg font-semibold text-slate-800 text-center flex-grow">Попутка 12</h1>
+            <h1 id="headerTitle" class="text-base font-semibold text-slate-800 text-center flex-grow">Попутка 12</h1>
             <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
                 <div id="role-bg"></div>
                 <div id="role-passenger-icon" class="relative z-10 p-1.5">
@@ -637,15 +637,15 @@
         render: {
             allScreens() {
                 const screenTemplates = {
-                    'route-selection-screen': `<div class="p-5"><div class="text-center mb-8"><h2 class="text-2xl font-bold mb-1">Выберите маршрут</h2></div><div class="space-y-4"><button id="select-route-koz-yo" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="btn w-full bg-slate-800 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">${App.config.routes.koz_yo.from} &lt;—&gt; ${App.config.routes.koz_yo.to}</button></div></div>`,
-                    'passenger-home-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-2xl font-bold mb-1">Что вы хотите сделать?</h2></div><div class="space-y-3"><button id="view-driver-offers-btn" class="btn w-full bg-slate-800 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button><button id="create-passenger-request-btn" class="btn w-full bg-slate-100 text-slate-800 font-bold py-4 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button><button id="send-parcel-btn" class="btn w-full bg-purple-100 text-purple-800 font-bold py-4 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button><button id="my-trips-btn" class="mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-4 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button><button id="edit-profile-btn" class="mt-4 btn w-full border border-blue-300 text-blue-800 font-bold py-4 px-4 rounded-xl hover:bg-blue-50">Мой профиль</button></div></div>`,
-                    'driver-dashboard-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-2xl font-bold mb-1">Кабинет водителя</h2></div><div class="space-y-3"><button id="view-passenger-requests-btn" class="btn w-full bg-slate-800 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button><button id="publish-ride-btn" class="btn w-full bg-slate-100 text-slate-800 font-bold py-4 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button><button id="my-trips-btn" class="mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-4 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button><button id="edit-profile-btn" class="mt-4 btn w-full border border-blue-300 text-blue-800 font-bold py-4 px-4 rounded-xl hover:bg-blue-50">Мой профиль</button></div></div>`,
+                    'route-selection-screen': `<div class="p-5"><div class="text-center mb-8"><h2 class="text-xl font-bold mb-1">Выберите маршрут</h2></div><div class="space-y-4"><button id="select-route-koz-yo" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700 text-sm">${App.config.routes.koz_yo.from} &lt;—&gt; ${App.config.routes.koz_yo.to}</button></div></div>`,
+                    'passenger-home-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2></div><div class="space-y-3"><button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button><button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button><button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button><button id="edit-profile-btn" class="text-sm mt-4 btn w-full border border-blue-300 text-blue-800 font-bold py-3 px-4 rounded-xl hover:bg-blue-50">Мой профиль</button></div></div>`,
+                    'driver-dashboard-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Кабинет водителя</h2></div><div class="space-y-3"><button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button><button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button><button id="edit-profile-btn" class="text-sm mt-4 btn w-full border border-blue-300 text-blue-800 font-bold py-3 px-4 rounded-xl hover:bg-blue-50">Мой профиль</button></div></div>`,
                     'offer-screen': this.getOfferFormTemplate(),
                     'passenger-request-screen': this.getPassengerRequestFormTemplate(),
                     'parcel-request-screen': this.getParcelRequestFormTemplate(),
-                    'list-screen': `<div class="p-5"><div id="list-container" class="space-y-3"></div><div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-lg font-semibold"></h3><p id="no-results-text" class="text-sm"></p></div></div>`,
-                    'success-screen': `<div class="p-5 flex flex-col items-center justify-center h-full text-center"><div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h2 id="success-title" class="text-2xl font-bold mt-4 mb-1"></h2><p id="success-text" class="text-slate-600 mb-8"></p><button id="back-to-hub-btn" class="btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button></div>`,
-                    'chat-screen': `<div class="flex-1 flex flex-col h-full"><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
+                    'list-screen': `<div class="p-5"><div id="list-container" class="space-y-3"></div><div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-base font-semibold"></h3><p id="no-results-text" class="text-xs"></p></div></div>`,
+                    'success-screen': `<div class="p-5 flex flex-col items-center justify-center h-full text-center"><div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h2 id="success-title" class="text-xl font-bold mt-4 mb-1"></h2><p id="success-text" class="text-slate-600 mb-8 text-sm"></p><button id="back-to-hub-btn" class="text-sm btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button></div>`,
+                    'chat-screen': `<div class="flex-1 flex flex-col h-full"><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
                     'my-trips-screen': `<div class="flex-1 flex flex-col"><div id="my-trips-container" class="p-5 space-y-4 flex-1"></div></div>`,
                     'profile-screen': this.getProfileFormTemplate(),
                 };
@@ -689,7 +689,7 @@
                 container.innerHTML = '';
                 if (role === 'driver') {
                     if (data.length === 0) {
-                        container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-lg font-semibold">У вас нет активных поездок</h3><p class="text-sm">Опубликуйте поездку, чтобы она здесь появилась.</p></div>`;
+                        container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активных поездок</h3><p class="text-xs">Опубликуйте поездку, чтобы она здесь появилась.</p></div>`;
                         return;
                     }
                     data.forEach(offer => {
@@ -701,11 +701,11 @@
                 } else { // Passenger
                     const { bookings, requests } = data;
                     if (bookings.length === 0 && requests.length === 0) {
-                        container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-lg font-semibold">У вас нет активностей</h3><p class="text-sm">Забронируйте поездку или оставьте заявку.</p></div>`;
+                        container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активностей</h3><p class="text-xs">Забронируйте поездку или оставьте заявку.</p></div>`;
                         return;
                     }
                     if (bookings.length > 0) {
-                        container.innerHTML += `<h3 class="text-lg font-bold text-slate-800 px-1 pt-2">Мои бронирования</h3>`;
+                        container.innerHTML += `<h3 class="text-base font-bold text-slate-800 px-1 pt-2">Мои бронирования</h3>`;
                         bookings.forEach(booking => {
                             const card = document.createElement('div');
                             card.className = 'bg-white border border-slate-200 rounded-xl p-4 space-y-3';
@@ -714,7 +714,7 @@
                         });
                     }
                      if (requests.length > 0) {
-                        container.innerHTML += `<h3 class="text-lg font-bold text-slate-800 px-1 pt-4">Мои заявки</h3>`;
+                        container.innerHTML += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои заявки</h3>`;
                         requests.forEach(request => {
                             const card = document.createElement('div');
                             card.className = 'bg-white border border-slate-200 rounded-xl p-4 space-y-3';
@@ -770,17 +770,17 @@
 
                 return `
                     <div class="flex justify-between items-center">
-                        <div class="font-bold text-lg">${item.from} → ${item.to}</div>
-                        <div class="text-lg font-semibold">${item.price} ₽</div>
+                        <div class="font-bold text-base">${item.from} → ${item.to}</div>
+                        <div class="text-base font-semibold">${item.price} ₽</div>
                     </div>
-                    <div class="text-slate-600">
+                    <div class="text-slate-600 text-sm">
                         <p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)} в <strong>${item.ride_time}</strong></p>
                         <p><strong>Водитель:</strong> ${item.driver_name} на ${item.driver_car}</p>
                         <p><strong>Свободно:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsText}</span></p>
                     </div>
-                    ${item.via_ferry ? `<div class="text-sm font-semibold text-blue-800 bg-blue-100 rounded-full px-3 py-1 text-center">⛴️ Через паром</div>` : ''}
-                    ${item.via_cheboksary ? `<div class="text-sm font-semibold text-green-800 bg-green-100 rounded-full px-3 py-1 text-center">До/Из Чебоксар</div>` : ''}
-                    <button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg transition-colors ${buttonClass}"
+                    ${item.via_ferry ? `<div class="text-xs font-semibold text-blue-800 bg-blue-100 rounded-full px-3 py-1 text-center">⛴️ Через паром</div>` : ''}
+                    ${item.via_cheboksary ? `<div class="text-xs font-semibold text-green-800 bg-green-100 rounded-full px-3 py-1 text-center">До/Из Чебоксар</div>` : ''}
+                    <button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm ${buttonClass}"
                         data-offer-id="${item.id}" ${buttonDisabled}>
                         ${buttonText}
                     </button>
@@ -791,10 +791,10 @@
                 const isParcel = item.type === 'parcel';
                 return `
                     <div class="flex justify-between items-center">
-                        <div class="font-bold text-lg">${item.from} → ${item.to}</div>
-                        <div class="text-lg font-semibold">${item.price} ₽</div>
+                        <div class="font-bold text-base">${item.from} → ${item.to}</div>
+                        <div class="text-base font-semibold">${item.price} ₽</div>
                     </div>
-                    <div class="text-slate-600">
+                    <div class="text-slate-600 text-sm">
                         <p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)}</p>
                         <p><strong>${isParcel ? 'Отправитель' : 'Пассажир'}:</strong> ${isParcel ? item.sender_name : item.passenger_name}</p>
                         ${!isParcel ? `<p><strong>Время:</strong> ${item.time_interval}</p>` : ''}
@@ -802,7 +802,7 @@
                     <div class="flex items-center gap-2">
                         ${isParcel ? `<div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div>` : `<div class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Пассажир</div>`}
                     </div>
-                    <a href="https://t.me/${isParcel ? item.sender_username : item.passenger_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">Связаться</a>
+                    <a href="https://t.me/${isParcel ? item.sender_username : item.passenger_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors text-sm">Связаться</a>
                 `;
             },
             
@@ -811,15 +811,15 @@
                 const pendingBookings = offer.bookings.filter(b => b.status === 'pending');
                 const seatsLeft = offer.seats - confirmedBookings.length;
 
-                let bookingsHtml = '<div class="text-sm text-slate-500">Пока нет пассажиров.</div>';
+                let bookingsHtml = '<div class="text-xs text-slate-500">Пока нет пассажиров.</div>';
                 if (offer.bookings.length > 0) {
                     bookingsHtml = `
                         ${pendingBookings.length > 0 ? `
-                            <h4 class="font-semibold mt-2">Заявки на бронирование:</h4>
+                            <h4 class="font-semibold mt-2 text-sm">Заявки на бронирование:</h4>
                             <div class="space-y-2">
                                 ${pendingBookings.map(b => `
                                     <div class="flex justify-between items-center bg-amber-50 p-2 rounded-lg">
-                                        <span>${b.profiles?.full_name || 'Пассажир'}</span>
+                                        <span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span>
                                         <div class="flex gap-2">
                                             <button class="accept-booking-btn bg-green-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Принять</button>
                                             <button class="reject-booking-btn bg-red-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Отклонить</button>
@@ -829,11 +829,11 @@
                             </div>
                         ` : ''}
                         ${confirmedBookings.length > 0 ? `
-                            <h4 class="font-semibold mt-2">Подтвержденные пассажиры:</h4>
+                            <h4 class="font-semibold mt-2 text-sm">Подтвержденные пассажиры:</h4>
                             <div class="space-y-2">
                                 ${confirmedBookings.map(b => `
                                     <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
-                                        <span>${b.profiles?.full_name || 'Пассажир'}</span>
+                                        <span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span>
                                         ${b.profiles?.username ? `<a href="https://t.me/${b.profiles.username}" target="_blank" class="text-xs bg-blue-500 text-white font-semibold py-1 px-2 rounded-md hover:bg-blue-600">Написать</a>` : ''}
                                     </div>
                                 `).join('')}
@@ -845,25 +845,25 @@
                 return `
                     <div class="flex justify-between items-center">
                         <div>
-                            <div class="font-bold text-lg">${offer.from} → ${offer.to}</div>
-                            <div class="text-sm text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
+                            <div class="font-bold text-base">${offer.from} → ${offer.to}</div>
+                            <div class="text-xs text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
                         </div>
-                        <div class="text-lg font-semibold">${offer.price} ₽</div>
+                        <div class="text-base font-semibold">${offer.price} ₽</div>
                     </div>
-                    <div class="text-slate-600">
+                    <div class="text-slate-600 text-sm">
                          <p><strong>Свободно мест:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsLeft} из ${offer.seats}</span></p>
                     </div>
                     <div class="border-t border-slate-100 pt-2 mt-2">
                         ${bookingsHtml}
                     </div>
-                    <button class="delete-offer-btn btn w-full bg-red-50 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 transition-colors mt-2" data-offer-id="${offer.id}">Удалить поездку</button>
+                    <button class="delete-offer-btn btn w-full bg-red-50 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 transition-colors mt-2 text-sm" data-offer-id="${offer.id}">Удалить поездку</button>
                 `;
             },
             
             getMyBookingCard(booking) {
                 const offer = booking.ride_offers;
                 if (!offer) {
-                    return `<div class="text-red-500">Ошибка: данные о поездке не найдены. Возможно, она была удалена водителем.</div>`;
+                    return `<div class="text-red-500 text-sm">Ошибка: данные о поездке не найдены. Возможно, она была удалена водителем.</div>`;
                 }
                 const statusClasses = {
                     pending: 'bg-amber-100 text-amber-800',
@@ -878,17 +878,17 @@
                 return `
                     <div class="flex justify-between items-start">
                         <div>
-                            <div class="font-bold text-lg">${offer.from} → ${offer.to}</div>
-                            <div class="text-sm text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
-                            <div class="text-sm text-slate-500">Водитель: ${offer.driver_name} (${offer.driver_car})</div>
+                            <div class="font-bold text-base">${offer.from} → ${offer.to}</div>
+                            <div class="text-xs text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
+                            <div class="text-xs text-slate-500">Водитель: ${offer.driver_name} (${offer.driver_car})</div>
                         </div>
-                        <div class="text-lg font-semibold">${offer.price} ₽</div>
+                        <div class="text-base font-semibold">${offer.price} ₽</div>
                     </div>
                      <div class="flex justify-between items-center mt-2">
-                        <span class="text-sm font-semibold px-2.5 py-0.5 rounded-full ${statusClasses[booking.status]}">${statusText[booking.status]}</span>
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusClasses[booking.status]}">${statusText[booking.status]}</span>
                         <div class="flex items-center gap-3">
-                            ${booking.status === 'confirmed' && offer.driver_username ? `<a href="https://t.me/${offer.driver_username}" target="_blank" class="text-sm text-blue-600 hover:underline font-semibold">Написать водителю</a>` : ''}
-                            ${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-sm text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}
+                            ${booking.status === 'confirmed' && offer.driver_username ? `<a href="https://t.me/${offer.driver_username}" target="_blank" class="text-xs text-blue-600 hover:underline font-semibold">Написать водителю</a>` : ''}
+                            ${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-xs text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}
                         </div>
                     </div>
                 `;
@@ -898,31 +898,31 @@
                 return `
                      <div class="flex justify-between items-start">
                         <div>
-                            <div class="font-bold text-lg">${request.from} → ${request.to}</div>
-                            <div class="text-sm text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div>
+                            <div class="font-bold text-base">${request.from} → ${request.to}</div>
+                            <div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div>
                         </div>
-                        <div class="text-lg font-semibold">${request.price} ₽</div>
+                        <div class="text-base font-semibold">${request.price} ₽</div>
                     </div>
                     <div class="flex justify-end items-center mt-2">
-                        <button class="cancel-request-btn text-sm text-red-600 hover:underline" data-request-id="${request.id}">Отменить заявку</button>
+                        <button class="cancel-request-btn text-xs text-red-600 hover:underline" data-request-id="${request.id}">Отменить заявку</button>
                     </div>
                 `;
             },
             
             getOfferFormTemplate() {
-                return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Данные о поездке</h2><form id="offer-form" class="space-y-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><div class="space-y-2"><div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-cheboksary-toggle" class="text-slate-700 font-medium cursor-pointer flex-grow">До/Из Чебоксар</label><div class="flex items-center space-x-3"><span id="cheboksary-price" class="text-slate-800 font-semibold hidden">(${App.config.prices.cheboksary} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-cheboksary-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div><div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-ferry-toggle" class="text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label><div class="flex items-center space-x-3"><span id="ferry-price-increase" class="text-slate-800 font-semibold hidden">(+${App.config.prices.ferrySurcharge} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-ferry-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div></div><div class="grid grid-cols-2 gap-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Дата</label><input type="date" name="date" id="date-offer" class="w-full p-3 border border-slate-200 rounded-lg" required></div><div><label class="block text-sm font-medium text-slate-600 mb-2">Время</label><input type="time" name="time" id="time-offer" class="w-full p-3 border border-slate-200 rounded-lg" required></div></div><input type="hidden" name="driverName" id="driver-name"><input type="hidden" name="driverCar" id="driver-car"><div><label class="block text-sm font-medium text-slate-600 mb-2">Количество мест</label><input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Например: 3" required></div><button type="submit" class="btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Опубликовать (<span id="publish-price">${App.config.prices.base}</span> ₽)</button></form></div>`;
+                return `<div class="p-5"><h2 class="text-lg font-bold mb-4">Данные о поездке</h2><form id="offer-form" class="space-y-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><div class="space-y-2"><div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-cheboksary-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">До/Из Чебоксар</label><div class="flex items-center space-x-3"><span id="cheboksary-price" class="text-sm text-slate-800 font-semibold hidden">(${App.config.prices.cheboksary} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-cheboksary-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div><div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-ferry-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label><div class="flex items-center space-x-3"><span id="ferry-price-increase" class="text-sm text-slate-800 font-semibold hidden">(+${App.config.prices.ferrySurcharge} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-ferry-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div></div><div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Дата</label><input type="date" name="date" id="date-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div><div><label class="block text-xs font-medium text-slate-600 mb-2">Время</label><input type="time" name="time" id="time-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div></div><input type="hidden" name="driverName" id="driver-name"><input type="hidden" name="driverCar" id="driver-car"><div><label class="block text-xs font-medium text-slate-600 mb-2">Количество мест</label><input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Например: 3" required></div><button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Опубликовать (<span id="publish-price">${App.config.prices.base}</span> ₽)</button></form></div>`;
             },
             
             getPassengerRequestFormTemplate() {
-                return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Ваша заявка</h2><form id="passenger-request-form" class="space-y-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><input type="date" name="date" id="date-request" class="w-full p-3 border border-slate-200 rounded-lg" required><div><label class="block text-sm font-medium text-slate-600 mb-2">Желаемое время выезда</label><div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2"><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">04-06</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">06-08</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">08-10</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">10-12</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">12-14</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">14-16</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">16-18</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">18-20</button></div><input type="hidden" name="timeInterval" id="timeIntervalInput" required><div class="form-error-time text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите время</div></div><button type="submit" class="btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button></form></div>`;
+                return `<div class="p-5"><h2 class="text-lg font-bold mb-4">Ваша заявка</h2><form id="passenger-request-form" class="space-y-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><input type="date" name="date" id="date-request" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required><div><label class="block text-xs font-medium text-slate-600 mb-2">Желаемое время выезда</label><div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2"><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">04-06</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">06-08</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">08-10</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">10-12</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">12-14</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">14-16</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">16-18</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">18-20</button></div><input type="hidden" name="timeInterval" id="timeIntervalInput" required><div class="form-error-time text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите время</div></div><button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button></form></div>`;
             },
             
             getParcelRequestFormTemplate() {
-                return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Отправить посылку</h2><form id="parcel-request-form" class="space-y-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><div><label for="date-parcel" class="block text-sm font-medium text-slate-600 mb-2">Дата отправки</label><input type="date" name="date" id="date-parcel" class="w-full p-3 border border-slate-200 rounded-lg" required></div><div class="bg-slate-100 p-3 rounded-lg text-center text-slate-600">Стоимость отправки: <span class="font-bold">${App.config.prices.parcel} ₽</span></div><button type="submit" class="btn w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">Создать заявку на посылку</button></form></div>`;
+                return `<div class="p-5"><h2 class="text-lg font-bold mb-4">Отправить посылку</h2><form id="parcel-request-form" class="space-y-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><div><label for="date-parcel" class="block text-xs font-medium text-slate-600 mb-2">Дата отправки</label><input type="date" name="date" id="date-parcel" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div><div class="bg-slate-100 p-3 rounded-lg text-center text-slate-600 text-sm">Стоимость отправки: <span class="font-bold">${App.config.prices.parcel} ₽</span></div><button type="submit" class="text-sm btn w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">Создать заявку на посылку</button></form></div>`;
             },
             
             getProfileFormTemplate() {
-                return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Мой профиль</h2><p class="text-slate-600 mb-4 text-sm">Здесь вы можете изменить ваше имя. Если вы планируете быть водителем, пожалуйста, укажите данные вашего автомобиля.</p><form id="profile-form" class="space-y-4"><div><label for="profile-name" class="block text-sm font-medium text-slate-600 mb-2">Ваше имя</label><input type="text" name="fullName" id="profile-name" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Алексей" required></div><div><label for="profile-car" class="block text-sm font-medium text-slate-600 mb-2">Марка и модель машины (для водителей)</label><input type="text" name="driverCar" id="profile-car" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Kia Rio"></div><button type="submit" class="btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button></form></div>`;
+                return `<div class="p-5"><h2 class="text-lg font-bold mb-4">Мой профиль</h2><p class="text-xs text-slate-600 mb-4">Здесь вы можете изменить ваше имя. Если вы планируете быть водителем, пожалуйста, укажите данные вашего автомобиля.</p><form id="profile-form" class="space-y-4"><div><label for="profile-name" class="block text-xs font-medium text-slate-600 mb-2">Ваше имя</label><input type="text" name="fullName" id="profile-name" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Алексей" required></div><div><label for="profile-car" class="block text-xs font-medium text-slate-600 mb-2">Марка и модель машины (для водителей)</label><input type="text" name="driverCar" id="profile-car" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Kia Rio"></div><button type="submit" class="text-sm btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button></form></div>`;
             },
         },
         
