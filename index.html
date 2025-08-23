@@ -119,8 +119,6 @@
         // --- CONFIGURATION ---
         config: {
             botToken: '8202443902:AAEMonQpK3FmOAh5Up4GPBmI89q1mHz8LpY',
-            // ВАЖНО: Замените URL на настоящий URL вашего Mini App
-            webAppUrl: 'https://t.me/your_bot_username/your_app_name', 
             prices: {
                 base: 600,
                 parcel: 300,
@@ -278,9 +276,11 @@
                 const currentScreen = this.state.navigationHistory[this.state.navigationHistory.length - 1];
                 const isDashboard = currentScreen === 'passenger-home-screen' || currentScreen === 'driver-dashboard-screen';
 
+                // If user is on a dashboard, switch to the other one. Otherwise, stay.
                 if (isDashboard) {
                     const newScreen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
                     const newTitle = this.state.userRole === 'passenger' ? 'Пассажир' : 'Кабинет водителя';
+                    // Replace the current dashboard in history instead of adding a new one
                     this.state.navigationHistory.pop();
                     this.navigation.to(newScreen, newTitle);
                 }
@@ -357,7 +357,7 @@
 
                 if (this.state.userRole === 'driver') {
                     const { data: offers, error } = await supabaseClient.from('ride_offers')
-                        .select(`*, bookings(*, profiles(full_name, username))`)
+                        .select(`*, bookings(*, profiles(full_name, username))`) // <-- Fetch username
                         .eq('driver_id', this.state.currentUser.id)
                         .gte('ride_date', new Date().toISOString().split('T')[0])
                         .order('ride_date', { ascending: true });
@@ -481,6 +481,7 @@
                 });
                 if (error) { this.showToast('Не удалось отправить заявку', 'error'); console.error('Booking insert error:', error); return; }
                 
+                // --- Уведомление водителю ---
                 const { data: offer, error: offerError } = await supabaseClient.from('ride_offers').select('driver_id, from, to, ride_date').eq('id', offerId).single();
                 if (offer) {
                     const passengerName = this.state.userProfile.full_name || 'Новый пассажир';
@@ -493,9 +494,9 @@
 
 Пожалуйста, зайдите в приложение в раздел "Мои поездки", чтобы *принять* или *отклонить* заявку.
                     `.trim();
-                    const button = { text: 'Открыть приложение', web_app: { url: this.config.webAppUrl } };
-                    this.utils.sendTelegramNotification(offer.driver_id, message, button);
+                    this.utils.sendTelegramNotification(offer.driver_id, message);
                 }
+                // --- Конец уведомления ---
 
                 this.render.success('Заявка отправлена', 'Водитель рассмотрит вашу заявку. Вы можете отслеживать ее статус в разделе "Мои поездки".', 'Отлично');
             },
@@ -504,6 +505,7 @@
                 const { error } = await supabaseClient.from('bookings').update({ status }).eq('id', bookingId);
                 if (error) { this.showToast('Ошибка. Не удалось обновить статус.', 'error'); return; }
                 
+                // --- Уведомление пассажиру ---
                 const { data: booking, error: bookingError } = await supabaseClient
                     .from('bookings')
                     .select('passenger_id, ride_offers(from, to, ride_date, ride_time, driver_name, driver_car)')
@@ -513,7 +515,6 @@
                 if (booking) {
                     let message = '';
                     const offer = booking.ride_offers;
-                    const button = { text: 'Открыть приложение', web_app: { url: this.config.webAppUrl } };
                     if (status === 'confirmed') {
                         message = `
 *Ваше бронирование подтверждено!* ✅
@@ -536,75 +537,25 @@
 Вы можете найти другую поездку или оставить заявку.
                         `.trim();
                     }
-                    this.utils.sendTelegramNotification(booking.passenger_id, message, button);
+                    this.utils.sendTelegramNotification(booking.passenger_id, message);
                 }
+                // --- Конец уведомления ---
 
                 this.showToast(status === 'confirmed' ? 'Пассажир принят!' : 'Заявка отклонена.', 'success');
-                this.handlers.onMyTripsClick();
+                this.handlers.onMyTripsClick(); // Refresh the list
             },
             
             async onCancelBooking(bookingId) {
-                const { data: booking, error: bookingError } = await supabaseClient
-                    .from('bookings')
-                    .select('*, ride_offers(driver_id, from, to, ride_date), profiles(full_name)')
-                    .eq('id', bookingId)
-                    .single();
-
-                if (bookingError || !booking) { this.showToast('Ошибка при получении данных бронирования', 'error'); return; }
-
-                const { error: deleteError } = await supabaseClient.from('bookings').delete().eq('id', bookingId);
-                if (deleteError) { this.showToast('Ошибка отмены', 'error'); return; }
-
-                const passengerName = booking.profiles?.full_name || 'Пассажир';
-                const offer = booking.ride_offers;
-                const message = `
-*Пассажир отменил бронь* 🧍
-
-Пассажир *${passengerName}* отменил бронирование на вашу поездку:
-*Маршрут:* ${offer.from} → ${offer.to}
-*Дата:* ${this.utils.formatDate(offer.ride_date)}
-
-Место снова свободно.
-                `.trim();
-                const button = { text: 'Посмотреть мои поездки', web_app: { url: this.config.webAppUrl } };
-                this.utils.sendTelegramNotification(offer.driver_id, message, button);
-
+                const { error } = await supabaseClient.from('bookings').delete().eq('id', bookingId);
+                if (error) { this.showToast('Ошибка отмены', 'error'); return; }
                 this.showToast('Бронирование отменено', 'success');
                 this.handlers.onMyTripsClick();
             },
             
             async onDeleteOffer(offerId) {
                 if (!confirm('Вы уверены, что хотите удалить эту поездку? Все бронирования будут отменены.')) return;
-
-                const { data: bookings, error: bookingsError } = await supabaseClient
-                    .from('bookings')
-                    .select('passenger_id, ride_offers(from, to, ride_date)')
-                    .eq('offer_id', offerId);
-
-                if (bookingsError) { this.showToast('Ошибка при получении данных о бронированиях', 'error'); return; }
-
-                const { error: deleteError } = await supabaseClient.from('ride_offers').delete().eq('id', offerId);
-                if (deleteError) { this.showToast('Ошибка удаления', 'error'); return; }
-
-                if (bookings && bookings.length > 0) {
-                    const offerDetails = bookings[0].ride_offers;
-                    const message = `
-*Поездка отменена водителем* ❗️
-
-Ваша бронь на поездку:
-*Маршрут:* ${offerDetails.from} → ${offerDetails.to}
-*Дата:* ${this.utils.formatDate(offerDetails.ride_date)}
-была отменена, так как водитель удалил поездку.
-
-Вы можете найти другую поездку в приложении.
-                    `.trim();
-                    const button = { text: 'Найти другую поездку', web_app: { url: this.config.webAppUrl } };
-
-                    for (const booking of bookings) {
-                        this.utils.sendTelegramNotification(booking.passenger_id, message, button);
-                    }
-                }
-
+                const { error } = await supabaseClient.from('ride_offers').delete().eq('id', offerId);
+                if (error) { this.showToast('Ошибка удаления', 'error'); return; }
                 this.showToast('Поездка удалена', 'success');
                 this.handlers.onMyTripsClick();
             },
@@ -990,7 +941,7 @@
                 return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
             },
 
-            async sendTelegramNotification(chatId, text, button = null) {
+            async sendTelegramNotification(chatId, text) {
                 const botToken = App.config.botToken;
                 if (!botToken) {
                     console.warn('Telegram Bot Token is not configured. Skipping notification.');
@@ -1002,14 +953,6 @@
                     text: text,
                     parse_mode: 'Markdown',
                 };
-
-                if (button) {
-                    payload.reply_markup = {
-                        inline_keyboard: [
-                            [button]
-                        ]
-                    };
-                }
 
                 try {
                     const response = await fetch(url, {
