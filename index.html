@@ -135,7 +135,8 @@
             },
             routes: {
                 koz_yo: { from: 'Козьмодемьянск', to: 'Йошкар-Ола' }
-            }
+            },
+            cities: ['Йошкар-Ола', 'Чебоксары', 'Козьмодемьянск'],
         },
 
         // --- INITIALIZATION ---
@@ -269,8 +270,11 @@
             });
             
             document.body.addEventListener('change', (e) => {
-                if (e.target.id === 'via-cheboksary-toggle' || e.target.id === 'via-ferry-toggle') {
-                    this.handlers.onRouteOptionChange(e.target);
+                if (e.target.id === 'via-ferry-toggle') {
+                    this.render.updateOfferOptionsUI(e.target.closest('form'));
+                }
+                if (e.target.name === 'from-select' || e.target.name === 'to-select') {
+                    this.handlers.onRouteDropdownChange(e.target);
                 }
             });
         },
@@ -278,19 +282,50 @@
         // --- ACTION HANDLERS ---
         handlers: {
             onRoleSwitch() {
-                // 1. Toggle the role
                 this.state.userRole = this.state.userRole === 'passenger' ? 'driver' : 'passenger';
-                
-                // 2. Update the switcher UI
                 this.render.updateRoleSwitcherUI();
                 
-                // 3. Determine the new home screen and title
                 const newScreen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
                 const newTitle = this.state.userRole === 'passenger' ? 'Пассажир' : 'Кабинет водителя';
                 
-                // 4. Reset navigation and navigate to the new home screen
-                this.state.navigationHistory = ['route-selection-screen']; // Reset to the base
+                this.state.navigationHistory = ['route-selection-screen'];
                 this.navigation.to(newScreen, newTitle);
+            },
+
+            onRouteDropdownChange(selectElement) {
+                const form = selectElement.closest('form');
+                const fromSelect = form.querySelector('select[name="from-select"]');
+                const toSelect = form.querySelector('select[name="to-select"]');
+                const fromValue = fromSelect.value;
+                const toValue = toSelect.value;
+
+                form.querySelector('input[name="from"]').value = fromValue;
+                form.querySelector('input[name="to"]').value = toValue;
+
+                Array.from(toSelect.options).forEach(opt => {
+                    opt.disabled = opt.value === fromValue;
+                });
+                Array.from(fromSelect.options).forEach(opt => {
+                    opt.disabled = opt.value === toValue;
+                });
+
+                const ferryContainer = form.querySelector('#ferry-toggle-container');
+                if (ferryContainer) {
+                    const isKozYoRoute = (fromValue === 'Козьмодемьянск' && toValue === 'Йошкар-Ола') ||
+                                         (fromValue === 'Йошкар-Ола' && toValue === 'Козьмодемьянск');
+                    
+                    if (isKozYoRoute) {
+                        ferryContainer.classList.remove('hidden');
+                    } else {
+                        ferryContainer.classList.add('hidden');
+                        form.querySelector('#via-ferry-toggle').checked = false;
+                    }
+                    this.render.updateOfferOptionsUI(form);
+                }
+
+                if (fromValue && toValue) {
+                    form.querySelector('.form-error-direction').classList.add('hidden');
+                }
             },
 
             onRouteSelect(from, to) {
@@ -298,15 +333,6 @@
                 const screen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
                 const title = this.state.userRole === 'passenger' ? 'Пассажир' : 'Кабинет водителя';
                 this.navigation.to(screen, title);
-            },
-            
-            onDirectionSelect(button) {
-                const form = button.closest('form');
-                form.querySelector('.form-error-direction')?.classList.add('hidden');
-                button.parentElement.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
-                form.querySelector('input[name="from"]').value = button.dataset.from;
-                form.querySelector('input[name="to"]').value = button.dataset.to;
             },
             
             onTimeSelect(button) {
@@ -421,21 +447,35 @@
             
             async onOfferSubmit(form) {
                 const formData = new FormData(form);
-                if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; }
-                if (!this.state.userProfile.full_name || !this.state.userProfile.driver_car) { console.error('Profile info missing'); return; }
+                const from = formData.get('from');
+                const to = formData.get('to');
+
+                if (!from || !to) { 
+                    form.querySelector('.form-error-direction').classList.remove('hidden'); 
+                    return; 
+                }
+                if (!this.state.userProfile.full_name || !this.state.userProfile.driver_car) { 
+                    console.error('Profile info missing'); 
+                    return; 
+                }
                 
-                const viaCheboksary = form.querySelector('#via-cheboksary-toggle').checked;
                 const viaFerry = form.querySelector('#via-ferry-toggle').checked;
+                const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
+                
                 let finalPrice = this.config.prices.base;
-                if (viaFerry) finalPrice += this.config.prices.ferrySurcharge;
-                if (viaCheboksary) finalPrice = this.config.prices.cheboksary;
+                if (isCheboksaryRoute) {
+                    finalPrice = this.config.prices.cheboksary;
+                } else if (viaFerry) {
+                    finalPrice += this.config.prices.ferrySurcharge;
+                }
 
                 const { error } = await supabaseClient.from('ride_offers').insert({
                     driver_id: this.state.currentUser.id, driver_username: this.state.currentUser.username,
-                    "from": formData.get('from'), "to": formData.get('to'), ride_date: formData.get('date'),
+                    "from": from, "to": to, ride_date: formData.get('date'),
                     ride_time: formData.get('time'), seats: parseInt(formData.get('seats')),
                     price: finalPrice, driver_name: this.state.userProfile.full_name, driver_car: this.state.userProfile.driver_car,
-                    via_cheboksary: viaCheboksary, via_ferry: viaFerry
+                    via_cheboksary: isCheboksaryRoute, 
+                    via_ferry: !isCheboksaryRoute && viaFerry
                 });
                 if (error) { console.error(error); return; }
                 this.resetForm(form);
@@ -444,15 +484,27 @@
 
             async onPassengerRequestSubmit(form) {
                 const formData = new FormData(form);
+                const from = formData.get('from');
+                const to = formData.get('to');
                 let valid = true;
-                if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); valid = false; }
-                if (!formData.get('timeInterval')) { form.querySelector('.form-error-time').classList.remove('hidden'); valid = false; }
+
+                if (!from || !to) { 
+                    form.querySelector('.form-error-direction').classList.remove('hidden'); 
+                    valid = false; 
+                }
+                if (!formData.get('timeInterval')) { 
+                    form.querySelector('.form-error-time').classList.remove('hidden'); 
+                    valid = false; 
+                }
                 if (!valid) return;
                 
+                const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
+                const price = isCheboksaryRoute ? this.config.prices.cheboksary : this.config.prices.base;
+
                 const { error } = await supabaseClient.from('ride_requests').insert({
                     passenger_id: this.state.currentUser.id, passenger_username: this.state.currentUser.username,
-                    "from": formData.get('from'), "to": formData.get('to'), ride_date: formData.get('date'),
-                    time_interval: formData.get('timeInterval'), passenger_name: this.state.userProfile.full_name, price: this.config.prices.base
+                    "from": from, "to": to, ride_date: formData.get('date'),
+                    time_interval: formData.get('timeInterval'), passenger_name: this.state.userProfile.full_name, price: price
                 });
                 if (error) { console.error(error); return; }
                 this.resetForm(form);
@@ -461,10 +513,16 @@
             
             async onParcelRequestSubmit(form) {
                 const formData = new FormData(form);
-                if (!formData.get('from')) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; }
+                const from = formData.get('from');
+                const to = formData.get('to');
+                if (!from || !to) { 
+                    form.querySelector('.form-error-direction').classList.remove('hidden'); 
+                    return; 
+                }
+                
                 const { error } = await supabaseClient.from('parcel_requests').insert({
                     sender_id: this.state.currentUser.id, sender_username: this.state.currentUser.username,
-                    "from": formData.get('from'), "to": formData.get('to'), ride_date: formData.get('date'),
+                    "from": from, "to": to, ride_date: formData.get('date'),
                     sender_name: this.state.userProfile.full_name, price: this.config.prices.parcel
                 });
                 if (error) { console.error(error); return; }
@@ -516,7 +574,6 @@
                 });
                 if (error) { console.error('Booking insert error:', error); return; }
                 
-                // --- Уведомление водителю ---
                 const { data: offer, error: offerError } = await supabaseClient.from('ride_offers').select('driver_id, from, to, ride_date').eq('id', offerId).single();
                 if (offer) {
                     const passengerName = this.state.userProfile.full_name || 'Новый пассажир';
@@ -531,7 +588,6 @@
                     `.trim();
                     this.utils.sendTelegramNotification(offer.driver_id, message);
                 }
-                // --- Конец уведомления ---
 
                 this.render.success('Заявка отправлена', 'Водитель рассмотрит вашу заявку. Вы можете отслеживать ее статус в разделе "Мои поездки".', 'Отлично');
             },
@@ -540,7 +596,6 @@
                 const { error } = await supabaseClient.from('bookings').update({ status }).eq('id', bookingId);
                 if (error) { console.error('Failed to update booking status'); return; }
                 
-                // --- Уведомление пассажиру ---
                 const { data: booking, error: bookingError } = await supabaseClient
                     .from('bookings')
                     .select('passenger_id, ride_offers(from, to, ride_date, ride_time, driver_name, driver_car)')
@@ -574,9 +629,8 @@
                     }
                     this.utils.sendTelegramNotification(booking.passenger_id, message);
                 }
-                // --- Конец уведомления ---
 
-                this.handlers.onMyTripsClick(); // Refresh the list
+                this.handlers.onMyTripsClick();
             },
             
             async onCancelBooking(bookingId) {
@@ -615,18 +669,6 @@
                 this.state.navigationHistory = ['route-selection-screen', screen];
                 this.navigation.to(screen, title);
             },
-            
-            onRouteOptionChange(target) {
-                const form = target.closest('form');
-                const cheboksaryToggle = form.querySelector('#via-cheboksary-toggle');
-                const ferryToggle = form.querySelector('#via-ferry-toggle');
-                if (!cheboksaryToggle || !ferryToggle) return;
-
-                if (target.id === 'via-cheboksary-toggle' && target.checked) ferryToggle.checked = false;
-                if (target.id === 'via-ferry-toggle' && target.checked) cheboksaryToggle.checked = false;
-                
-                this.render.updateOfferOptionsUI(form);
-            },
         },
         
         // --- NAVIGATION ---
@@ -661,7 +703,7 @@
                     'route-selection-screen': 'Выберите маршрут',
                     'passenger-home-screen': 'Пассажир',
                     'driver-dashboard-screen': 'Кабинет водителя',
-                    'list-screen': document.getElementById('headerTitle').textContent, // Keep previous list title
+                    'list-screen': document.getElementById('headerTitle').textContent,
                     'my-trips-screen': 'Мои поездки',
                     'profile-screen': 'Мой профиль'
                 };
@@ -810,15 +852,23 @@
             },
             
             updateOfferOptionsUI(form) {
-                const cheboksaryToggle = form.querySelector('#via-cheboksary-toggle');
+                const from = form.querySelector('input[name="from"]').value;
+                const to = form.querySelector('input[name="to"]').value;
                 const ferryToggle = form.querySelector('#via-ferry-toggle');
                 
-                form.querySelector('#cheboksary-price').classList.toggle('hidden', !cheboksaryToggle.checked);
-                form.querySelector('#ferry-price-increase').classList.toggle('hidden', !ferryToggle.checked);
-                
                 let price = App.config.prices.base;
-                if (ferryToggle.checked) price += App.config.prices.ferrySurcharge;
-                if (cheboksaryToggle.checked) price = App.config.prices.cheboksary;
+                const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
+
+                if (isCheboksaryRoute) {
+                    price = App.config.prices.cheboksary;
+                    form.querySelector('#ferry-price-increase').classList.add('hidden');
+                } else {
+                    const isFerryChecked = ferryToggle && ferryToggle.checked;
+                    form.querySelector('#ferry-price-increase').classList.toggle('hidden', !isFerryChecked);
+                    if (isFerryChecked) {
+                        price += App.config.prices.ferrySurcharge;
+                    }
+                }
                 
                 form.querySelector('#publish-price').textContent = price;
             },
@@ -1002,15 +1052,78 @@
             },
             
             getOfferFormTemplate() {
-                return `<div class="p-5"><h2 class="text-lg font-bold mb-4">Данные о поездке</h2><form id="offer-form" class="space-y-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><div class="space-y-2"><div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-cheboksary-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">До/Из Чебоксар</label><div class="flex items-center space-x-3"><span id="cheboksary-price" class="text-sm text-slate-800 font-semibold hidden">(${App.config.prices.cheboksary} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-cheboksary-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div><div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-ferry-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label><div class="flex items-center space-x-3"><span id="ferry-price-increase" class="text-sm text-slate-800 font-semibold hidden">(+${App.config.prices.ferrySurcharge} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-ferry-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div></div><div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Дата</label><input type="date" name="date" id="date-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div><div><label class="block text-xs font-medium text-slate-600 mb-2">Время</label><input type="time" name="time" id="time-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div></div><input type="hidden" name="driverName" id="driver-name"><input type="hidden" name="driverCar" id="driver-car"><div><label class="block text-xs font-medium text-slate-600 mb-2">Количество мест</label><input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Например: 3" required></div><button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Опубликовать (<span id="publish-price">${App.config.prices.base}</span> ₽)</button></form></div>`;
+                const optionsHtml = App.config.cities.map(city => `<option value="${city}">${city}</option>`).join('');
+                return `<div class="p-5"><h2 class="text-lg font-bold mb-4">Данные о поездке</h2><form id="offer-form" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-2">Откуда</label>
+                            <select name="from-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required>
+                                <option value="" disabled selected>Выберите город</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-2">Куда</label>
+                            <select name="to-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required>
+                                <option value="" disabled selected>Выберите город</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                    </div>
+                    <input type="hidden" name="from" required><input type="hidden" name="to" required>
+                    <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
+                    <div id="ferry-toggle-container" class="hidden">
+                         <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-ferry-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label><div class="flex items-center space-x-3"><span id="ferry-price-increase" class="text-sm text-slate-800 font-semibold hidden">(+${App.config.prices.ferrySurcharge} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-ferry-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Дата</label><input type="date" name="date" id="date-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div><div><label class="block text-xs font-medium text-slate-600 mb-2">Время</label><input type="time" name="time" id="time-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div></div><input type="hidden" name="driverName" id="driver-name"><input type="hidden" name="driverCar" id="driver-car"><div><label class="block text-xs font-medium text-slate-600 mb-2">Количество мест</label><input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Например: 3" required></div><button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Опубликовать (<span id="publish-price">${App.config.prices.base}</span> ₽)</button></form></div>`;
             },
             
             getPassengerRequestFormTemplate() {
-                return `<div class="p-5"><h2 class="text-lg font-bold mb-4">Ваша заявка</h2><form id="passenger-request-form" class="space-y-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><input type="date" name="date" id="date-request" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required><div><label class="block text-xs font-medium text-slate-600 mb-2">Желаемое время выезда</label><div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2"><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">04-06</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">06-08</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">08-10</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">10-12</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">12-14</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">14-16</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">16-18</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">18-20</button></div><input type="hidden" name="timeInterval" id="timeIntervalInput" required><div class="form-error-time text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите время</div></div><button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button></form></div>`;
+                 const optionsHtml = App.config.cities.map(city => `<option value="${city}">${city}</option>`).join('');
+                return `<div class="p-5"><h2 class="text-lg font-bold mb-4">Ваша заявка</h2><form id="passenger-request-form" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-2">Откуда</label>
+                            <select name="from-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required>
+                                <option value="" disabled selected>Выберите город</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-2">Куда</label>
+                            <select name="to-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required>
+                                <option value="" disabled selected>Выберите город</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                    </div>
+                    <input type="hidden" name="from" required><input type="hidden" name="to" required>
+                    <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
+                    <input type="date" name="date" id="date-request" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required><div><label class="block text-xs font-medium text-slate-600 mb-2">Желаемое время выезда</label><div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2"><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">04-06</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">06-08</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">08-10</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">10-12</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">12-14</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">14-16</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">16-18</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">18-20</button></div><input type="hidden" name="timeInterval" id="timeIntervalInput" required><div class="form-error-time text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите время</div></div><button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button></form></div>`;
             },
             
             getParcelRequestFormTemplate() {
-                return `<div class="p-5"><h2 class="text-lg font-bold mb-4">Отправить посылку</h2><form id="parcel-request-form" class="space-y-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-2 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-xs">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><div><label for="date-parcel" class="block text-xs font-medium text-slate-600 mb-2">Дата отправки</label><input type="date" name="date" id="date-parcel" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div><div class="bg-slate-100 p-3 rounded-lg text-center text-slate-600 text-sm">Стоимость отправки: <span class="font-bold">${App.config.prices.parcel} ₽</span></div><button type="submit" class="text-sm btn w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">Создать заявку на посылку</button></form></div>`;
+                const optionsHtml = App.config.cities.map(city => `<option value="${city}">${city}</option>`).join('');
+                return `<div class="p-5"><h2 class="text-lg font-bold mb-4">Отправить посылку</h2><form id="parcel-request-form" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-2">Откуда</label>
+                            <select name="from-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required>
+                                <option value="" disabled selected>Выберите город</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-2">Куда</label>
+                            <select name="to-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required>
+                                <option value="" disabled selected>Выберите город</option>
+                                ${optionsHtml}
+                            </select>
+                        </div>
+                    </div>
+                    <input type="hidden" name="from" required><input type="hidden" name="to" required>
+                    <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
+                    <div><label for="date-parcel" class="block text-xs font-medium text-slate-600 mb-2">Дата отправки</label><input type="date" name="date" id="date-parcel" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div><div class="bg-slate-100 p-3 rounded-lg text-center text-slate-600 text-sm">Стоимость отправки: <span class="font-bold">${App.config.prices.parcel} ₽</span></div><button type="submit" class="text-sm btn w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">Создать заявку на посылку</button></form></div>`;
             },
             
             getProfileFormTemplate() {
@@ -1077,8 +1190,9 @@
             form.reset();
             this.setDefaultDates();
             form.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
-            if (form.id === 'offer-form') {
-                this.render.updateOfferOptionsUI(form);
+            const ferryContainer = form.querySelector('#ferry-toggle-container');
+            if(ferryContainer) {
+                ferryContainer.classList.add('hidden');
             }
         }
     };
