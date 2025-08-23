@@ -28,7 +28,7 @@
         .message.sent { align-self: flex-end; background-color: #3b82f6; color: white; } /* blue-500 */
         .message.received { align-self: flex-start; background-color: #e5e7eb; color: #1f2937; } /* gray-200 */
         
-        /* Role Switcher Styles - UPDATED */
+        /* Role Switcher Styles */
         #role-switcher { position: relative; }
         #role-bg {
             position: absolute;
@@ -41,7 +41,7 @@
             transform: translateX(0px);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        #role-switcher.driver #role-bg { transform: translateX(36px); } /* Corrected translation for emoji */
+        #role-switcher.driver #role-bg { transform: translateX(36px); }
         #role-passenger-icon, #role-driver-icon { transition: opacity 0.3s ease; }
         #role-switcher.passenger #role-passenger-icon { opacity: 1; }
         #role-switcher.passenger #role-driver-icon { opacity: 0.4; }
@@ -52,6 +52,18 @@
             width: 100%;
             height: 100%;
             object-fit: cover;
+        }
+
+        /* Profile Modal Styles */
+        #profile-modal-overlay {
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+        }
+        #profile-modal-overlay.show {
+            opacity: 1;
+        }
+        #profile-modal.show {
+            transform: translateY(0);
         }
 
         /* Custom scrollbar for better look */
@@ -100,7 +112,19 @@
             <div id="my-trips-screen" class="screen"></div>
             <div id="profile-screen" class="screen"></div>
         </main>
-        
+    </div>
+
+    <!-- Profile Action Modal -->
+    <div id="profile-modal-overlay" class="fixed inset-0 bg-black bg-opacity-40 z-40 hidden"></div>
+    <div id="profile-modal" class="fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-transparent z-50 transform translate-y-full transition-transform duration-300">
+        <div class="p-4">
+            <div class="space-y-2 bg-slate-100 rounded-xl">
+                <button id="modal-profile-btn" class="w-full text-center p-3 text-blue-500 text-lg">Мой профиль</button>
+                <div class="h-px bg-slate-200"></div>
+                <button id="modal-logout-btn" class="w-full text-center p-3 text-red-500 text-lg">Выйти</button>
+            </div>
+            <button id="modal-cancel-btn" class="w-full p-3 mt-2 bg-white rounded-xl text-blue-500 text-lg font-semibold">Отмена</button>
+        </div>
     </div>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -210,7 +234,7 @@
         // --- EVENT BINDING ---
         bindEvents() {
             document.body.addEventListener('click', (e) => {
-                const button = e.target.closest('button, #role-switcher');
+                const button = e.target.closest('button, #role-switcher, #profile-modal-overlay');
                 if (!button) return;
 
                 const { id, classList, dataset } = button;
@@ -240,7 +264,11 @@
                     'publish-ride-btn': this.handlers.onPublishRideClick,
                     'my-trips-btn': this.handlers.onMyTripsClick,
                     'back-to-hub-btn': this.handlers.onBackToHub,
-                    'profile-avatar-btn': () => this.navigation.to('profile-screen', 'Мой профиль'),
+                    'profile-avatar-btn': this.handlers.onAvatarClick,
+                    'modal-profile-btn': this.handlers.onModalProfileClick,
+                    'modal-logout-btn': this.handlers.onModalLogoutClick,
+                    'modal-cancel-btn': this.handlers.onModalCancelClick,
+                    'profile-modal-overlay': this.handlers.onModalCancelClick,
                 };
 
                 if (clickHandlers[id]) {
@@ -279,20 +307,50 @@
         // --- ACTION HANDLERS ---
         handlers: {
             onRoleSwitch() {
+                // 1. Toggle the role
                 this.state.userRole = this.state.userRole === 'passenger' ? 'driver' : 'passenger';
+                
+                // 2. Update the switcher UI
                 this.render.updateRoleSwitcherUI();
                 
-                const currentScreen = this.state.navigationHistory[this.state.navigationHistory.length - 1];
-                const isDashboard = currentScreen === 'passenger-home-screen' || currentScreen === 'driver-dashboard-screen';
+                // 3. Determine the new home screen and title
+                const newScreen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
+                const newTitle = this.state.userRole === 'passenger' ? 'Пассажир' : 'Кабинет водителя';
+                
+                // 4. Reset navigation and navigate to the new home screen
+                this.state.navigationHistory = ['route-selection-screen']; // Reset to the base
+                this.navigation.to(newScreen, newTitle);
+            },
 
-                // If user is on a dashboard, switch to the other one. Otherwise, stay.
-                if (isDashboard) {
-                    const newScreen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
-                    const newTitle = this.state.userRole === 'passenger' ? 'Пассажир' : 'Кабинет водителя';
-                    // Replace the current dashboard in history instead of adding a new one
-                    this.state.navigationHistory.pop();
-                    this.navigation.to(newScreen, newTitle);
-                }
+            onAvatarClick() {
+                const overlay = document.getElementById('profile-modal-overlay');
+                const modal = document.getElementById('profile-modal');
+                overlay.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    overlay.classList.add('show');
+                    modal.classList.add('show');
+                });
+            },
+
+            onModalCancelClick() {
+                const overlay = document.getElementById('profile-modal-overlay');
+                const modal = document.getElementById('profile-modal');
+                overlay.classList.remove('show');
+                modal.classList.remove('show');
+                // Hide overlay after transition ends
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 300);
+            },
+
+            onModalProfileClick() {
+                this.handlers.onModalCancelClick();
+                this.navigation.to('profile-screen', 'Мой профиль');
+            },
+
+            onModalLogoutClick() {
+                // Reloading is the simplest way to "log out" in a Mini App context
+                window.location.reload();
             },
 
             onRouteSelect(from, to) {
