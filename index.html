@@ -717,49 +717,48 @@
                 const container = document.getElementById('my-trips-container');
                 container.innerHTML = '';
                 if (role === 'driver') {
-                    if (data.length === 0) {
+                    if (!data || data.length === 0) {
                         container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активных поездок</h3><p class="text-xs">Опубликуйте поездку, чтобы она здесь появилась.</p></div>`;
                         return;
                     }
-                    data.forEach(offer => {
-                        const card = document.createElement('div');
-                        card.className = 'bg-white border border-slate-200 rounded-xl p-4 space-y-3';
-                        card.innerHTML = this.getMyDriverOfferCard(offer);
-                        container.appendChild(card);
-                    });
+                    let content = data.map(offer => 
+                        `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyDriverOfferCard(offer)}</div>`
+                    ).join('');
+                    container.innerHTML = content;
+
                 } else { // Passenger
                     const { bookings, requests, parcels } = data;
-                    if (bookings.length === 0 && requests.length === 0 && parcels.length === 0) {
+                    if ((!bookings || bookings.length === 0) && 
+                        (!requests || requests.length === 0) && 
+                        (!parcels || parcels.length === 0)) {
                         container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активностей</h3><p class="text-xs">Забронируйте поездку или оставьте заявку.</p></div>`;
                         return;
                     }
-                    if (bookings.length > 0) {
-                        container.innerHTML += `<h3 class="text-base font-bold text-slate-800 px-1 pt-2">Мои бронирования</h3>`;
-                        bookings.forEach(booking => {
-                            const card = document.createElement('div');
-                            card.className = 'bg-white border border-slate-200 rounded-xl p-4 space-y-3';
-                            card.innerHTML = this.getMyBookingCard(booking);
-                            container.appendChild(card);
-                        });
+
+                    let content = '';
+
+                    if (bookings && bookings.length > 0) {
+                        content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-2">Мои бронирования</h3>`;
+                        content += bookings.map(booking => 
+                            `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyBookingCard(booking)}</div>`
+                        ).join('');
                     }
-                     if (requests.length > 0) {
-                        container.innerHTML += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои заявки на поездки</h3>`;
-                        requests.forEach(request => {
-                            const card = document.createElement('div');
-                            card.className = 'bg-white border border-slate-200 rounded-xl p-4 space-y-3';
-                            card.innerHTML = this.getMyRequestCard(request);
-                            container.appendChild(card);
-                        });
+
+                    if (requests && requests.length > 0) {
+                        content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои заявки на поездки</h3>`;
+                        content += requests.map(request => 
+                            `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyRequestCard(request)}</div>`
+                        ).join('');
                     }
-                    if (parcels.length > 0) {
-                        container.innerHTML += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои посылки</h3>`;
-                        parcels.forEach(parcel => {
-                            const card = document.createElement('div');
-                            card.className = 'bg-white border border-slate-200 rounded-xl p-4 space-y-3';
-                            card.innerHTML = this.getMyParcelRequestCard(parcel);
-                            container.appendChild(card);
-                        });
+
+                    if (parcels && parcels.length > 0) {
+                        content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои посылки</h3>`;
+                        content += parcels.map(parcel => 
+                            `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyParcelRequestCard(parcel)}</div>`
+                        ).join('');
                     }
+
+                    container.innerHTML = content;
                 }
             },
             
