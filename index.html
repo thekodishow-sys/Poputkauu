@@ -30,6 +30,20 @@
         .message.sent { align-self: flex-end; background-color: #3b82f6; color: white; } /* blue-500 */
         .message.received { align-self: flex-start; background-color: #e5e7eb; color: #1f2937; } /* gray-200 */
         
+        /* Role Switcher Styles */
+        #role-switcher { position: relative; }
+        #role-bg {
+            width: 36px; height: 36px;
+            transform: translateX(0px);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        #role-switcher.driver #role-bg { transform: translateX(40px); }
+        #role-passenger-icon, #role-driver-icon { transition: color 0.3s ease; }
+        #role-switcher.passenger #role-passenger-icon { color: #1e293b; }
+        #role-switcher.passenger #role-driver-icon { color: #94a3b8; }
+        #role-switcher.driver #role-passenger-icon { color: #94a3b8; }
+        #role-switcher.driver #role-driver-icon { color: #1e293b; }
+
         /* Custom scrollbar for better look */
         #main-content::-webkit-scrollbar { width: 4px; }
         #main-content::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
@@ -44,13 +58,20 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             </button>
             <h1 id="headerTitle" class="text-lg font-semibold text-slate-800 text-center flex-grow">Попутка 12</h1>
-            <div class="w-6"></div> <!-- Spacer -->
+            <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
+                <div id="role-bg" class="absolute bg-white shadow rounded-full"></div>
+                <div id="role-passenger-icon" class="relative z-10 p-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </div>
+                <div id="role-driver-icon" class="relative z-10 p-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
+                </div>
+            </div>
         </header>
 
         <main id="main-content" class="flex-grow overflow-y-auto relative">
             <!-- Screens will be rendered here by JS -->
-            <div id="main-screen" class="screen active"></div>
-            <div id="route-selection-screen" class="screen"></div>
+            <div id="route-selection-screen" class="screen active"></div>
             <div id="passenger-home-screen" class="screen"></div>
             <div id="driver-dashboard-screen" class="screen"></div>
             <div id="offer-screen" class="screen"></div>
@@ -79,10 +100,10 @@
         state: {
             currentUser: null,
             userProfile: null,
-            userRole: null,
+            userRole: 'passenger', // Default role
             selectedRoute: null,
             toastTimeout: null,
-            navigationHistory: ['main-screen'],
+            navigationHistory: ['route-selection-screen'], // New default screen
             currentConversation: {
                 id: null,
                 subscription: null
@@ -91,7 +112,7 @@
 
         // --- CONFIGURATION ---
         config: {
-            botToken: '8202443902:AAEMonQpK3FmOAh5Up4GPBmI89q1mHz8LpY', // <-- ВАШ ТОКЕН БОТА
+            botToken: '8202443902:AAEMonQpK3FmOAh5Up4GPBmI89q1mHz8LpY',
             prices: {
                 base: 600,
                 parcel: 300,
@@ -113,7 +134,6 @@
                 this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
             } catch (e) {
                 console.warn("Telegram WebApp script not found or running in browser.");
-                // Use a numeric ID for testing to match Telegram's format
                 this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser' };
             }
             
@@ -121,8 +141,9 @@
                 await this.ensureUserProfile();
             }
             
-            this.bindHandlers(); // Bind event handlers context
+            this.bindHandlers();
             this.render.allScreens();
+            this.render.updateRoleSwitcherUI();
             this.bindEvents();
             this.setDefaultDates();
         },
@@ -131,15 +152,13 @@
         async ensureUserProfile() {
             if (!this.state.currentUser) return;
 
-            // First, try to fetch the profile
             let { data: profile, error: fetchError } = await supabaseClient
                 .from('profiles')
                 .select('*')
                 .eq('id', this.state.currentUser.id)
                 .single();
 
-            // If profile doesn't exist, create it
-            if (fetchError && fetchError.code === 'PGRST116') { // PGRST116 means "Not Found"
+            if (fetchError && fetchError.code === 'PGRST116') {
                 const { data: newProfile, error: insertError } = await supabaseClient
                     .from('profiles')
                     .insert({
@@ -167,7 +186,6 @@
 
         // --- HANDLER BINDING ---
         bindHandlers() {
-            // This ensures that 'this' inside handler functions refers to the App object
             for (const key in this.handlers) {
                 if (typeof this.handlers[key] === 'function') {
                     this.handlers[key] = this.handlers[key].bind(this);
@@ -178,35 +196,27 @@
         // --- EVENT BINDING ---
         bindEvents() {
             document.body.addEventListener('click', (e) => {
-                const button = e.target.closest('button');
+                const button = e.target.closest('button, #role-switcher');
                 if (!button) return;
 
                 const { id, classList, dataset } = button;
 
-                // Role selection
-                if (classList.contains('role-btn') && button.parentElement.id === 'role-selector') {
-                    document.querySelectorAll('#role-selector .role-btn').forEach(btn => btn.classList.remove('active'));
-                    button.classList.add('active');
-                    this.state.userRole = dataset.role;
-                    document.getElementById('continue-btn').disabled = false;
+                if (id === 'role-switcher') {
+                    this.handlers.onRoleSwitch();
                     return;
                 }
 
-                // Direction selection in forms
                 if (button.closest('.direction-buttons')) {
                     this.handlers.onDirectionSelect(button);
                     return;
                 }
                 
-                // Time interval selection
                 if (button.closest('#time-interval-buttons')) {
                     this.handlers.onTimeSelect(button);
                     return;
                 }
 
-                // General button click handlers
                 const clickHandlers = {
-                    'continue-btn': () => this.state.userRole && this.navigation.to('route-selection-screen', 'Выберите маршрут'),
                     'backButton': () => this.navigation.back(),
                     'select-route-koz-yo': () => this.handlers.onRouteSelect(dataset.from, dataset.to),
                     'view-driver-offers-btn': this.handlers.onViewDriverOffers,
@@ -224,7 +234,6 @@
                     return;
                 }
 
-                // Dynamic buttons with data attributes
                 if (classList.contains('request-booking-btn')) this.handlers.onRequestBooking(dataset.offerId);
                 if (classList.contains('cancel-booking-btn')) this.handlers.onCancelBooking(dataset.bookingId);
                 if (classList.contains('accept-booking-btn')) this.handlers.onUpdateBookingStatus(dataset.bookingId, 'confirmed');
@@ -254,6 +263,23 @@
 
         // --- ACTION HANDLERS ---
         handlers: {
+            onRoleSwitch() {
+                this.state.userRole = this.state.userRole === 'passenger' ? 'driver' : 'passenger';
+                this.render.updateRoleSwitcherUI();
+                
+                const currentScreen = this.state.navigationHistory[this.state.navigationHistory.length - 1];
+                const isDashboard = currentScreen === 'passenger-home-screen' || currentScreen === 'driver-dashboard-screen';
+
+                // If user is on a dashboard, switch to the other one. Otherwise, stay.
+                if (isDashboard) {
+                    const newScreen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
+                    const newTitle = this.state.userRole === 'passenger' ? 'Пассажир' : 'Кабинет водителя';
+                    // Replace the current dashboard in history instead of adding a new one
+                    this.state.navigationHistory.pop();
+                    this.navigation.to(newScreen, newTitle);
+                }
+            },
+
             onRouteSelect(from, to) {
                 this.state.selectedRoute = { from, to };
                 const screen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
@@ -279,7 +305,7 @@
             },
             
             onPublishRideClick() {
-                if (!this.state.userProfile?.driver_car || !this.state.userProfile?.full_name) {
+                if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
                     this.showToast('Пожалуйста, укажите данные вашего автомобиля в профиле', 'error');
                     this.navigation.to('profile-screen', 'Мой профиль');
                 } else {
@@ -539,7 +565,7 @@
             onBackToHub() {
                 const screen = this.state.userRole === 'driver' ? 'driver-dashboard-screen' : 'passenger-home-screen';
                 const title = this.state.userRole === 'driver' ? 'Кабинет водителя' : 'Пассажир';
-                this.state.navigationHistory = ['main-screen', 'route-selection-screen', screen];
+                this.state.navigationHistory = ['route-selection-screen', screen];
                 this.navigation.to(screen, title);
             },
             
@@ -585,7 +611,6 @@
                 const lastScreen = App.state.navigationHistory[App.state.navigationHistory.length - 1];
                 
                 const titles = {
-                    'main-screen': 'Попутка 12',
                     'route-selection-screen': 'Выберите маршрут',
                     'passenger-home-screen': 'Пассажир',
                     'driver-dashboard-screen': 'Кабинет водителя',
@@ -595,8 +620,6 @@
                 };
                 const title = titles[lastScreen] || 'Попутка 12';
                 
-                // This is a special navigation case, we are not pushing to history
-                // So we manually set the screen and title
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                 document.getElementById(lastScreen).classList.add('active');
                 document.getElementById('headerTitle').textContent = title;
@@ -608,7 +631,6 @@
         render: {
             allScreens() {
                 const screenTemplates = {
-                    'main-screen': `<div class="p-5"><div class="text-center mb-8"><h2 class="text-2xl font-bold mb-1">Добро пожаловать!</h2><p class="text-slate-500">Выберите вашу роль</p></div><div id="role-selector" class="mb-6 p-1 bg-slate-100 rounded-xl flex"><button data-role="passenger" class="role-btn btn flex-1 py-3 px-4 rounded-lg font-semibold text-slate-500 transition-colors">Пассажир</button><button data-role="driver" class="role-btn btn flex-1 py-3 px-4 rounded-lg font-semibold text-slate-500 transition-colors">Водитель</button></div><button id="continue-btn" class="btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700 transition-all disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed" disabled>Продолжить</button></div>`,
                     'route-selection-screen': `<div class="p-5"><div class="text-center mb-8"><h2 class="text-2xl font-bold mb-1">Выберите маршрут</h2></div><div class="space-y-4"><button id="select-route-koz-yo" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="btn w-full bg-slate-800 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">${App.config.routes.koz_yo.from} &lt;—&gt; ${App.config.routes.koz_yo.to}</button></div></div>`,
                     'passenger-home-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-2xl font-bold mb-1">Что вы хотите сделать?</h2></div><div class="space-y-3"><button id="view-driver-offers-btn" class="btn w-full bg-slate-800 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button><button id="create-passenger-request-btn" class="btn w-full bg-slate-100 text-slate-800 font-bold py-4 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button><button id="send-parcel-btn" class="btn w-full bg-purple-100 text-purple-800 font-bold py-4 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button><button id="my-trips-btn" class="mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-4 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button><button id="edit-profile-btn" class="mt-4 btn w-full border border-blue-300 text-blue-800 font-bold py-4 px-4 rounded-xl hover:bg-blue-50">Мой профиль</button></div></div>`,
                     'driver-dashboard-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-2xl font-bold mb-1">Кабинет водителя</h2></div><div class="space-y-3"><button id="view-passenger-requests-btn" class="btn w-full bg-slate-800 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button><button id="publish-ride-btn" class="btn w-full bg-slate-100 text-slate-800 font-bold py-4 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button><button id="my-trips-btn" class="mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-4 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button><button id="edit-profile-btn" class="mt-4 btn w-full border border-blue-300 text-blue-800 font-bold py-4 px-4 rounded-xl hover:bg-blue-50">Мой профиль</button></div></div>`,
@@ -623,6 +645,17 @@
                 };
                 for (const [id, html] of Object.entries(screenTemplates)) {
                     document.getElementById(id).innerHTML = html;
+                }
+            },
+            
+            updateRoleSwitcherUI() {
+                const switcher = document.getElementById('role-switcher');
+                if (this.state.userRole === 'driver') {
+                    switcher.classList.add('driver');
+                    switcher.classList.remove('passenger');
+                } else {
+                    switcher.classList.add('passenger');
+                    switcher.classList.remove('driver');
                 }
             },
             
