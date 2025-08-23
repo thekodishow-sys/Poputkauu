@@ -18,7 +18,8 @@
             animation: fadeIn 0.3s ease-in-out;
         }
         .screen.active {
-            display: block;
+            display: flex; /* Changed to flex for chat layout */
+            flex-direction: column;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
@@ -47,6 +48,21 @@
             background-color: #ef4444; /* red-500 */
             border-radius: 9999px;
             border: 1px solid white;
+        }
+        /* Chat styles */
+        .message {
+            max-width: 75%;
+            word-wrap: break-word;
+        }
+        .message.sent {
+            align-self: flex-end;
+            background-color: #3b82f6; /* blue-500 */
+            color: white;
+        }
+        .message.received {
+            align-self: flex-start;
+            background-color: #e5e7eb; /* gray-200 */
+            color: #1f2937; /* gray-800 */
         }
     </style>
 </head>
@@ -85,6 +101,7 @@
             <div id="parcel-request-screen" class="screen"></div>
             <div id="list-screen" class="screen"></div>
             <div id="success-screen" class="screen"></div>
+            <div id="chat-screen" class="screen"></div>
         </main>
         
         <div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm p-4 rounded-lg shadow-lg text-white text-center z-50"><p id="toast-message"></p></div>
@@ -93,7 +110,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
     const SUPABASE_URL = 'https://scqkpvmmoaolahpxinja.supabase.co';
-    // FIXED: Исправлена опечатка в ключе (было 'HSUzIıNi', стало 'HS256')
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -107,6 +123,11 @@
             selectedRoute: null, 
             toastTimeout: null,
             navigationHistory: ['main-screen'],
+            currentConversation: {
+                id: null,
+                subscription: null,
+                timer: null,
+            }
         },
 
         init() {
@@ -163,11 +184,9 @@
                     'send-parcel-btn': () => this.navigation.to('parcel-request-screen', 'Отправить посылку'),
                     'view-passenger-requests-btn': this.handlers.onViewPassengerRequests,
                     'publish-ride-btn': () => this.navigation.to('offer-screen', 'Новая поездка'),
-                    // FIXED: Исправлена логика кнопки "назад в кабинет" для корректной работы истории
                     'back-to-hub-btn': () => {
                         const screen = this.state.userRole === 'driver' ? 'driver-dashboard-screen' : 'passenger-home-screen';
                         const title = this.state.userRole === 'driver' ? 'Кабинет водителя' : 'Пассажир';
-                        // Сбрасываем историю навигации для чистого возврата
                         this.state.navigationHistory = ['main-screen', 'route-selection-screen', screen];
                         this.navigation.to(screen, title);
                     },
@@ -175,6 +194,7 @@
                 if (handlers[target.id]) handlers[target.id].call(this, e);
                 if (target.closest('.direction-buttons')) this.handlers.onDirectionSelect.call(this, e);
                 if (target.closest('#time-interval-buttons')) this.handlers.onTimeSelect.call(this, e);
+                if (target.closest('.start-chat-btn')) this.handlers.onStartChat(e);
             });
 
             document.body.addEventListener('submit', (e) => {
@@ -184,6 +204,7 @@
                     'passenger-request-form': this.handlers.onPassengerRequestSubmit,
                     'parcel-request-form': this.handlers.onParcelRequestSubmit,
                     'offer-form': this.handlers.onOfferSubmit,
+                    'chat-form': this.handlers.onSendMessage,
                 };
                 if (handlers[targetId]) handlers[targetId].call(this, e);
             });
@@ -203,12 +224,8 @@
                 const cheboksaryContainer = document.getElementById('cheboksary-option-container');
                 const ferryContainer = document.getElementById('ferry-option-container');
 
-                if (target.id === 'via-cheboksary-toggle' && target.checked) {
-                    ferryToggle.checked = false;
-                }
-                if (target.id === 'via-ferry-toggle' && target.checked) {
-                    cheboksaryToggle.checked = false;
-                }
+                if (target.id === 'via-cheboksary-toggle' && target.checked) ferryToggle.checked = false;
+                if (target.id === 'via-ferry-toggle' && target.checked) cheboksaryToggle.checked = false;
 
                 cheboksaryContainer.classList.toggle('opacity-50', ferryToggle.checked);
                 ferryContainer.classList.toggle('opacity-50', cheboksaryToggle.checked);
@@ -225,9 +242,7 @@
                 document.getElementById('ferry-price-increase').classList.toggle('hidden', !ferryToggle.checked);
                 
                 let basePrice = 600;
-                if (ferryToggle.checked) {
-                    basePrice += 100;
-                }
+                if (ferryToggle.checked) basePrice += 100;
                 document.getElementById('publish-price').textContent = basePrice;
             },
             onRouteSelect(e) {
@@ -326,10 +341,62 @@
                 this.resetForm(form); 
                 this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет'); 
             },
+            async onStartChat(e) {
+                const button = e.target.closest('.start-chat-btn');
+                const { offerId, driverId, passengerId, partnerUsername } = button.dataset;
+
+                let { data: conversations, error } = await supabaseClient.from('conversations')
+                    .select('*')
+                    .eq('offer_id', offerId)
+                    .eq('driver_id', driverId)
+                    .eq('passenger_id', passengerId);
+                
+                if (error) { this.showToast('Ошибка при открытии чата', 'error'); return; }
+
+                let conversation = conversations[0];
+                if (!conversation) {
+                    const { data: newConversation, error: insertError } = await supabaseClient.from('conversations')
+                        .insert({ offer_id: offerId, driver_id: driverId, passenger_id: passengerId })
+                        .select();
+                    if (insertError) { this.showToast('Не удалось создать чат', 'error'); return; }
+                    conversation = newConversation[0];
+                }
+
+                this.state.currentConversation.id = conversation.id;
+                this.render.chatScreen(conversation, partnerUsername);
+                this.navigation.to('chat-screen', 'Чат');
+            },
+            async onSendMessage(e) {
+                const form = e.target;
+                const input = form.querySelector('#chat-message-input');
+                const content = input.value.trim();
+                if (!content) return;
+
+                const { error } = await supabaseClient.from('messages').insert({
+                    conversation_id: this.state.currentConversation.id,
+                    sender_id: this.state.currentUser.id,
+                    content: content
+                });
+
+                if (error) {
+                    this.showToast('Сообщение не отправлено', 'error');
+                } else {
+                    input.value = '';
+                }
+            }
         },
         
         navigation: {
             to(screenId, title) {
+                if (this.state.currentConversation.subscription) {
+                    supabaseClient.removeChannel(this.state.currentConversation.subscription);
+                    this.state.currentConversation.subscription = null;
+                }
+                if (this.state.currentConversation.timer) {
+                    clearInterval(this.state.currentConversation.timer);
+                    this.state.currentConversation.timer = null;
+                }
+
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                 document.getElementById(screenId).classList.add('active');
                 document.getElementById('headerTitle').textContent = title;
@@ -370,6 +437,7 @@
                     'parcel-request-screen': `<h2 class="text-xl font-bold mb-4">Отправить посылку</h2><form id="parcel-request-form" class="space-y-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="Козьмодемьянск" data-to="Йошкар-Ола" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">КЗМ → ЙО</button><button type="button" data-from="Йошкар-Ола" data-to="Козьмодемьянск" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><div><label for="date-parcel" class="block text-sm font-medium text-slate-600 mb-2">Дата отправки</label><input type="date" name="date" id="date-parcel" class="w-full p-3 border border-slate-200 rounded-lg" required></div><div class="bg-slate-100 p-3 rounded-lg text-center text-slate-600">Стоимость отправки: <span class="font-bold">300 ₽</span></div><button type="submit" class="btn w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">Создать заявку на посылку</button></form>`,
                     'list-screen': `<div id="list-container" class="space-y-3"></div><div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-lg font-semibold"></h3><p id="no-results-text" class="text-sm"></p></div>`,
                     'success-screen': `<div class="flex flex-col items-center justify-center h-full text-center"><div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h2 id="success-title" class="text-2xl font-bold mt-4 mb-1"></h2><p id="success-text" class="text-slate-600 mb-8"></p><button id="back-to-hub-btn" class="btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button></div>`,
+                    'chat-screen': `<div class="p-0 flex-1 flex flex-col h-full"><div id="chat-header" class="p-3 border-b border-slate-200 flex-shrink-0"></div><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
                 };
                 for (const [id, html] of Object.entries(templates)) {
                     document.getElementById(id).innerHTML = html;
@@ -410,7 +478,13 @@
                                 <p><strong>Свободных мест:</strong> ${item.seats}</p>
                             </div>
                             ${routeInfo}
-                            <a href="https://t.me/${item.driver_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">Связаться с водителем</a>
+                            <button class="start-chat-btn block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors"
+                                data-offer-id="${item.id}"
+                                data-driver-id="${item.driver_id}"
+                                data-passenger-id="${this.state.currentUser.id}"
+                                data-partner-username="${item.driver_username}">
+                                Написать водителю
+                            </button>
                         `;
                     } else { // passengerRequest
                         const isParcel = item.type === 'parcel';
@@ -432,6 +506,55 @@
                     }
                     container.appendChild(card);
                 });
+            },
+            async chatScreen(conversation, partnerUsername) {
+                const chatHeader = document.getElementById('chat-header');
+                const messagesContainer = document.getElementById('chat-messages');
+                messagesContainer.innerHTML = '';
+
+                const { data: messages, error } = await supabaseClient.from('messages')
+                    .select('*').eq('conversation_id', conversation.id).order('created_at');
+                if (error) { this.showToast('Ошибка загрузки сообщений', 'error'); return; }
+
+                messages.forEach(msg => this.appendMessage(msg));
+
+                this.state.currentConversation.subscription = supabaseClient
+                    .channel(`chat-${conversation.id}`)
+                    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversation.id}` }, 
+                        payload => this.appendMessage(payload.new)
+                    ).subscribe();
+                
+                const startTime = new Date(conversation.created_at).getTime();
+                const twentyMinutes = 20 * 60 * 1000;
+
+                const updateTimer = () => {
+                    const now = new Date().getTime();
+                    const elapsed = now - startTime;
+                    const remaining = twentyMinutes - elapsed;
+
+                    if (remaining <= 0) {
+                        chatHeader.innerHTML = `<div class="text-center"><div class="font-bold text-red-500">Время для договоренности истекло</div><a href="https://t.me/${partnerUsername}" target="_blank" class="text-sm text-blue-500 hover:underline">Перейти в личные сообщения</a></div>`;
+                        document.getElementById('chat-message-input').disabled = true;
+                        document.getElementById('chat-message-input').placeholder = 'Время вышло';
+                        clearInterval(this.state.currentConversation.timer);
+                    } else {
+                        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+                        chatHeader.innerHTML = `<div class="text-center"><div class="font-bold text-slate-800">Осталось: ${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}</div><a href="https://t.me/${partnerUsername}" target="_blank" class="text-sm text-blue-500 hover:underline">Перейти в личные сообщения</a></div>`;
+                    }
+                };
+
+                updateTimer();
+                this.state.currentConversation.timer = setInterval(updateTimer, 1000);
+            },
+            appendMessage(message) {
+                const messagesContainer = document.getElementById('chat-messages');
+                const messageEl = document.createElement('div');
+                const isSent = message.sender_id == this.state.currentUser.id;
+                messageEl.className = `message p-3 rounded-lg ${isSent ? 'sent' : 'received'}`;
+                messageEl.textContent = message.content;
+                messagesContainer.appendChild(messageEl);
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
             },
             success(title, text, buttonText) {
                 document.getElementById('success-title').textContent = title;
