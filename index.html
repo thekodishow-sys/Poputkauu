@@ -116,6 +116,7 @@
             }
             
             await this.fetchUserProfile();
+            this.bindHandlers(); // Bind event handlers context
             this.render.allScreens();
             this.bindEvents();
             this.setDefaultDates();
@@ -133,6 +134,15 @@
                 this.state.userProfile = data;
             } else if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
                 console.error('Error fetching profile:', error);
+            }
+        },
+
+        // --- HANDLER BINDING ---
+        bindHandlers() {
+            for (const key in this.handlers) {
+                if (typeof this.handlers[key] === 'function') {
+                    this.handlers[key] = this.handlers[key].bind(this);
+                }
             }
         },
 
@@ -490,13 +500,16 @@
                 };
                 const title = titles[lastScreen] || 'Попутка 12';
                 
-                // Use a special navigation method to avoid pushing to history again
-                this.to(lastScreen, title);
-                App.state.navigationHistory.pop(); // Remove the screen again because to() adds it
+                // This is a special navigation case, we are not pushing to history
+                // So we manually set the screen and title
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(lastScreen).classList.add('active');
+                document.getElementById('headerTitle').textContent = title;
+                document.getElementById('backButton').classList.toggle('invisible', App.state.navigationHistory.length <= 1);
             }
         },
 
-        // --- UI RENDERING ---
+        // --- UI RENDERING & TEMPLATES ---
         render: {
             allScreens() {
                 const screenTemplates = {
@@ -613,162 +626,161 @@
                 
                 form.querySelector('#publish-price').textContent = price;
             },
-        },
-        
-        // --- TEMPLATE HELPERS ---
-        getDriverOfferCard(item) {
-            const seatsLeft = item.seats_left;
-            const seatsText = seatsLeft === 1 ? '1 место' : (seatsLeft > 1 && seatsLeft < 5 ? `${seatsLeft} места` : `${seatsLeft} мест`);
-            const buttonDisabled = seatsLeft <= 0 ? 'disabled' : '';
-            const buttonClass = seatsLeft <= 0 ? 'bg-slate-300' : 'bg-blue-500 hover:bg-blue-600';
-            const buttonText = seatsLeft <= 0 ? 'Мест нет' : 'Забронировать';
+            
+            getDriverOfferCard(item) {
+                const seatsLeft = item.seats_left;
+                const seatsText = seatsLeft === 1 ? '1 место' : (seatsLeft > 1 && seatsLeft < 5 ? `${seatsLeft} места` : `${seatsLeft} мест`);
+                const buttonDisabled = seatsLeft <= 0 ? 'disabled' : '';
+                const buttonClass = seatsLeft <= 0 ? 'bg-slate-300' : 'bg-blue-500 hover:bg-blue-600';
+                const buttonText = seatsLeft <= 0 ? 'Мест нет' : 'Забронировать';
 
-            return `
-                <div class="flex justify-between items-center">
-                    <div class="font-bold text-lg">${item.from} → ${item.to}</div>
-                    <div class="text-lg font-semibold">${item.price} ₽</div>
-                </div>
-                <div class="text-slate-600">
-                    <p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)} в <strong>${item.ride_time}</strong></p>
-                    <p><strong>Водитель:</strong> ${item.driver_name} на ${item.driver_car}</p>
-                    <p><strong>Свободно:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsText}</span></p>
-                </div>
-                ${item.via_ferry ? `<div class="text-sm font-semibold text-blue-800 bg-blue-100 rounded-full px-3 py-1 text-center">⛴️ Через паром</div>` : ''}
-                ${item.via_cheboksary ? `<div class="text-sm font-semibold text-green-800 bg-green-100 rounded-full px-3 py-1 text-center">До/Из Чебоксар</div>` : ''}
-                <button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg transition-colors ${buttonClass}"
-                    data-offer-id="${item.id}" ${buttonDisabled}>
-                    ${buttonText}
-                </button>
-            `;
-        },
-
-        getPassengerRequestCard(item) {
-            const isParcel = item.type === 'parcel';
-            return `
-                <div class="flex justify-between items-center">
-                    <div class="font-bold text-lg">${item.from} → ${item.to}</div>
-                    <div class="text-lg font-semibold">${item.price} ₽</div>
-                </div>
-                <div class="text-slate-600">
-                    <p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)}</p>
-                    <p><strong>${isParcel ? 'Отправитель' : 'Пассажир'}:</strong> ${isParcel ? item.sender_name : item.passenger_name}</p>
-                    ${!isParcel ? `<p><strong>Время:</strong> ${item.time_interval}</p>` : ''}
-                </div>
-                <div class="flex items-center gap-2">
-                    ${isParcel ? `<div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div>` : `<div class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Пассажир</div>`}
-                </div>
-                <a href="https://t.me/${isParcel ? item.sender_username : item.passenger_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">Связаться</a>
-            `;
-        },
-        
-        getMyDriverOfferCard(offer) {
-            const confirmedBookings = offer.bookings.filter(b => b.status === 'confirmed');
-            const pendingBookings = offer.bookings.filter(b => b.status === 'pending');
-            const seatsLeft = offer.seats - confirmedBookings.length;
-
-            let bookingsHtml = '<div class="text-sm text-slate-500">Пока нет пассажиров.</div>';
-            if (offer.bookings.length > 0) {
-                bookingsHtml = `
-                    ${pendingBookings.length > 0 ? `
-                        <h4 class="font-semibold mt-2">Заявки на бронирование:</h4>
-                        <div class="space-y-2">
-                            ${pendingBookings.map(b => `
-                                <div class="flex justify-between items-center bg-amber-50 p-2 rounded-lg">
-                                    <span>${b.profiles?.full_name || 'Пассажир'}</span>
-                                    <div class="flex gap-2">
-                                        <button class="accept-booking-btn bg-green-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Принять</button>
-                                        <button class="reject-booking-btn bg-red-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Отклонить</button>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                    ${confirmedBookings.length > 0 ? `
-                        <h4 class="font-semibold mt-2">Подтвержденные пассажиры:</h4>
-                        <ul class="list-disc list-inside">
-                            ${confirmedBookings.map(b => `<li>${b.profiles?.full_name || 'Пассажир'}</li>`).join('')}
-                        </ul>
-                    ` : ''}
+                return `
+                    <div class="flex justify-between items-center">
+                        <div class="font-bold text-lg">${item.from} → ${item.to}</div>
+                        <div class="text-lg font-semibold">${item.price} ₽</div>
+                    </div>
+                    <div class="text-slate-600">
+                        <p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)} в <strong>${item.ride_time}</strong></p>
+                        <p><strong>Водитель:</strong> ${item.driver_name} на ${item.driver_car}</p>
+                        <p><strong>Свободно:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsText}</span></p>
+                    </div>
+                    ${item.via_ferry ? `<div class="text-sm font-semibold text-blue-800 bg-blue-100 rounded-full px-3 py-1 text-center">⛴️ Через паром</div>` : ''}
+                    ${item.via_cheboksary ? `<div class="text-sm font-semibold text-green-800 bg-green-100 rounded-full px-3 py-1 text-center">До/Из Чебоксар</div>` : ''}
+                    <button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg transition-colors ${buttonClass}"
+                        data-offer-id="${item.id}" ${buttonDisabled}>
+                        ${buttonText}
+                    </button>
                 `;
-            }
+            },
 
-            return `
-                <div class="flex justify-between items-center">
-                    <div>
-                        <div class="font-bold text-lg">${offer.from} → ${offer.to}</div>
-                        <div class="text-sm text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
+            getPassengerRequestCard(item) {
+                const isParcel = item.type === 'parcel';
+                return `
+                    <div class="flex justify-between items-center">
+                        <div class="font-bold text-lg">${item.from} → ${item.to}</div>
+                        <div class="text-lg font-semibold">${item.price} ₽</div>
                     </div>
-                    <div class="text-lg font-semibold">${offer.price} ₽</div>
-                </div>
-                <div class="text-slate-600">
-                     <p><strong>Свободно мест:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsLeft} из ${offer.seats}</span></p>
-                </div>
-                <div class="border-t border-slate-100 pt-2 mt-2">
-                    ${bookingsHtml}
-                </div>
-                <button class="delete-offer-btn btn w-full bg-red-50 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 transition-colors mt-2" data-offer-id="${offer.id}">Удалить поездку</button>
-            `;
-        },
-        
-        getMyBookingCard(booking) {
-            const offer = booking.ride_offers;
-            const statusClasses = {
-                pending: 'bg-amber-100 text-amber-800',
-                confirmed: 'bg-green-100 text-green-800',
-                rejected: 'bg-red-100 text-red-800'
-            };
-            const statusText = {
-                pending: 'Ожидает подтверждения',
-                confirmed: 'Водитель подтвердил',
-                rejected: 'Водитель отклонил'
-            };
-            return `
-                <div class="flex justify-between items-start">
-                    <div>
-                        <div class="font-bold text-lg">${offer.from} → ${offer.to}</div>
-                        <div class="text-sm text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
-                        <div class="text-sm text-slate-500">Водитель: ${offer.driver_name} (${offer.driver_car})</div>
+                    <div class="text-slate-600">
+                        <p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)}</p>
+                        <p><strong>${isParcel ? 'Отправитель' : 'Пассажир'}:</strong> ${isParcel ? item.sender_name : item.passenger_name}</p>
+                        ${!isParcel ? `<p><strong>Время:</strong> ${item.time_interval}</p>` : ''}
                     </div>
-                    <div class="text-lg font-semibold">${offer.price} ₽</div>
-                </div>
-                 <div class="flex justify-between items-center mt-2">
-                    <span class="text-sm font-semibold px-2.5 py-0.5 rounded-full ${statusClasses[booking.status]}">${statusText[booking.status]}</span>
-                    ${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-sm text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}
-                </div>
-            `;
-        },
-        
-        getMyRequestCard(request) {
-            return `
-                 <div class="flex justify-between items-start">
-                    <div>
-                        <div class="font-bold text-lg">${request.from} → ${request.to}</div>
-                        <div class="text-sm text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div>
+                    <div class="flex items-center gap-2">
+                        ${isParcel ? `<div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div>` : `<div class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Пассажир</div>`}
                     </div>
-                    <div class="text-lg font-semibold">${request.price} ₽</div>
-                </div>
-                <div class="flex justify-end items-center mt-2">
-                    <button class="cancel-request-btn text-sm text-red-600 hover:underline" data-request-id="${request.id}">Отменить заявку</button>
-                </div>
-            `;
-        },
-        
-        getOfferFormTemplate() {
-            return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Данные о поездке</h2><form id="offer-form" class="space-y-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${this.config.routes.koz_yo.from}" data-to="${this.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">КЗМ → ЙО</button><button type="button" data-from="${this.config.routes.koz_yo.to}" data-to="${this.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><div class="space-y-2"><div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-cheboksary-toggle" class="text-slate-700 font-medium cursor-pointer flex-grow">До/Из Чебоксар</label><div class="flex items-center space-x-3"><span id="cheboksary-price" class="text-slate-800 font-semibold hidden">(${this.config.prices.cheboksary} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-cheboksary-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div><div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-ferry-toggle" class="text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label><div class="flex items-center space-x-3"><span id="ferry-price-increase" class="text-slate-800 font-semibold hidden">(+${this.config.prices.ferrySurcharge} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-ferry-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div></div><div class="grid grid-cols-2 gap-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Дата</label><input type="date" name="date" id="date-offer" class="w-full p-3 border border-slate-200 rounded-lg" required></div><div><label class="block text-sm font-medium text-slate-600 mb-2">Время</label><input type="time" name="time" id="time-offer" class="w-full p-3 border border-slate-200 rounded-lg" required></div></div><input type="hidden" name="driverName" id="driver-name"><input type="hidden" name="driverCar" id="driver-car"><div><label class="block text-sm font-medium text-slate-600 mb-2">Количество мест</label><input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Например: 3" required></div><button type="submit" class="btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Опубликовать (<span id="publish-price">${this.config.prices.base}</span> ₽)</button></form></div>`;
-        },
-        
-        getPassengerRequestFormTemplate() {
-            return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Ваша заявка</h2><form id="passenger-request-form" class="space-y-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${this.config.routes.koz_yo.from}" data-to="${this.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">КЗМ → ЙО</button><button type="button" data-from="${this.config.routes.koz_yo.to}" data-to="${this.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><input type="date" name="date" id="date-request" class="w-full p-3 border border-slate-200 rounded-lg" required><div><label class="block text-sm font-medium text-slate-600 mb-2">Желаемое время выезда</label><div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2"><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">04-06</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">06-08</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">08-10</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">10-12</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">12-14</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">14-16</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">16-18</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">18-20</button></div><input type="hidden" name="timeInterval" id="timeIntervalInput" required><div class="form-error-time text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите время</div></div><button type="submit" class="btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button></form></div>`;
-        },
-        
-        getParcelRequestFormTemplate() {
-            return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Отправить посылку</h2><form id="parcel-request-form" class="space-y-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${this.config.routes.koz_yo.from}" data-to="${this.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">КЗМ → ЙО</button><button type="button" data-from="${this.config.routes.koz_yo.to}" data-to="${this.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><div><label for="date-parcel" class="block text-sm font-medium text-slate-600 mb-2">Дата отправки</label><input type="date" name="date" id="date-parcel" class="w-full p-3 border border-slate-200 rounded-lg" required></div><div class="bg-slate-100 p-3 rounded-lg text-center text-slate-600">Стоимость отправки: <span class="font-bold">${this.config.prices.parcel} ₽</span></div><button type="submit" class="btn w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">Создать заявку на посылку</button></form></div>`;
-        },
-        
-        getProfileFormTemplate() {
-            return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Профиль водителя</h2><p class="text-slate-600 mb-4 text-sm">Эти данные будут автоматически подставляться при создании поездки.</p><form id="profile-form" class="space-y-4"><div><label for="profile-name" class="block text-sm font-medium text-slate-600 mb-2">Ваше имя</label><input type="text" name="fullName" id="profile-name" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Алексей" required></div><div><label for="profile-car" class="block text-sm font-medium text-slate-600 mb-2">Марка и модель машины</label><input type="text" name="driverCar" id="profile-car" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Kia Rio" required></div><button type="submit" class="btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button></form></div>`;
-        },
+                    <a href="https://t.me/${isParcel ? item.sender_username : item.passenger_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">Связаться</a>
+                `;
+            },
+            
+            getMyDriverOfferCard(offer) {
+                const confirmedBookings = offer.bookings.filter(b => b.status === 'confirmed');
+                const pendingBookings = offer.bookings.filter(b => b.status === 'pending');
+                const seatsLeft = offer.seats - confirmedBookings.length;
 
+                let bookingsHtml = '<div class="text-sm text-slate-500">Пока нет пассажиров.</div>';
+                if (offer.bookings.length > 0) {
+                    bookingsHtml = `
+                        ${pendingBookings.length > 0 ? `
+                            <h4 class="font-semibold mt-2">Заявки на бронирование:</h4>
+                            <div class="space-y-2">
+                                ${pendingBookings.map(b => `
+                                    <div class="flex justify-between items-center bg-amber-50 p-2 rounded-lg">
+                                        <span>${b.profiles?.full_name || 'Пассажир'}</span>
+                                        <div class="flex gap-2">
+                                            <button class="accept-booking-btn bg-green-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Принять</button>
+                                            <button class="reject-booking-btn bg-red-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Отклонить</button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                        ${confirmedBookings.length > 0 ? `
+                            <h4 class="font-semibold mt-2">Подтвержденные пассажиры:</h4>
+                            <ul class="list-disc list-inside">
+                                ${confirmedBookings.map(b => `<li>${b.profiles?.full_name || 'Пассажир'}</li>`).join('')}
+                            </ul>
+                        ` : ''}
+                    `;
+                }
+
+                return `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-lg">${offer.from} → ${offer.to}</div>
+                            <div class="text-sm text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
+                        </div>
+                        <div class="text-lg font-semibold">${offer.price} ₽</div>
+                    </div>
+                    <div class="text-slate-600">
+                         <p><strong>Свободно мест:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsLeft} из ${offer.seats}</span></p>
+                    </div>
+                    <div class="border-t border-slate-100 pt-2 mt-2">
+                        ${bookingsHtml}
+                    </div>
+                    <button class="delete-offer-btn btn w-full bg-red-50 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 transition-colors mt-2" data-offer-id="${offer.id}">Удалить поездку</button>
+                `;
+            },
+            
+            getMyBookingCard(booking) {
+                const offer = booking.ride_offers;
+                const statusClasses = {
+                    pending: 'bg-amber-100 text-amber-800',
+                    confirmed: 'bg-green-100 text-green-800',
+                    rejected: 'bg-red-100 text-red-800'
+                };
+                const statusText = {
+                    pending: 'Ожидает подтверждения',
+                    confirmed: 'Водитель подтвердил',
+                    rejected: 'Водитель отклонил'
+                };
+                return `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-bold text-lg">${offer.from} → ${offer.to}</div>
+                            <div class="text-sm text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
+                            <div class="text-sm text-slate-500">Водитель: ${offer.driver_name} (${offer.driver_car})</div>
+                        </div>
+                        <div class="text-lg font-semibold">${offer.price} ₽</div>
+                    </div>
+                     <div class="flex justify-between items-center mt-2">
+                        <span class="text-sm font-semibold px-2.5 py-0.5 rounded-full ${statusClasses[booking.status]}">${statusText[booking.status]}</span>
+                        ${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-sm text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}
+                    </div>
+                `;
+            },
+            
+            getMyRequestCard(request) {
+                return `
+                     <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-bold text-lg">${request.from} → ${request.to}</div>
+                            <div class="text-sm text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div>
+                        </div>
+                        <div class="text-lg font-semibold">${request.price} ₽</div>
+                    </div>
+                    <div class="flex justify-end items-center mt-2">
+                        <button class="cancel-request-btn text-sm text-red-600 hover:underline" data-request-id="${request.id}">Отменить заявку</button>
+                    </div>
+                `;
+            },
+            
+            getOfferFormTemplate() {
+                return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Данные о поездке</h2><form id="offer-form" class="space-y-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><div class="space-y-2"><div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-cheboksary-toggle" class="text-slate-700 font-medium cursor-pointer flex-grow">До/Из Чебоксар</label><div class="flex items-center space-x-3"><span id="cheboksary-price" class="text-slate-800 font-semibold hidden">(${App.config.prices.cheboksary} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-cheboksary-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div><div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-ferry-toggle" class="text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label><div class="flex items-center space-x-3"><span id="ferry-price-increase" class="text-slate-800 font-semibold hidden">(+${App.config.prices.ferrySurcharge} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-ferry-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div></div><div class="grid grid-cols-2 gap-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Дата</label><input type="date" name="date" id="date-offer" class="w-full p-3 border border-slate-200 rounded-lg" required></div><div><label class="block text-sm font-medium text-slate-600 mb-2">Время</label><input type="time" name="time" id="time-offer" class="w-full p-3 border border-slate-200 rounded-lg" required></div></div><input type="hidden" name="driverName" id="driver-name"><input type="hidden" name="driverCar" id="driver-car"><div><label class="block text-sm font-medium text-slate-600 mb-2">Количество мест</label><input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Например: 3" required></div><button type="submit" class="btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Опубликовать (<span id="publish-price">${App.config.prices.base}</span> ₽)</button></form></div>`;
+            },
+            
+            getPassengerRequestFormTemplate() {
+                return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Ваша заявка</h2><form id="passenger-request-form" class="space-y-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><input type="date" name="date" id="date-request" class="w-full p-3 border border-slate-200 rounded-lg" required><div><label class="block text-sm font-medium text-slate-600 mb-2">Желаемое время выезда</label><div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2"><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">04-06</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">06-08</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">08-10</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">10-12</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">12-14</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">14-16</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">16-18</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-sm">18-20</button></div><input type="hidden" name="timeInterval" id="timeIntervalInput" required><div class="form-error-time text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите время</div></div><button type="submit" class="btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button></form></div>`;
+            },
+            
+            getParcelRequestFormTemplate() {
+                return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Отправить посылку</h2><form id="parcel-request-form" class="space-y-4"><div><label class="block text-sm font-medium text-slate-600 mb-2">Направление</label><div class="direction-buttons p-1 bg-slate-100 rounded-xl flex"><button type="button" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">КЗМ → ЙО</button><button type="button" data-from="${App.config.routes.koz_yo.to}" data-to="${App.config.routes.koz_yo.from}" class="role-btn btn flex-1 py-3 px-2 rounded-lg font-semibold text-slate-500 transition-colors text-center text-sm">ЙО → КЗМ</button></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-sm text-center mt-2 hidden">Пожалуйста, выберите направление</div></div><div><label for="date-parcel" class="block text-sm font-medium text-slate-600 mb-2">Дата отправки</label><input type="date" name="date" id="date-parcel" class="w-full p-3 border border-slate-200 rounded-lg" required></div><div class="bg-slate-100 p-3 rounded-lg text-center text-slate-600">Стоимость отправки: <span class="font-bold">${App.config.prices.parcel} ₽</span></div><button type="submit" class="btn w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">Создать заявку на посылку</button></form></div>`;
+            },
+            
+            getProfileFormTemplate() {
+                return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Профиль водителя</h2><p class="text-slate-600 mb-4 text-sm">Эти данные будут автоматически подставляться при создании поездки.</p><form id="profile-form" class="space-y-4"><div><label for="profile-name" class="block text-sm font-medium text-slate-600 mb-2">Ваше имя</label><input type="text" name="fullName" id="profile-name" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Алексей" required></div><div><label for="profile-car" class="block text-sm font-medium text-slate-600 mb-2">Марка и модель машины</label><input type="text" name="driverCar" id="profile-car" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Kia Rio" required></div><button type="submit" class="btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button></form></div>`;
+            },
+        },
+        
         // --- UTILITY FUNCTIONS ---
         utils: {
             formatDate(dateString) {
