@@ -314,15 +314,36 @@
             },
 
             async onViewDriverOffers() {
-                const { data, error } = await supabaseClient.from('ride_offers_with_seats')
+                const { data: offers, error: offersError } = await supabaseClient.from('ride_offers_with_seats')
                     .select('*')
                     .gte('ride_date', new Date().toISOString().split('T')[0])
                     .gt('seats_left', 0)
                     .order('ride_date', { ascending: true })
                     .order('ride_time', { ascending: true });
 
-                if (error) { console.error(error); return; }
-                this.render.list(data, 'driverOffer');
+                if (offersError) { console.error(offersError); return; }
+
+                const { data: userBookings, error: bookingsError } = await supabaseClient.from('bookings')
+                    .select('id, offer_id')
+                    .eq('passenger_id', this.state.currentUser.id);
+
+                if (bookingsError) { console.error("Error fetching user bookings:", bookingsError); }
+
+                const userBookingsMap = new Map();
+                if (userBookings) {
+                    userBookings.forEach(b => {
+                        userBookingsMap.set(b.offer_id, b.id);
+                    });
+                }
+
+                const augmentedOffers = offers.map(offer => {
+                    return {
+                        ...offer,
+                        currentUserBookingId: userBookingsMap.get(offer.id) || null
+                    };
+                });
+
+                this.render.list(augmentedOffers, 'driverOffer');
                 this.navigation.to('list-screen', 'Поездки водителей');
             },
 
@@ -539,7 +560,13 @@
             async onCancelBooking(bookingId) {
                 const { error } = await supabaseClient.from('bookings').delete().eq('id', bookingId);
                 if (error) { console.error('Failed to cancel booking'); return; }
-                this.handlers.onMyTripsClick();
+                
+                const currentScreen = this.state.navigationHistory[this.state.navigationHistory.length - 1];
+                if (currentScreen === 'list-screen') {
+                    this.handlers.onViewDriverOffers();
+                } else {
+                    this.handlers.onMyTripsClick();
+                }
             },
             
             async onDeleteOffer(offerId) {
@@ -750,9 +777,26 @@
             getDriverOfferCard(item) {
                 const seatsLeft = item.seats_left;
                 const seatsText = seatsLeft === 1 ? '1 место' : (seatsLeft > 1 && seatsLeft < 5 ? `${seatsLeft} места` : `${seatsLeft} мест`);
-                const buttonDisabled = seatsLeft <= 0 ? 'disabled' : '';
-                const buttonClass = seatsLeft <= 0 ? 'bg-slate-300' : 'bg-blue-500 hover:bg-blue-600';
-                const buttonText = seatsLeft <= 0 ? 'Мест нет' : 'Забронировать';
+                
+                let buttonHtml = '';
+                if (item.currentUserBookingId) {
+                    buttonHtml = `
+                        <button class="cancel-booking-btn btn w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors text-sm"
+                            data-booking-id="${item.currentUserBookingId}">
+                            Отменить бронь
+                        </button>
+                    `;
+                } else {
+                    const buttonDisabled = seatsLeft <= 0 ? 'disabled' : '';
+                    const buttonClass = seatsLeft <= 0 ? 'bg-slate-300' : 'bg-blue-500 hover:bg-blue-600';
+                    const buttonText = seatsLeft <= 0 ? 'Мест нет' : 'Забронировать';
+                    buttonHtml = `
+                        <button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm ${buttonClass}"
+                            data-offer-id="${item.id}" ${buttonDisabled}>
+                            ${buttonText}
+                        </button>
+                    `;
+                }
 
                 return `
                     <div class="flex justify-between items-center">
@@ -766,10 +810,7 @@
                     </div>
                     ${item.via_ferry ? `<div class="text-xs font-semibold text-blue-800 bg-blue-100 rounded-full px-3 py-1 text-center">⛴️ Через паром</div>` : ''}
                     ${item.via_cheboksary ? `<div class="text-xs font-semibold text-green-800 bg-green-100 rounded-full px-3 py-1 text-center">До/Из Чебоксар</div>` : ''}
-                    <button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm ${buttonClass}"
-                        data-offer-id="${item.id}" ${buttonDisabled}>
-                        ${buttonText}
-                    </button>
+                    ${buttonHtml}
                 `;
             },
 
