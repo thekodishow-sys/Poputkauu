@@ -176,18 +176,19 @@
         <div id="toast" class="toast fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm p-4 rounded-lg shadow-lg text-white text-center z-50"><p id="toast-message"></p></div>
     </div>
     
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-    const SUPABASE_URL = 'https://scqkpvmmoaolahpxinja.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw';
-
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
     const App = {
         state: {
-            rideOffers: [],
-            rideRequests: [],
-            parcelRequests: [],
+            rideOffers: [ 
+                { id: 1, from: 'Козьмодемьянск', to: 'Йошкар-Ола', date: '2025-08-18', time: '08:30', seats: 2, price: 600, driver: { name: 'Алексей', car: 'Kia Rio' }, toCheboksary: true, passengers: [], parcels: [], viaFerry: false, takesParcel: true }, 
+                { id: 2, from: 'Йошкар-Ола', to: 'Козьмодемьянск', date: '2025-08-18', time: '12:30', seats: 3, price: 700, driver: { name: 'Елена', car: 'Hyundai Solaris' }, toCheboksary: false, passengers: [], parcels: [], viaFerry: true, takesParcel: false }, 
+            ],
+            rideRequests: [ 
+                { id: 1, from: 'Козьмодемьянск', to: 'Йошкар-Ола', date: '2025-08-19', timeInterval: '06:00-08:00', passenger: { name: 'Мария' }, toCheboksary: true, price: 400, viaFerry: false }, 
+            ],
+            parcelRequests: [
+                { id: 1, from: 'Козьмодемьянск', to: 'Йошкар-Ола', date: '2025-08-20', senderName: 'Отправитель', price: 300 },
+            ],
             chats: {}, 
             unreadChats: {}, 
             navigationHistory: [], 
@@ -558,66 +559,31 @@
 
         navigation: {
             to(screenId, title) {
-                const mainContent = document.getElementById('main-content');
-                const chatRoom = document.getElementById('chat-room-screen');
                 const currentScreenEl = document.querySelector('.screen.active');
-                const header = document.getElementById('app-header');
-
-                if (screenId !== 'login-screen' && screenId !== 'loading-screen') {
-                    header.classList.remove('hidden');
-                } else {
-                    header.classList.add('hidden');
-                }
-
-                if (currentScreenEl && !['success-screen', 'login-screen', 'loading-screen'].includes(currentScreenEl.id)) {
-                    this.state.navigationHistory.push({ id: currentScreenEl.id, title: document.getElementById('headerTitle').textContent });
+                if (currentScreenEl) {
+                    this.history.push({ id: currentScreenEl.id, title: document.getElementById('headerTitle').textContent });
                 }
 
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                
-                if (screenId === 'chat-room-screen') {
-                    mainContent.style.display = 'none';
-                    chatRoom.style.display = 'flex';
-                    chatRoom.classList.add('active');
-                    delete App.state.unreadChats[App.state.currentChatPartner];
-                    App.render.updateNavBadge();
-                    App.render.chatRoom(App.state.currentChatPartner);
-                } else {
-                    mainContent.style.display = 'block';
-                    chatRoom.style.display = 'none';
-                    document.getElementById(screenId).classList.add('active');
-                    if (screenId === 'driver-dashboard-screen') App.render.driverDashboard();
-                    if (screenId === 'chat-list-screen') App.render.chatList();
-                    if (screenId === 'passenger-request-screen' || screenId === 'offer-screen') {
-                        App.render.populateUserData(screenId);
-                    }
-                }
-
+                document.getElementById(screenId).classList.add('active');
                 document.getElementById('headerTitle').textContent = title;
-                document.getElementById('backButton').classList.toggle('invisible', screenId === 'main-screen' || this.state.navigationHistory.length === 0);
+                document.getElementById('backButton').classList.toggle('invisible', this.history.length === 0);
+                
+                if (screenId === 'passenger-request-screen' || screenId === 'offer-screen') {
+                    App.render.populateUserData(screenId);
+                }
+                if (screenId === 'driver-dashboard-screen') App.render.driverDashboard();
             },
             back() {
-                const lastScreen = this.state.navigationHistory.pop();
-                const mainContent = document.getElementById('main-content');
-                const chatRoom = document.getElementById('chat-room-screen');
-                
-                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                
-                mainContent.style.display = 'block';
-                chatRoom.style.display = 'none';
-
+                const lastScreen = this.history.pop();
                 if (lastScreen) {
+                    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                     document.getElementById(lastScreen.id).classList.add('active');
                     document.getElementById('headerTitle').textContent = lastScreen.title;
-                    if (lastScreen.id === 'driver-dashboard-screen') App.render.driverDashboard();
-                    if (lastScreen.id === 'chat-list-screen') App.render.chatList();
-                } else {
-                    document.getElementById('main-screen').classList.add('active');
-                    document.getElementById('headerTitle').textContent = 'Попутка 12';
                 }
-
-                document.getElementById('backButton').classList.toggle('invisible', this.state.navigationHistory.length === 0);
+                document.getElementById('backButton').classList.toggle('invisible', this.history.length === 0);
             },
+            history: []
         },
 
         render: {
@@ -813,8 +779,6 @@
         }
     };
 
-    // Bind navigation history to the navigation object itself
-    App.navigation.history = App.state.navigationHistory;
     document.addEventListener('DOMContentLoaded', () => App.init());
     </script>
 </body>
