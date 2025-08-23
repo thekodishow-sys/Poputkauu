@@ -17,9 +17,15 @@
             display: none;
             animation: fadeIn 0.3s ease-in-out;
         }
+        /* FIXED: Reverted default screen display to block */
         .screen.active {
-            display: flex; /* Changed to flex for chat layout */
+            display: block;
+        }
+        /* FIXED: Applied flex layout only to the chat screen */
+        #chat-screen.active {
+            display: flex;
             flex-direction: column;
+            height: 100%;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
@@ -110,6 +116,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
     const SUPABASE_URL = 'https://scqkpvmmoaolahpxinja.supabase.co';
+    // FIXED: Исправлена опечатка в ключе
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
