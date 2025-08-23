@@ -112,14 +112,10 @@
                 this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
             } catch (e) {
                 console.warn("Telegram WebApp script not found or running in browser.");
-                // IMPORTANT: Use a valid UUID for testing. You can generate one online.
-                this.state.currentUser = { id: '00000000-0000-0000-0000-000000000001', first_name: 'Тест', username: 'testuser' };
+                this.state.currentUser = { id: 12345, first_name: 'Тест', username: 'testuser' };
             }
             
-            if (this.state.currentUser) {
-                await this.ensureUserProfile();
-            }
-            
+            await this.fetchUserProfile();
             this.bindHandlers(); // Bind event handlers context
             this.render.allScreens();
             this.bindEvents();
@@ -127,47 +123,22 @@
         },
 
         // --- USER PROFILE ---
-        async ensureUserProfile() {
+        async fetchUserProfile() {
             if (!this.state.currentUser) return;
-
-            // Use upsert to create a profile if it doesn't exist, or do nothing if it does.
-            // It only sets the name if it's currently null.
             const { data, error } = await supabaseClient
                 .from('profiles')
-                .upsert({
-                    id: this.state.currentUser.id,
-                    username: this.state.currentUser.username
-                })
-                .select()
+                .select('*')
+                .eq('id', this.state.currentUser.id)
                 .single();
-
-            if (error) {
-                console.error('Error ensuring user profile:', error);
-                this.showToast('Ошибка инициализации профиля', 'error');
-                return;
-            }
-            
-            this.state.userProfile = data;
-
-            // If the full_name is not set in the profile, set it from Telegram data
-            if (!this.state.userProfile.full_name && this.state.currentUser.first_name) {
-                const { data: updatedProfile, error: updateError } = await supabaseClient
-                    .from('profiles')
-                    .update({ full_name: this.state.currentUser.first_name })
-                    .eq('id', this.state.currentUser.id)
-                    .select()
-                    .single();
-                if (updateError) {
-                     console.error('Error setting default name:', updateError);
-                } else {
-                    this.state.userProfile = updatedProfile;
-                }
+            if (data) {
+                this.state.userProfile = data;
+            } else if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+                console.error('Error fetching profile:', error);
             }
         },
 
         // --- HANDLER BINDING ---
         bindHandlers() {
-            // This ensures that 'this' inside handler functions refers to the App object
             for (const key in this.handlers) {
                 if (typeof this.handlers[key] === 'function') {
                     this.handlers[key] = this.handlers[key].bind(this);
@@ -209,13 +180,13 @@
                     'continue-btn': () => this.state.userRole && this.navigation.to('route-selection-screen', 'Выберите маршрут'),
                     'backButton': () => this.navigation.back(),
                     'select-route-koz-yo': () => this.handlers.onRouteSelect(dataset.from, dataset.to),
-                    'view-driver-offers-btn': this.handlers.onViewDriverOffers,
+                    'view-driver-offers-btn': () => this.handlers.onViewDriverOffers(),
                     'create-passenger-request-btn': () => this.navigation.to('passenger-request-screen', 'Заявка на поездку'),
                     'send-parcel-btn': () => this.navigation.to('parcel-request-screen', 'Отправить посылку'),
-                    'view-passenger-requests-btn': this.handlers.onViewPassengerRequests,
-                    'publish-ride-btn': this.handlers.onPublishRideClick,
-                    'my-trips-btn': this.handlers.onMyTripsClick,
-                    'back-to-hub-btn': this.handlers.onBackToHub,
+                    'view-passenger-requests-btn': () => this.handlers.onViewPassengerRequests(),
+                    'publish-ride-btn': () => this.handlers.onPublishRideClick(),
+                    'my-trips-btn': () => this.handlers.onMyTripsClick(),
+                    'back-to-hub-btn': () => this.handlers.onBackToHub(),
                     'edit-profile-btn': () => this.navigation.to('profile-screen', 'Мой профиль'),
                 };
 
@@ -225,6 +196,7 @@
                 }
 
                 // Dynamic buttons with data attributes
+                if (classList.contains('start-chat-btn')) this.handlers.onStartChat(dataset);
                 if (classList.contains('request-booking-btn')) this.handlers.onRequestBooking(dataset.offerId);
                 if (classList.contains('cancel-booking-btn')) this.handlers.onCancelBooking(dataset.bookingId);
                 if (classList.contains('accept-booking-btn')) this.handlers.onUpdateBookingStatus(dataset.bookingId, 'confirmed');
@@ -278,7 +250,7 @@
                 form.querySelector('.form-error-time').classList.add('hidden');
             },
             
-            onPublishRideClick() {
+            async onPublishRideClick() {
                 if (!this.state.userProfile?.driver_car || !this.state.userProfile?.full_name) {
                     this.showToast('Пожалуйста, заполните профиль водителя', 'error');
                     this.navigation.to('profile-screen', 'Мой профиль');
@@ -295,7 +267,7 @@
                     .order('ride_date', { ascending: true })
                     .order('ride_time', { ascending: true });
 
-                if (error) { this.showToast('Ошибка загрузки поездок', 'error'); console.error(error); return; }
+                if (error) { this.showToast('Ошибка загрузки поездок', 'error'); return; }
                 this.render.list(data, 'driverOffer');
                 this.navigation.to('list-screen', 'Поездки водителей');
             },
@@ -307,7 +279,7 @@
                 const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
                     .select('*').gte('ride_date', today).order('ride_date', { ascending: true });
 
-                if (ridesError || parcelsError) { this.showToast('Ошибка загрузки заявок', 'error'); console.error(ridesError || parcelsError); return; }
+                if (ridesError || parcelsError) { this.showToast('Ошибка загрузки заявок', 'error'); return; }
                 const allRequests = [
                     ...rides.map(r => ({...r, type: 'ride'})), 
                     ...parcels.map(p => ({...p, type: 'parcel'}))
@@ -324,15 +296,17 @@
                 container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
 
                 if (this.state.userRole === 'driver') {
+                    // Fetch driver's offers and related bookings
                     const { data: offers, error } = await supabaseClient.from('ride_offers')
                         .select(`*, bookings(*, profiles(full_name))`)
                         .eq('driver_id', this.state.currentUser.id)
                         .gte('ride_date', new Date().toISOString().split('T')[0])
                         .order('ride_date', { ascending: true });
                     
-                    if (error) { this.showToast('Ошибка загрузки ваших поездок', 'error'); console.error(error); return; }
+                    if (error) { this.showToast('Ошибка загрузки ваших поездок', 'error'); return; }
                     this.render.myTrips(offers, 'driver');
                 } else { // Passenger
+                    // Fetch passenger's bookings and requests
                     const { data: bookings, error: bookingsError } = await supabaseClient.from('bookings')
                         .select(`*, ride_offers(*)`)
                         .eq('passenger_id', this.state.currentUser.id)
@@ -345,7 +319,7 @@
                         .gte('ride_date', new Date().toISOString().split('T')[0])
                         .order('created_at', { ascending: false });
 
-                    if (bookingsError || requestsError) { this.showToast('Ошибка загрузки ваших поездок', 'error'); console.error(bookingsError || requestsError); return; }
+                    if (bookingsError || requestsError) { this.showToast('Ошибка загрузки ваших поездок', 'error'); return; }
                     this.render.myTrips({ bookings, requests }, 'passenger');
                 }
             },
@@ -368,7 +342,7 @@
                     price: finalPrice, driver_name: this.state.userProfile.full_name, driver_car: this.state.userProfile.driver_car,
                     via_cheboksary: viaCheboksary, via_ferry: viaFerry
                 });
-                if (error) { this.showToast('Ошибка публикации', 'error'); console.error(error); return; }
+                if (error) { this.showToast('Ошибка публикации', 'error'); return; }
                 this.resetForm(form);
                 this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет');
             },
@@ -383,9 +357,9 @@
                 const { error } = await supabaseClient.from('ride_requests').insert({
                     passenger_id: this.state.currentUser.id, passenger_username: this.state.currentUser.username,
                     "from": formData.get('from'), "to": formData.get('to'), ride_date: formData.get('date'),
-                    time_interval: formData.get('timeInterval'), passenger_name: this.state.userProfile.full_name, price: this.config.prices.base
+                    time_interval: formData.get('timeInterval'), passenger_name: this.state.currentUser.first_name, price: this.config.prices.base
                 });
-                if (error) { this.showToast('Ошибка создания заявки', 'error'); console.error(error); return; }
+                if (error) { this.showToast('Ошибка создания заявки', 'error'); return; }
                 this.resetForm(form);
                 this.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично');
             },
@@ -396,9 +370,9 @@
                 const { error } = await supabaseClient.from('parcel_requests').insert({
                     sender_id: this.state.currentUser.id, sender_username: this.state.currentUser.username,
                     "from": formData.get('from'), "to": formData.get('to'), ride_date: formData.get('date'),
-                    sender_name: this.state.userProfile.full_name, price: this.config.prices.parcel
+                    sender_name: this.state.currentUser.first_name, price: this.config.prices.parcel
                 });
-                if (error) { this.showToast('Ошибка создания заявки', 'error'); console.error(error); return; }
+                if (error) { this.showToast('Ошибка создания заявки', 'error'); return; }
                 this.resetForm(form);
                 this.render.success('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично');
             },
@@ -409,16 +383,14 @@
                 const driverCar = formData.get('driverCar').trim();
                 if (!fullName || !driverCar) { this.showToast('Все поля обязательны', 'error'); return; }
 
-                const { data, error } = await supabaseClient.from('profiles')
-                    .update({
-                        full_name: fullName,
-                        driver_car: driverCar
-                    })
-                    .eq('id', this.state.currentUser.id)
-                    .select()
-                    .single();
+                const { data, error } = await supabaseClient.from('profiles').upsert({
+                    id: this.state.currentUser.id,
+                    full_name: fullName,
+                    driver_car: driverCar,
+                    username: this.state.currentUser.username
+                }).select().single();
 
-                if (error) { this.showToast('Ошибка сохранения профиля', 'error'); console.error(error); return; }
+                if (error) { this.showToast('Ошибка сохранения профиля', 'error'); return; }
                 this.state.userProfile = data;
                 this.showToast('Профиль сохранен!', 'success');
                 this.navigation.back();
@@ -436,7 +408,7 @@
                     passenger_id: this.state.currentUser.id,
                     status: 'pending'
                 });
-                if (error) { this.showToast('Не удалось отправить заявку', 'error'); console.error(error); return; }
+                if (error) { this.showToast('Не удалось отправить заявку', 'error'); return; }
                 this.render.success('Заявка отправлена', 'Водитель рассмотрит вашу заявку. Вы можете отслеживать ее статус в разделе "Мои поездки".', 'Отлично');
             },
             
@@ -525,7 +497,6 @@
                     'driver-dashboard-screen': 'Кабинет водителя',
                     'list-screen': document.getElementById('headerTitle').textContent, // Keep previous list title
                     'my-trips-screen': 'Мои поездки',
-                    'profile-screen': 'Мой профиль'
                 };
                 const title = titles[lastScreen] || 'Попутка 12';
                 
@@ -752,9 +723,6 @@
             
             getMyBookingCard(booking) {
                 const offer = booking.ride_offers;
-                if (!offer) {
-                    return `<div class="text-red-500">Ошибка: данные о поездке не найдены. Возможно, она была удалена водителем.</div>`;
-                }
                 const statusClasses = {
                     pending: 'bg-amber-100 text-amber-800',
                     confirmed: 'bg-green-100 text-green-800',
