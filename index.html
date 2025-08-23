@@ -41,7 +41,7 @@
     <div id="app-container" class="h-screen w-screen max-w-md mx-auto bg-white flex flex-col">
         <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
             <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
             </button>
             <h1 id="headerTitle" class="text-lg font-semibold text-slate-800 text-center flex-grow">Попутка 12</h1>
             <div class="w-6"></div> <!-- Spacer -->
@@ -446,7 +446,7 @@
                     passenger_id: this.state.currentUser.id,
                     status: 'pending'
                 });
-                if (error) { this.showToast('Не удалось отправить заявку', 'error'); console.error(error); return; }
+                if (error) { this.showToast('Не удалось отправить заявку', 'error'); console.error('Booking insert error:', error); return; }
                 this.render.success('Заявка отправлена', 'Водитель рассмотрит вашу заявку. Вы можете отслеживать ее статус в разделе "Мои поездки".', 'Отлично');
             },
             
@@ -561,7 +561,7 @@
                     'parcel-request-screen': this.getParcelRequestFormTemplate(),
                     'list-screen': `<div class="p-5"><div id="list-container" class="space-y-3"></div><div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-lg font-semibold"></h3><p id="no-results-text" class="text-sm"></p></div></div>`,
                     'success-screen': `<div class="p-5 flex flex-col items-center justify-center h-full text-center"><div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h2 id="success-title" class="text-2xl font-bold mt-4 mb-1"></h2><p id="success-text" class="text-slate-600 mb-8"></p><button id="back-to-hub-btn" class="btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button></div>`,
-                    'chat-screen': `<div class="flex-1 flex flex-col h-full"><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
+                    'chat-screen': `<div class="flex-1 flex flex-col h-full"><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
                     'my-trips-screen': `<div class="flex-1 flex flex-col"><div id="my-trips-container" class="p-5 space-y-4 flex-1"></div></div>`,
                     'profile-screen': this.getProfileFormTemplate(),
                 };
@@ -819,7 +819,7 @@
             },
             
             getProfileFormTemplate() {
-                return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Профиль водителя</h2><p class="text-slate-600 mb-4 text-sm">Эти данные будут автоматически подставляться при создании поездки.</p><form id="profile-form" class="space-y-4"><div><label for="profile-name" class="block text-sm font-medium text-slate-600 mb-2">Ваше имя</label><input type="text" name="fullName" id="profile-name" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Алексей" required></div><div><label for="profile-car" class="block text-sm font-medium text-slate-600 mb-2">Марка и модель машины</label><input type="text" name="driverCar" id="profile-car" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Kia Rio" required></div><button type="submit" class="btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button></form></div>`;
+                return `<div class="p-5"><h2 class="text-xl font-bold mb-4">Профиль водителя</h2><p class="text-slate-600 mb-4 text-sm">Эти данные будут автоматически подставляться при создании поездки.</p><form id="profile-form" class="space-y-4"><div><label for="profile-name" class="block text-sm font-medium text-slate-600 mb-2">Ваше имя</label><input type="text" name="fullName" id="profile-name" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Алексей" required></div><div><label for="profile-car" class="block text-sm font-medium text-slate-600 mb-2">Марка и модель машины</label><input type="text" name="driverCar" id="profile-car" class="w-full p-3 border border-slate-200 rounded-lg" placeholder="Kia Rio"></div><button type="submit" class="btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button></form></div>`;
             },
         },
         
