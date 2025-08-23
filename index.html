@@ -42,16 +42,6 @@
             background-color: #1e293b;
             color: white;
         }
-        .notification-badge {
-            position: absolute;
-            top: -2px;
-            right: -2px;
-            width: 8px;
-            height: 8px;
-            background-color: #ef4444;
-            border-radius: 9999px;
-            border: 1px solid white;
-        }
         .message {
             max-width: 75%;
             word-wrap: break-word;
@@ -79,7 +69,6 @@
             <div class="w-6"></div>
         </header>
 
-        <!-- FIXED: Removed padding from main container -->
         <main id="main-content" class="flex-grow overflow-y-auto relative">
             <div id="main-screen" class="screen active"></div>
             <div id="route-selection-screen" class="screen"></div>
@@ -149,24 +138,29 @@
         
         bindEvents() {
             document.body.addEventListener('click', (e) => {
-                const roleButton = e.target.closest('.role-btn');
-                if (roleButton && roleButton.parentElement.id === 'role-selector') {
+                const targetButton = e.target.closest('button');
+                if (!targetButton) return;
+
+                if (targetButton.matches('.role-btn') && targetButton.parentElement.id === 'role-selector') {
                     document.querySelectorAll('#role-selector .role-btn').forEach(btn => btn.classList.remove('active'));
-                    roleButton.classList.add('active');
-                    this.state.userRole = roleButton.dataset.role;
+                    targetButton.classList.add('active');
+                    this.state.userRole = targetButton.dataset.role;
                     document.getElementById('continue-btn').disabled = false;
+                    return;
                 }
-            });
 
-            document.getElementById('continue-btn').addEventListener('click', () => {
-                if (this.state.userRole) this.navigation.to('route-selection-screen', 'Выберите маршрут');
-            });
+                if (targetButton.id === 'continue-btn') {
+                    if (this.state.userRole) {
+                        this.navigation.to('route-selection-screen', 'Выберите маршрут');
+                    }
+                    return;
+                }
+                
+                if (targetButton.closest('#backButton')) {
+                    this.navigation.back();
+                    return;
+                }
 
-            document.getElementById('backButton').addEventListener('click', () => this.navigation.back());
-            
-            document.body.addEventListener('click', (e) => {
-                const target = e.target.closest('button');
-                if (!target) return;
                 const handlers = {
                     'select-route-koz-yo': this.handlers.onRouteSelect,
                     'view-driver-offers-btn': this.handlers.onViewDriverOffers,
@@ -181,10 +175,13 @@
                         this.navigation.to(screen, title);
                     },
                 };
-                if (handlers[target.id]) handlers[target.id].call(this, e);
-                if (target.closest('.direction-buttons')) this.handlers.onDirectionSelect.call(this, e);
-                if (target.closest('#time-interval-buttons')) this.handlers.onTimeSelect.call(this, e);
-                if (target.closest('.start-chat-btn')) this.handlers.onStartChat(e);
+
+                if (handlers[targetButton.id]) {
+                    handlers[targetButton.id].call(this, e);
+                }
+                if (targetButton.closest('.direction-buttons')) this.handlers.onDirectionSelect.call(this, e);
+                if (targetButton.closest('#time-interval-buttons')) this.handlers.onTimeSelect.call(this, e);
+                if (targetButton.closest('.start-chat-btn')) this.handlers.onStartChat.call(this, e);
             });
 
             document.body.addEventListener('submit', (e) => {
@@ -264,15 +261,23 @@
                 form.querySelector('.form-error-time').classList.add('hidden');
             },
             async onViewDriverOffers() { 
-                const { data, error } = await supabaseClient.from('ride_offers').select('*').order('ride_date', { ascending: true }).order('ride_time', { ascending: true });
+                const today = new Date().toISOString().split('T')[0];
+                const { data, error } = await supabaseClient.from('ride_offers')
+                    .select('*')
+                    .gte('ride_date', today) 
+                    .order('ride_date', { ascending: true })
+                    .order('ride_time', { ascending: true });
+
                 if (error) { this.showToast('Ошибка загрузки поездок', 'error'); console.error(error); return; }
                 this.state.rideOffers = data;
                 this.render.list(this.state.rideOffers, 'driverOffer'); 
                 this.navigation.to('list-screen', 'Поездки водителей'); 
             },
             async onViewPassengerRequests() { 
-                const { data: rides, error: ridesError } = await supabaseClient.from('ride_requests').select('*');
-                const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests').select('*');
+                const today = new Date().toISOString().split('T')[0];
+                const { data: rides, error: ridesError } = await supabaseClient.from('ride_requests').select('*').gte('ride_date', today);
+                const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests').select('*').gte('ride_date', today);
+
                 if (ridesError || parcelsError) { this.showToast('Ошибка загрузки заявок', 'error'); console.error(ridesError || parcelsError); return; }
                 const allRequests = [...rides.map(r => ({...r, type: 'ride'})), ...parcels.map(p => ({...p, type: 'parcel'}))];
                 allRequests.sort((a,b) => new Date(a.ride_date) - new Date(b.ride_date));
@@ -378,30 +383,30 @@
         
         navigation: {
             to(screenId, title) {
-                if (this.state.currentConversation.subscription) {
-                    supabaseClient.removeChannel(this.state.currentConversation.subscription);
-                    this.state.currentConversation.subscription = null;
+                if (App.state.currentConversation.subscription) {
+                    supabaseClient.removeChannel(App.state.currentConversation.subscription);
+                    App.state.currentConversation.subscription = null;
                 }
-                if (this.state.currentConversation.timer) {
-                    clearInterval(this.state.currentConversation.timer);
-                    this.state.currentConversation.timer = null;
+                if (App.state.currentConversation.timer) {
+                    clearInterval(App.state.currentConversation.timer);
+                    App.state.currentConversation.timer = null;
                 }
 
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                 document.getElementById(screenId).classList.add('active');
                 document.getElementById('headerTitle').textContent = title;
-                if (this.state.navigationHistory[this.state.navigationHistory.length - 1] !== screenId) {
-                    this.state.navigationHistory.push(screenId);
+                if (App.state.navigationHistory[App.state.navigationHistory.length - 1] !== screenId) {
+                    App.state.navigationHistory.push(screenId);
                 }
-                document.getElementById('backButton').classList.toggle('invisible', this.state.navigationHistory.length <= 1);
+                document.getElementById('backButton').classList.toggle('invisible', App.state.navigationHistory.length <= 1);
                 if (screenId === 'passenger-request-screen' || screenId === 'offer-screen') {
                     App.render.populateUserData(screenId);
                 }
                 document.getElementById('main-content').scrollTop = 0;
             },
             back() {
-                this.state.navigationHistory.pop();
-                const lastScreen = this.state.navigationHistory[this.state.navigationHistory.length - 1];
+                App.state.navigationHistory.pop();
+                const lastScreen = App.state.navigationHistory[App.state.navigationHistory.length - 1];
                 let title = 'Попутка 12';
                 if (lastScreen !== 'main-screen') {
                     const titles = {
@@ -418,7 +423,6 @@
 
         render: {
             allScreens() {
-                // FIXED: Added padding to each screen template individually
                 const templates = {
                     'main-screen': `<div class="p-5"><div class="text-center mb-8"><h2 class="text-2xl font-bold mb-1">Добро пожаловать!</h2><p class="text-slate-500">Выберите вашу роль</p></div><div id="role-selector" class="mb-6 p-1 bg-slate-100 rounded-xl flex"><button data-role="passenger" class="role-btn btn flex-1 py-3 px-4 rounded-lg font-semibold text-slate-500 transition-colors">Пассажир</button><button data-role="driver" class="role-btn btn flex-1 py-3 px-4 rounded-lg font-semibold text-slate-500 transition-colors">Водитель</button></div><button id="continue-btn" class="btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700 transition-all disabled:bg-slate-300 disabled:shadow-none disabled:cursor-not-allowed" disabled>Продолжить</button></div>`,
                     'route-selection-screen': `<div class="p-5"><div class="text-center mb-8"><h2 class="text-2xl font-bold mb-1">Выберите маршрут</h2></div><div class="space-y-4"><button id="select-route-koz-yo" data-from="Козьмодемьянск" data-to="Йошкар-Ола" class="btn w-full bg-slate-800 text-white font-bold py-4 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Козьмодемьянск &lt;—&gt; Йошкар-Ола</button></div></div>`,
