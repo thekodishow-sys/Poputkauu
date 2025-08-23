@@ -66,6 +66,13 @@
             transform: translateY(0);
         }
 
+        /* Filter Button Styles */
+        .filter-type-btn.active {
+            background-color: white;
+            color: #1e293b;
+            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        }
+
         /* Custom scrollbar for better look */
         #main-content::-webkit-scrollbar { width: 4px; }
         #main-content::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
@@ -141,6 +148,13 @@
             userRole: 'passenger', // Default role
             selectedRoute: null,
             navigationHistory: ['route-selection-screen'], // New default screen
+            allRequests: [], // To store the fetched requests
+            currentFilters: { // To store the current filter values
+                from: '',
+                to: '',
+                date: '',
+                type: 'all' // 'all', 'ride', 'parcel'
+            },
             currentConversation: {
                 id: null,
                 subscription: null
@@ -248,6 +262,11 @@
                     return;
                 }
 
+                if (button.classList.contains('filter-type-btn')) {
+                    this.handlers.onFilterTypeSelect(button);
+                    return;
+                }
+
                 const clickHandlers = {
                     'backButton': () => this.navigation.back(),
                     'select-route-koz-yo': () => this.handlers.onRouteSelect(dataset.from, dataset.to),
@@ -261,6 +280,8 @@
                     'profile-avatar-btn': () => this.navigation.to('profile-screen', 'Мой профиль'),
                     'booking-modal-cancel-btn': this.handlers.onBookingModalCancel,
                     'booking-modal-overlay': this.handlers.onBookingModalCancel,
+                    'apply-filters-btn': this.handlers.onApplyFilters,
+                    'reset-filters-btn': this.handlers.onResetFilters,
                 };
 
                 if (clickHandlers[id]) {
@@ -426,21 +447,59 @@
             },
 
             async onViewPassengerRequests() {
+                this.navigation.to('list-screen', 'Заявки от пассажиров');
+                const listContainer = document.getElementById('list-container');
+                listContainer.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
+                
                 const today = new Date().toISOString().split('T')[0];
+                const dateFilterInput = document.getElementById('filter-date');
+                if (dateFilterInput) {
+                    dateFilterInput.setAttribute('min', today);
+                }
+
                 const { data: rides, error: ridesError } = await supabaseClient.from('ride_requests')
                     .select('*').gte('ride_date', today).order('ride_date', { ascending: true });
                 const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
                     .select('*').gte('ride_date', today).order('ride_date', { ascending: true });
 
                 if (ridesError || parcelsError) { console.error(ridesError || parcelsError); return; }
+                
                 const allRequests = [
                     ...rides.map(r => ({...r, type: 'ride'})), 
                     ...parcels.map(p => ({...p, type: 'parcel'}))
                 ];
                 allRequests.sort((a, b) => new Date(a.ride_date) - new Date(b.ride_date));
                 
-                this.render.list(allRequests, 'passengerRequest');
-                this.navigation.to('list-screen', 'Заявки от пассажиров');
+                this.state.allRequests = allRequests;
+                this.handlers.onResetFilters();
+            },
+
+            onFilterTypeSelect(button) {
+                button.parentElement.querySelectorAll('.filter-type-btn').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+            },
+
+            onApplyFilters() {
+                const from = document.getElementById('filter-from').value;
+                const to = document.getElementById('filter-to').value;
+                const date = document.getElementById('filter-date').value;
+                const type = document.querySelector('#filter-type-buttons .active').dataset.type;
+
+                this.state.currentFilters = { from, to, date, type };
+                this.renderFilteredList();
+            },
+
+            onResetFilters() {
+                this.state.currentFilters = { from: '', to: '', date: '', type: 'all' };
+
+                document.getElementById('filter-from').value = '';
+                document.getElementById('filter-to').value = '';
+                document.getElementById('filter-date').value = '';
+                document.querySelectorAll('#filter-type-buttons .filter-type-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.type === 'all');
+                });
+
+                this.renderFilteredList();
             },
             
             async onMyTripsClick() {
@@ -802,7 +861,47 @@
                     'offer-screen': this.getOfferFormTemplate(),
                     'passenger-request-screen': this.getPassengerRequestFormTemplate(),
                     'parcel-request-screen': this.getParcelRequestFormTemplate(),
-                    'list-screen': `<div class="p-5"><div id="list-container" class="space-y-3"></div><div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-base font-semibold"></h3><p id="no-results-text" class="text-xs"></p></div></div>`,
+                    'list-screen': `
+                        <div class="p-4 space-y-4">
+                            <div id="list-filters" class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                                <h3 class="text-base font-semibold text-slate-800">Фильтры</h3>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label for="filter-from" class="block text-xs font-medium text-slate-600 mb-1">Откуда</label>
+                                        <select id="filter-from" name="from" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
+                                            <option value="">Любой</option>
+                                            ${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label for="filter-to" class="block text-xs font-medium text-slate-600 mb-1">Куда</label>
+                                        <select id="filter-to" name="to" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
+                                            <option value="">Любой</option>
+                                            ${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label for="filter-date" class="block text-xs font-medium text-slate-600 mb-1">Дата</label>
+                                    <input type="date" id="filter-date" name="date" class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Тип заявки</label>
+                                    <div id="filter-type-buttons" class="flex p-1 bg-slate-200 rounded-lg">
+                                        <button data-type="all" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600 active">Все</button>
+                                        <button data-type="ride" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Пассажиры</button>
+                                        <button data-type="parcel" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Посылки</button>
+                                    </div>
+                                </div>
+                                <div class="flex gap-3 pt-2">
+                                    <button id="reset-filters-btn" class="flex-1 text-sm btn border border-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-100">Сбросить</button>
+                                    <button id="apply-filters-btn" class="flex-1 text-sm btn bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700">Применить</button>
+                                </div>
+                            </div>
+                            <div id="list-container" class="space-y-3"></div>
+                            <div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-base font-semibold"></h3><p id="no-results-text" class="text-xs"></p></div>
+                        </div>
+                    `,
                     'success-screen': `<div class="p-5 flex flex-col items-center justify-center h-full text-center"><div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h2 id="success-title" class="text-xl font-bold mt-4 mb-1"></h2><p id="success-text" class="text-slate-600 mb-8 text-sm"></p><button id="back-to-hub-btn" class="text-sm btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button></div>`,
                     'chat-screen': `<div class="flex-1 flex flex-col h-full"><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
                     'my-trips-screen': `<div class="flex-1 flex flex-col"><div id="my-trips-container" class="p-5 space-y-4 flex-1"></div></div>`,
@@ -1337,7 +1436,27 @@
             if(detourContainer) {
                 detourContainer.classList.add('hidden');
             }
-        }
+        },
+
+        renderFilteredList() {
+            const { from, to, date, type } = this.state.currentFilters;
+            let filtered = [...this.state.allRequests];
+
+            if (from) {
+                filtered = filtered.filter(item => item.from === from);
+            }
+            if (to) {
+                filtered = filtered.filter(item => item.to === to);
+            }
+            if (date) {
+                filtered = filtered.filter(item => item.ride_date === date);
+            }
+            if (type !== 'all') {
+                filtered = filtered.filter(item => item.type === type);
+            }
+
+            this.render.list(filtered, 'passengerRequest');
+        },
     };
 
     // --- APP START ---
