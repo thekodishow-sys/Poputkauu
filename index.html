@@ -73,6 +73,24 @@
             box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
         }
 
+        /* Collapsible Filter Styles */
+        #filter-toggle-icon {
+            transition: transform 0.3s ease-in-out;
+        }
+        #filter-content {
+            max-height: 500px; /* Adjust as needed */
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+            opacity: 1;
+        }
+        #filter-content.collapsed {
+            max-height: 0;
+            opacity: 0;
+        }
+        #filter-toggle-btn.collapsed #filter-toggle-icon {
+            transform: rotate(-180deg);
+        }
+
         /* Custom scrollbar for better look */
         #main-content::-webkit-scrollbar { width: 4px; }
         #main-content::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
@@ -282,6 +300,7 @@
                     'booking-modal-overlay': this.handlers.onBookingModalCancel,
                     'apply-filters-btn': this.handlers.onApplyFilters,
                     'reset-filters-btn': this.handlers.onResetFilters,
+                    'filter-toggle-btn': this.handlers.onToggleFilter,
                 };
 
                 if (clickHandlers[id]) {
@@ -333,6 +352,13 @@
                 
                 this.state.navigationHistory = ['route-selection-screen'];
                 this.navigation.to(newScreen, newTitle);
+            },
+
+            onToggleFilter() {
+                const content = document.getElementById('filter-content');
+                const btn = document.getElementById('filter-toggle-btn');
+                content.classList.toggle('collapsed');
+                btn.classList.toggle('collapsed');
             },
 
             onRouteOptionChange(checkbox) {
@@ -413,6 +439,9 @@
             },
 
             async onViewDriverOffers() {
+                this.navigation.to('list-screen', 'Поездки водителей');
+                document.getElementById('filter-section-container').classList.add('hidden');
+
                 const { data: offers, error: offersError } = await supabaseClient.from('ride_offers_with_seats')
                     .select('*')
                     .gte('ride_date', new Date().toISOString().split('T')[0])
@@ -443,11 +472,12 @@
                 });
 
                 this.render.list(augmentedOffers, 'driverOffer');
-                this.navigation.to('list-screen', 'Поездки водителей');
             },
 
             async onViewPassengerRequests() {
                 this.navigation.to('list-screen', 'Заявки от пассажиров');
+                document.getElementById('filter-section-container').classList.remove('hidden');
+
                 const listContainer = document.getElementById('list-container');
                 listContainer.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
                 
@@ -863,39 +893,48 @@
                     'parcel-request-screen': this.getParcelRequestFormTemplate(),
                     'list-screen': `
                         <div class="p-4 space-y-4">
-                            <div id="list-filters" class="p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
-                                <h3 class="text-base font-semibold text-slate-800">Фильтры</h3>
-                                <div class="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label for="filter-from" class="block text-xs font-medium text-slate-600 mb-1">Откуда</label>
-                                        <select id="filter-from" name="from" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
-                                            <option value="">Любой</option>
-                                            ${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}
-                                        </select>
+                            <div id="filter-section-container" class="hidden">
+                                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                    <div class="flex justify-between items-center mb-3">
+                                        <h3 class="text-base font-semibold text-slate-800">Фильтры</h3>
+                                        <button id="filter-toggle-btn">
+                                            <svg id="filter-toggle-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><path d="m18 15-6-6-6 6"/></svg>
+                                        </button>
                                     </div>
-                                    <div>
-                                        <label for="filter-to" class="block text-xs font-medium text-slate-600 mb-1">Куда</label>
-                                        <select id="filter-to" name="to" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
-                                            <option value="">Любой</option>
-                                            ${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}
-                                        </select>
+                                    <div id="filter-content" class="space-y-3">
+                                        <div class="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label for="filter-from" class="block text-xs font-medium text-slate-600 mb-1">Откуда</label>
+                                                <select id="filter-from" name="from" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
+                                                    <option value="">Любой</option>
+                                                    ${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label for="filter-to" class="block text-xs font-medium text-slate-600 mb-1">Куда</label>
+                                                <select id="filter-to" name="to" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
+                                                    <option value="">Любой</option>
+                                                    ${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label for="filter-date" class="block text-xs font-medium text-slate-600 mb-1">Дата</label>
+                                            <input type="date" id="filter-date" name="date" class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                                        </div>
+                                        <div id="filter-type-container">
+                                            <label class="block text-xs font-medium text-slate-600 mb-1">Тип заявки</label>
+                                            <div id="filter-type-buttons" class="flex p-1 bg-slate-200 rounded-lg">
+                                                <button data-type="all" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600 active">Все</button>
+                                                <button data-type="ride" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Пассажиры</button>
+                                                <button data-type="parcel" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Посылки</button>
+                                            </div>
+                                        </div>
+                                        <div class="flex gap-3 pt-2">
+                                            <button id="reset-filters-btn" class="flex-1 text-sm btn border border-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-100">Сбросить</button>
+                                            <button id="apply-filters-btn" class="flex-1 text-sm btn bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700">Применить</button>
+                                        </div>
                                     </div>
-                                </div>
-                                <div>
-                                    <label for="filter-date" class="block text-xs font-medium text-slate-600 mb-1">Дата</label>
-                                    <input type="date" id="filter-date" name="date" class="w-full p-2 border border-slate-200 rounded-lg text-sm">
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1">Тип заявки</label>
-                                    <div id="filter-type-buttons" class="flex p-1 bg-slate-200 rounded-lg">
-                                        <button data-type="all" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600 active">Все</button>
-                                        <button data-type="ride" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Пассажиры</button>
-                                        <button data-type="parcel" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Посылки</button>
-                                    </div>
-                                </div>
-                                <div class="flex gap-3 pt-2">
-                                    <button id="reset-filters-btn" class="flex-1 text-sm btn border border-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-100">Сбросить</button>
-                                    <button id="apply-filters-btn" class="flex-1 text-sm btn bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700">Применить</button>
                                 </div>
                             </div>
                             <div id="list-container" class="space-y-3"></div>
@@ -943,7 +982,7 @@
                 if (!items || items.length === 0) {
                     noResults.classList.remove('hidden');
                     document.getElementById('no-results-title').textContent = type === 'driverOffer' ? 'Поездок не найдено' : 'Заявок не найдено';
-                    document.getElementById('no-results-text').textContent = type === 'driverOffer' ? 'Попробуйте зайти позже или оставьте свою заявку.' : 'Как только появятся новые заявки, вы их здесь увидите.';
+                    document.getElementById('no-results-text').textContent = type === 'driverOffer' ? 'Попробуйте зайти позже или оставьте свою заявку.' : 'По вашим фильтрам ничего не найдено.';
                     return;
                 }
                 noResults.classList.add('hidden');
@@ -1054,31 +1093,22 @@
                 const pricePart = App.config.prices.cheboksary;
 
                 container.innerHTML = `
-                    <button class="confirm-booking-segment-btn w-full text-center p-3 text-blue-500 text-lg"
-                        data-offer-id="${offer.id}"
-                        data-segment="full"
-                        data-price="${priceFull}"
-                        data-from="${offer.from}"
-                        data-to="${offer.to}">
-                        ${offer.from} → ${offer.to} (${priceFull} ₽)
+                    <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base"
+                        data-offer-id="${offer.id}" data-segment="full" data-price="${priceFull}" data-from="${offer.from}" data-to="${offer.to}">
+                        <span>${offer.from} → ${offer.to}</span>
+                        <span class="font-semibold">${priceFull} ₽</span>
                     </button>
                     <div class="h-px bg-slate-200"></div>
-                    <button class="confirm-booking-segment-btn w-full text-center p-3 text-blue-500 text-lg"
-                        data-offer-id="${offer.id}"
-                        data-segment="start_to_cheb"
-                        data-price="${pricePart}"
-                        data-from="${offer.from}"
-                        data-to="Чебоксары">
-                        ${offer.from} → Чебоксары (${pricePart} ₽)
+                    <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base"
+                        data-offer-id="${offer.id}" data-segment="start_to_cheb" data-price="${pricePart}" data-from="${offer.from}" data-to="Чебоксары">
+                        <span>${offer.from} → Чебоксары</span>
+                        <span class="font-semibold">${pricePart} ₽</span>
                     </button>
                     <div class="h-px bg-slate-200"></div>
-                     <button class="confirm-booking-segment-btn w-full text-center p-3 text-blue-500 text-lg"
-                        data-offer-id="${offer.id}"
-                        data-segment="cheb_to_end"
-                        data-price="${pricePart}"
-                        data-from="Чебоксары"
-                        data-to="${offer.to}">
-                        Чебоксары → ${offer.to} (${pricePart} ₽)
+                     <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base"
+                        data-offer-id="${offer.id}" data-segment="cheb_to_end" data-price="${pricePart}" data-from="Чебоксары" data-to="${offer.to}">
+                        <span>Чебоксары → ${offer.to}</span>
+                        <span class="font-semibold">${pricePart} ₽</span>
                     </button>
                 `;
 
