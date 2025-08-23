@@ -553,7 +553,7 @@
             },
             
             async onDeleteOffer(offerId) {
-                if (!confirm('Вы уверены, что хотите удалить эту поездку? Все бронирования будут отменены.')) return;
+                // REMOVED: if (!confirm('Вы уверены, что хотите удалить эту поездку? Все бронирования будут отменены.')) return;
                 const { error } = await supabaseClient.from('ride_offers').delete().eq('id', offerId);
                 if (error) { this.showToast('Ошибка удаления', 'error'); return; }
                 this.showToast('Поездка удалена', 'success');
@@ -561,7 +561,7 @@
             },
             
             async onCancelRequest(requestId) {
-                if (!confirm('Вы уверены, что хотите отменить заявку?')) return;
+                // REMOVED: if (!confirm('Вы уверены, что хотите отменить заявку?')) return;
                 const { error } = await supabaseClient.from('ride_requests').delete().eq('id', requestId);
                  if (error) { this.showToast('Ошибка отмены', 'error'); return; }
                 this.showToast('Заявка отменена', 'success');
@@ -995,8 +995,16 @@
             document.getElementById('toast-message').textContent = message;
             toast.className = 'toast fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-sm p-4 rounded-lg shadow-lg text-white text-center z-50';
             toast.classList.add(type === 'error' ? 'bg-red-500' : 'bg-green-500');
-            toast.classList.add('show');
-            if (this.state.toastTimeout) clearTimeout(this.state.toastTimeout);
+            
+            // Immediately apply the 'show' class to trigger the transition
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+
+            if (this.state.toastTimeout) {
+                clearTimeout(this.state.toastTimeout);
+            }
+
             this.state.toastTimeout = setTimeout(() => {
                 toast.classList.remove('show');
             }, 3000);
