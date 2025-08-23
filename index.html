@@ -93,7 +93,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
     const SUPABASE_URL = 'https://scqkpvmmoaolahpxinja.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzIıNiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw';
+    // FIXED: Исправлена опечатка в ключе (было 'HSUzIıNi', стало 'HS256')
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw';
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     const App = {
@@ -162,9 +163,12 @@
                     'send-parcel-btn': () => this.navigation.to('parcel-request-screen', 'Отправить посылку'),
                     'view-passenger-requests-btn': this.handlers.onViewPassengerRequests,
                     'publish-ride-btn': () => this.navigation.to('offer-screen', 'Новая поездка'),
+                    // FIXED: Исправлена логика кнопки "назад в кабинет" для корректной работы истории
                     'back-to-hub-btn': () => {
                         const screen = this.state.userRole === 'driver' ? 'driver-dashboard-screen' : 'passenger-home-screen';
                         const title = this.state.userRole === 'driver' ? 'Кабинет водителя' : 'Пассажир';
+                        // Сбрасываем историю навигации для чистого возврата
+                        this.state.navigationHistory = ['main-screen', 'route-selection-screen', screen];
                         this.navigation.to(screen, title);
                     },
                 };
