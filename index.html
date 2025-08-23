@@ -48,6 +48,12 @@
         #role-switcher.driver #role-passenger-icon { opacity: 0.4; }
         #role-switcher.driver #role-driver-icon { opacity: 1; }
 
+        #profile-avatar-btn img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
         /* Custom scrollbar for better look */
         #main-content::-webkit-scrollbar { width: 4px; }
         #main-content::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
@@ -58,18 +64,25 @@
 
     <div id="app-container" class="h-screen w-screen max-w-md mx-auto bg-white flex flex-col">
         <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
-            <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-            </button>
+            <div class="w-10 h-10 flex items-center justify-center">
+                 <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+            </div>
             <h1 id="headerTitle" class="text-base font-semibold text-slate-800 text-center flex-grow">Попутка 12</h1>
-            <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
-                <div id="role-bg"></div>
-                <div id="role-passenger-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
-                    <span>🧍</span>
+            <div class="flex items-center gap-3">
+                 <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
+                    <div id="role-bg"></div>
+                    <div id="role-passenger-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
+                        <span>🧍</span>
+                    </div>
+                    <div id="role-driver-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
+                        <span>🚗</span>
+                    </div>
                 </div>
-                <div id="role-driver-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
-                    <span>🚗</span>
-                </div>
+                <button id="profile-avatar-btn" class="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center overflow-hidden shrink-0">
+                    <!-- Avatar will be rendered here by JS -->
+                </button>
             </div>
         </header>
 
@@ -148,6 +161,7 @@
             this.render.updateRoleSwitcherUI();
             this.bindEvents();
             this.setDefaultDates();
+            this.render.updateAvatar();
         },
 
         // --- USER PROFILE ---
@@ -226,7 +240,7 @@
                     'publish-ride-btn': this.handlers.onPublishRideClick,
                     'my-trips-btn': this.handlers.onMyTripsClick,
                     'back-to-hub-btn': this.handlers.onBackToHub,
-                    'edit-profile-btn': () => this.navigation.to('profile-screen', 'Мой профиль'),
+                    'profile-avatar-btn': () => this.navigation.to('profile-screen', 'Мой профиль'),
                 };
 
                 if (clickHandlers[id]) {
@@ -667,8 +681,8 @@
             allScreens() {
                 const screenTemplates = {
                     'route-selection-screen': `<div class="p-5"><div class="text-center mb-8"><h2 class="text-xl font-bold mb-1">Выберите маршрут</h2></div><div class="space-y-4"><button id="select-route-koz-yo" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700 text-sm">${App.config.routes.koz_yo.from} &lt;—&gt; ${App.config.routes.koz_yo.to}</button></div></div>`,
-                    'passenger-home-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2></div><div class="space-y-3"><button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button><button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button><button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button><button id="edit-profile-btn" class="text-sm mt-4 btn w-full border border-blue-300 text-blue-800 font-bold py-3 px-4 rounded-xl hover:bg-blue-50">Мой профиль</button></div></div>`,
-                    'driver-dashboard-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Кабинет водителя</h2></div><div class="space-y-3"><button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button><button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button><button id="edit-profile-btn" class="text-sm mt-4 btn w-full border border-blue-300 text-blue-800 font-bold py-3 px-4 rounded-xl hover:bg-blue-50">Мой профиль</button></div></div>`,
+                    'passenger-home-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2></div><div class="space-y-3"><button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button><button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button><button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button></div></div>`,
+                    'driver-dashboard-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Кабинет водителя</h2></div><div class="space-y-3"><button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button><button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button></div></div>`,
                     'offer-screen': this.getOfferFormTemplate(),
                     'passenger-request-screen': this.getPassengerRequestFormTemplate(),
                     'parcel-request-screen': this.getParcelRequestFormTemplate(),
@@ -691,6 +705,19 @@
                 } else {
                     switcher.classList.add('passenger');
                     switcher.classList.remove('driver');
+                }
+            },
+            
+            updateAvatar() {
+                const avatarBtn = document.getElementById('profile-avatar-btn');
+                if (!avatarBtn) return;
+
+                const user = App.state.currentUser;
+                if (user?.photo_url) {
+                    avatarBtn.innerHTML = `<img src="${user.photo_url}" alt="Avatar">`;
+                } else {
+                    const initial = user?.first_name ? user.first_name.charAt(0).toUpperCase() : '?';
+                    avatarBtn.innerHTML = `<span>${initial}</span>`;
                 }
             },
             
