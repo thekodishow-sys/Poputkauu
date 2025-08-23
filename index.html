@@ -91,6 +91,7 @@
 
         // --- CONFIGURATION ---
         config: {
+            botToken: '8202443902:AAEMonQpK3FmOAh5Up4GPBmI89q1mHz8LpY', // <-- ВАШ ТОКЕН БОТА
             prices: {
                 base: 600,
                 parcel: 300,
@@ -447,12 +448,67 @@
                     status: 'pending'
                 });
                 if (error) { this.showToast('Не удалось отправить заявку', 'error'); console.error('Booking insert error:', error); return; }
+                
+                // --- Уведомление водителю ---
+                const { data: offer, error: offerError } = await supabaseClient.from('ride_offers').select('driver_id, from, to, ride_date').eq('id', offerId).single();
+                if (offer) {
+                    const passengerName = this.state.userProfile.full_name || 'Новый пассажир';
+                    const message = `
+*Новое бронирование!* 🚗
+
+Пассажир *${passengerName}* хочет забронировать место на вашу поездку:
+*Маршрут:* ${offer.from} → ${offer.to}
+*Дата:* ${this.utils.formatDate(offer.ride_date)}
+
+Пожалуйста, зайдите в приложение в раздел "Мои поездки", чтобы *принять* или *отклонить* заявку.
+                    `.trim();
+                    this.utils.sendTelegramNotification(offer.driver_id, message);
+                }
+                // --- Конец уведомления ---
+
                 this.render.success('Заявка отправлена', 'Водитель рассмотрит вашу заявку. Вы можете отслеживать ее статус в разделе "Мои поездки".', 'Отлично');
             },
             
             async onUpdateBookingStatus(bookingId, status) {
                 const { error } = await supabaseClient.from('bookings').update({ status }).eq('id', bookingId);
                 if (error) { this.showToast('Ошибка. Не удалось обновить статус.', 'error'); return; }
+                
+                // --- Уведомление пассажиру ---
+                const { data: booking, error: bookingError } = await supabaseClient
+                    .from('bookings')
+                    .select('passenger_id, ride_offers(from, to, ride_date, ride_time, driver_name, driver_car)')
+                    .eq('id', bookingId)
+                    .single();
+                
+                if (booking) {
+                    let message = '';
+                    const offer = booking.ride_offers;
+                    if (status === 'confirmed') {
+                        message = `
+*Ваше бронирование подтверждено!* ✅
+
+Водитель *${offer.driver_name}* подтвердил вашу поездку:
+*Маршрут:* ${offer.from} → ${offer.to}
+*Дата:* ${this.utils.formatDate(offer.ride_date)} в *${offer.ride_time}*
+*Авто:* ${offer.driver_car}
+
+Хорошей поездки!
+                        `.trim();
+                    } else if (status === 'rejected') {
+                        message = `
+*Ваше бронирование отклонено* ❌
+
+К сожалению, водитель отклонил вашу заявку на поездку:
+*Маршрут:* ${offer.from} → ${offer.to}
+*Дата:* ${this.utils.formatDate(offer.ride_date)}
+
+Вы можете найти другую поездку или оставить заявку.
+                        `.trim();
+                    }
+                    this.utils.sendTelegramNotification(booking.passenger_id, message);
+                }
+                // --- Конец уведомления ---
+
                 this.showToast(status === 'confirmed' ? 'Пассажир принят!' : 'Заявка отклонена.', 'success');
                 this.handlers.onMyTripsClick(); // Refresh the list
             },
@@ -836,6 +892,34 @@
                 if (date.getTime() === today.getTime()) return 'Сегодня';
                 if (date.getTime() === tomorrow.getTime()) return 'Завтра';
                 return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+            },
+
+            async sendTelegramNotification(chatId, text) {
+                const botToken = App.config.botToken;
+                if (!botToken) {
+                    console.warn('Telegram Bot Token is not configured. Skipping notification.');
+                    return;
+                }
+                const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+                const payload = {
+                    chat_id: chatId,
+                    text: text,
+                    parse_mode: 'Markdown',
+                };
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+                    if (!response.ok) {
+                        const errorBody = await response.json();
+                        console.error("Telegram API error:", errorBody);
+                    }
+                } catch (error) {
+                    console.error("Failed to send Telegram message:", error);
+                }
             }
         },
 
