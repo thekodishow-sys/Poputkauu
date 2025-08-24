@@ -28,8 +28,10 @@
         .message.sent { align-self: flex-end; background-color: #3b82f6; color: white; } /* blue-500 */
         .message.received { align-self: flex-start; background-color: #e5e7eb; color: #1f2937; } /* gray-200 */
         
-        /* Role Switcher Styles */
-        #role-switcher { position: relative; }
+        /* Role Switcher Styles - UPDATED */
+        #role-switcher {
+            position: relative;
+        }
         #role-bg {
             position: absolute;
             width: 36px; height: 36px;
@@ -39,14 +41,31 @@
             border-radius: 9999px;
             box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
             transform: translateX(0px);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            /* Bouncy transition for the background slide */
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
         }
-        #role-switcher.driver #role-bg { transform: translateX(36px); }
-        #role-passenger-icon, #role-driver-icon { transition: opacity 0.3s ease; }
-        #role-switcher.passenger #role-passenger-icon { opacity: 1; }
-        #role-switcher.passenger #role-driver-icon { opacity: 0.4; }
-        #role-switcher.driver #role-passenger-icon { opacity: 0.4; }
-        #role-switcher.driver #role-driver-icon { opacity: 1; }
+        #role-switcher.driver #role-bg {
+            transform: translateX(36px);
+        }
+        #role-passenger-icon, #role-driver-icon {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #role-passenger-icon span, #role-driver-icon span {
+            display: inline-block; /* Needed to apply transform */
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy pop effect */
+        }
+
+        /* Active icon pops up and tilts slightly */
+        #role-switcher.passenger #role-passenger-icon span,
+        #role-switcher.driver #role-driver-icon span {
+            transform: scale(1.15) rotate(-8deg);
+        }
+
+        /* Inactive icon fades out */
+        #role-switcher.passenger #role-driver-icon,
+        #role-switcher.driver #role-passenger-icon {
+            opacity: 0.5;
+        }
 
         #profile-avatar-btn img {
             width: 100%;
