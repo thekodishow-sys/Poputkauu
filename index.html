@@ -199,6 +199,7 @@
 
         // --- CONFIGURATION ---
         config: {
+            botToken: '8202443902:AAEMonQpK3FmOAh5Up4GPBmI89q1mHz8LpY',
             webAppUrl: 'https://t.me/poputka12rus_bot/app', // Replace with your bot's app URL
             prices: {
                 base: 600,
@@ -1432,20 +1433,36 @@
             },
 
             async sendTelegramNotification(chatId, text, inlineKeyboard = null) {
-                try {
-                    const { error } = await supabaseClient.functions.invoke('send-notification', {
-                        body: {
-                            chatId: chatId,
-                            text: text,
-                            keyboard: inlineKeyboard
-                        },
-                    });
+                const botToken = App.config.botToken;
+                if (!botToken) {
+                    console.warn('Telegram Bot Token is not configured. Skipping notification.');
+                    return;
+                }
+                const url = `https://api.telegram.org/bot${botToken}/sendMessage`;
+                const payload = {
+                    chat_id: chatId,
+                    text: text,
+                    parse_mode: 'Markdown',
+                };
 
-                    if (error) {
-                        console.error('Error invoking Supabase function:', error);
+                if (inlineKeyboard) {
+                    payload.reply_markup = {
+                        inline_keyboard: inlineKeyboard
+                    };
+                }
+
+                try {
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                    });
+                    if (!response.ok) {
+                        const errorBody = await response.json();
+                        console.error("Telegram API error:", errorBody);
                     }
-                } catch (e) {
-                    console.error('An unexpected error occurred:', e);
+                } catch (error) {
+                    console.error("Failed to send Telegram message:", error);
                 }
             }
         },
