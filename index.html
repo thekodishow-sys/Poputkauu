@@ -115,25 +115,29 @@
 
     <div id="app-container" class="h-screen w-screen max-w-md mx-auto bg-white flex flex-col">
         <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
-            <div class="w-10 h-10 flex items-center justify-center">
+            <!-- Left item -->
+            <div class="flex-1 flex justify-start">
                  <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                 </button>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
             </div>
-            <h1 id="headerTitle" class="text-base font-semibold text-slate-800 text-center flex-grow">Пассажир</h1>
-            <div class="flex items-center gap-3">
-                 <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
-                     <div id="role-bg"></div>
-                     <div id="role-passenger-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
-                         <span>🧍</span>
-                     </div>
-                     <div id="role-driver-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
-                         <span>🚗</span>
-                     </div>
-                 </div>
+            <!-- Center item -->
+            <div class="flex-shrink-0">
+                <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
+                    <div id="role-bg"></div>
+                    <div id="role-passenger-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
+                        <span>🧍</span>
+                    </div>
+                    <div id="role-driver-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
+                        <span>🚗</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Right item -->
+            <div class="flex-1 flex justify-end">
                  <button id="profile-avatar-btn" class="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center overflow-hidden shrink-0">
-                     <!-- Avatar will be rendered here by JS -->
-                 </button>
+                    <!-- Avatar will be rendered here by JS -->
+                </button>
             </div>
         </header>
 
@@ -157,7 +161,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
                 <span>Наша группа в Telegram</span>
             </a>
-            <a href="https://devtol.ru" target="_blank" class="block text-center text-xs text-slate-400 mt-2 hover:underline">
+            <a href="https://t.me/devtol_bot/site" target="_blank" class="block text-center text-xs text-slate-400 mt-2 hover:underline">
                 powered by devtol
             </a>
         </footer>
@@ -322,13 +326,13 @@
                 const clickHandlers = {
                     'backButton': () => this.navigation.back(),
                     'view-driver-offers-btn': this.handlers.onViewDriverOffers,
-                    'create-passenger-request-btn': () => this.navigation.to('passenger-request-screen', 'Заявка на поездку'),
-                    'send-parcel-btn': () => this.navigation.to('parcel-request-screen', 'Отправить посылку'),
+                    'create-passenger-request-btn': () => this.navigation.to('passenger-request-screen'),
+                    'send-parcel-btn': () => this.navigation.to('parcel-request-screen'),
                     'view-passenger-requests-btn': this.handlers.onViewPassengerRequests,
                     'publish-ride-btn': this.handlers.onPublishRideClick,
                     'my-trips-btn': this.handlers.onMyTripsClick,
                     'back-to-hub-btn': this.handlers.onBackToHub,
-                    'profile-avatar-btn': () => this.navigation.to('profile-screen', 'Мой профиль'),
+                    'profile-avatar-btn': () => this.navigation.to('profile-screen'),
                     'booking-modal-cancel-btn': this.handlers.onBookingModalCancel,
                     'booking-modal-overlay': this.handlers.onBookingModalCancel,
                     'apply-filters-btn': this.handlers.onApplyFilters,
@@ -382,10 +386,9 @@
                 this.render.updateRoleSwitcherUI();
                 
                 const newScreen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
-                const newTitle = this.state.userRole === 'passenger' ? 'Пассажир' : 'Кабинет водителя';
                 
                 this.state.navigationHistory = [newScreen];
-                this.navigation.to(newScreen, newTitle);
+                this.navigation.to(newScreen);
             },
 
             onToggleFilter() {
@@ -459,14 +462,14 @@
             onPublishRideClick() {
                 if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
                     console.error('Driver car info missing');
-                    this.navigation.to('profile-screen', 'Мой профиль');
+                    this.navigation.to('profile-screen');
                 } else {
-                    this.navigation.to('offer-screen', 'Новая поездка');
+                    this.navigation.to('offer-screen');
                 }
             },
 
             async onViewDriverOffers() {
-                this.navigation.to('list-screen', 'Поездки водителей');
+                this.navigation.to('list-screen');
                 document.getElementById('filter-section-container').classList.add('hidden');
 
                 const { data: offers, error: offersError } = await supabaseClient.from('ride_offers_with_seats')
@@ -502,7 +505,7 @@
             },
 
             async onViewPassengerRequests() {
-                this.navigation.to('list-screen', 'Заявки от пассажиров');
+                this.navigation.to('list-screen');
                 document.getElementById('filter-section-container').classList.remove('hidden');
                 if (this.state.userRole === 'driver') {
                     document.getElementById('filter-type-container').classList.remove('hidden');
@@ -569,7 +572,7 @@
             },
             
             async onMyTripsClick() {
-                this.navigation.to('my-trips-screen', 'Мои поездки');
+                this.navigation.to('my-trips-screen');
                 const container = document.getElementById('my-trips-container');
                 container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
 
@@ -902,14 +905,13 @@
 
             onBackToHub() {
                 const screen = this.state.userRole === 'driver' ? 'driver-dashboard-screen' : 'passenger-home-screen';
-                const title = this.state.userRole === 'driver' ? 'Кабинет водителя' : 'Пассажир';
                 this.state.navigationHistory = [screen];
-                this.navigation.to(screen, title);
+                this.navigation.to(screen);
             },
 
             async onOfferRideToRequest(requestId) {
                 if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
-                    this.navigation.to('profile-screen', 'Мой профиль');
+                    this.navigation.to('profile-screen');
                     return;
                 }
 
@@ -973,7 +975,7 @@
         
         // --- NAVIGATION ---
         navigation: {
-            to(screenId, title) {
+            to(screenId) {
                 if (App.state.currentConversation.subscription) {
                     supabaseClient.removeChannel(App.state.currentConversation.subscription);
                     App.state.currentConversation.subscription = null;
@@ -981,7 +983,6 @@
 
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                 document.getElementById(screenId).classList.add('active');
-                document.getElementById('headerTitle').textContent = title;
                 
                 if (App.state.navigationHistory[App.state.navigationHistory.length - 1] !== screenId) {
                     App.state.navigationHistory.push(screenId);
@@ -999,18 +1000,8 @@
                 App.state.navigationHistory.pop();
                 const lastScreen = App.state.navigationHistory[App.state.navigationHistory.length - 1];
                 
-                const titles = {
-                    'passenger-home-screen': 'Пассажир',
-                    'driver-dashboard-screen': 'Кабинет водителя',
-                    'list-screen': document.getElementById('headerTitle').textContent,
-                    'my-trips-screen': 'Мои поездки',
-                    'profile-screen': 'Мой профиль'
-                };
-                const title = titles[lastScreen] || 'Попутка 12';
-                
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                 document.getElementById(lastScreen).classList.add('active');
-                document.getElementById('headerTitle').textContent = title;
                 document.getElementById('backButton').classList.toggle('invisible', App.state.navigationHistory.length <= 1);
             }
         },
@@ -1022,7 +1013,7 @@
                     'passenger-home-screen': `
                         <div class="p-5">
                             <div class="text-center mb-6">
-                                <h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2>
+                                <h2 class="text-xl font-bold mb-1">Кабинет попутчика</h2>
                             </div>
                             <div class="space-y-3">
                                 <button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button>
@@ -1201,7 +1192,7 @@
                 document.getElementById('success-title').textContent = title;
                 document.getElementById('success-text').textContent = text;
                 document.getElementById('back-to-hub-btn').textContent = buttonText;
-                App.navigation.to('success-screen', 'Успех');
+                App.navigation.to('success-screen');
             },
             
             populateOfferForm() {
