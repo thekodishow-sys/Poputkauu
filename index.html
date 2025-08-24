@@ -857,9 +857,6 @@
                 const message = `*Пассажир отменил бронь* 🧍‍♂️\n\nПассажир *${passengerName}* отменил бронирование на вашу поездку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${this.utils.formatDate(offer.ride_date)}`;
                 await this.utils.sendTelegramNotification(offer.driver_id, message);
                 
-                // If this booking was created from a request, we don't re-open the request.
-                // The deal was made and then cancelled by the passenger.
-                
                 const { error } = await supabaseClient.from('bookings').delete().eq('id', bookingId);
                 if (error) { console.error('Failed to cancel booking'); return; }
                 
@@ -1345,7 +1342,7 @@
                     <div class="flex items-center gap-2">
                         ${isParcel ? `<div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div>` : `<div class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Пассажир</div>`}
                     </div>
-                    ${this.state.userRole === 'driver' ? buttonHtml : ''}
+                    ${App.state.userRole === 'driver' ? buttonHtml : ''}
                 `;
             },
             
@@ -1419,10 +1416,8 @@
                     rejected: 'Водитель отклонил'
                 };
 
-                // --- ИЗМЕНЕНИЕ: Кнопки для пассажира для подтверждения предложения ---
                 let actionButtons = '';
                 if (booking.status === 'pending' && offer.linked_request_id) {
-                    // This is an offer from a driver that the passenger needs to act on
                     statusText[booking.status] = 'Ожидает вашего решения';
                     actionButtons = `
                         <div class="flex items-center gap-3">
@@ -1457,7 +1452,6 @@
             },
             
             getMyRequestCard(request) {
-                // If a request is pending confirmation, show a specific status
                 if (request.status === 'pending_confirmation') {
                     return `
                         <div class="flex justify-between items-start opacity-60">
@@ -1473,7 +1467,6 @@
                     `;
                 }
 
-                // Default view for an open request
                 return `
                      <div class="flex justify-between items-start">
                         <div>
