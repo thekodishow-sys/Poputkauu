@@ -176,6 +176,16 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+    // --- ВАЖНО: ОБНОВЛЕНИЕ БАЗЫ ДАННЫХ ---
+    // Для работы нового функционала необходимо обновить структуру таблиц в Supabase:
+    // 1. В таблицу `ride_requests`:
+    //    - Добавьте колонку `status` (тип `text`, значение по умолчанию `'open'`).
+    //      Она будет отслеживать состояние заявки: 'open', 'pending_confirmation', 'closed'.
+    // 2. В таблицу `ride_offers`:
+    //    - Добавьте колонку `linked_request_id` (тип `uuid` или `bigint`, в зависимости от типа id в `ride_requests`).
+    //      Эта колонка будет связывать предложение водителя с конкретной заявкой пассажира.
+    // --- КОНЕЦ ИНСТРУКЦИИ ---
+
     // --- SUPABASE CLIENT INITIALIZATION ---
     const SUPABASE_URL = 'https://scqkpvmmoaolahpxinja.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw';
@@ -331,6 +341,7 @@
                     return;
                 }
 
+                if (classList.contains('offer-ride-btn')) this.handlers.onOfferRideToRequest(dataset.requestId);
                 if (classList.contains('request-booking-btn')) this.handlers.onRequestBooking(dataset.offerId);
                 if (classList.contains('detour-booking-btn')) this.handlers.onDetourBookingClick(dataset.offer);
                 if (classList.contains('confirm-booking-segment-btn')) this.handlers.onConfirmBookingSegment(dataset);
@@ -499,7 +510,6 @@
                     document.getElementById('filter-type-container').classList.add('hidden');
                 }
 
-
                 const listContainer = document.getElementById('list-container');
                 listContainer.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
                 
@@ -510,7 +520,11 @@
                 }
 
                 const { data: rides, error: ridesError } = await supabaseClient.from('ride_requests')
-                    .select('*').gte('ride_date', today).order('ride_date', { ascending: true });
+                    .select('*')
+                    .gte('ride_date', today)
+                    .eq('status', 'open') // --- ИЗМЕНЕНИЕ: Показывать только открытые заявки
+                    .order('ride_date', { ascending: true });
+                // Note: Parcel logic would need a similar status field if it should have this feature.
                 const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
                     .select('*').gte('ride_date', today).order('ride_date', { ascending: true });
 
@@ -578,6 +592,7 @@
                     const { data: requests, error: requestsError } = await supabaseClient.from('ride_requests')
                         .select(`*`)
                         .eq('passenger_id', this.state.currentUser.id)
+                        .in('status', ['open', 'pending_confirmation']) // Show own open requests too
                         .gte('ride_date', new Date().toISOString().split('T')[0])
                         .order('created_at', { ascending: false });
 
@@ -656,7 +671,8 @@
                 const { error } = await supabaseClient.from('ride_requests').insert({
                     passenger_id: this.state.currentUser.id, passenger_username: this.state.currentUser.username,
                     "from": from, "to": to, ride_date: formData.get('date'),
-                    time_interval: formData.get('timeInterval'), passenger_name: this.state.userProfile.full_name, price: price
+                    time_interval: formData.get('timeInterval'), passenger_name: this.state.userProfile.full_name, price: price,
+                    status: 'open'
                 });
                 if (error) { console.error(error); return; }
                 this.resetForm(form);
@@ -780,75 +796,70 @@
             },
             
             async onUpdateBookingStatus(bookingId, status) {
-                const { error } = await supabaseClient.from('bookings').update({ status }).eq('id', bookingId);
-                if (error) { console.error('Failed to update booking status'); return; }
-                
-                const { data: booking, error: bookingError } = await supabaseClient
+                const { data: booking, error: bookingFetchError } = await supabaseClient
                     .from('bookings')
-                    .select('passenger_id, ride_offers(from, to, ride_date, ride_time, driver_name, driver_car)')
+                    .select('*, ride_offers(*)')
                     .eq('id', bookingId)
                     .single();
-                
-                if (booking) {
+
+                if (bookingFetchError || !booking) {
+                    console.error('Booking not found for status update:', bookingFetchError);
+                    return;
+                }
+
+                const offer = booking.ride_offers;
+                const passengerId = booking.passenger_id;
+                const isPassengerAction = this.state.currentUser.id === passengerId;
+                const isLinkedToRequest = offer && offer.linked_request_id;
+
+                // SCENARIO 1: Passenger REJECTS an offer made by a driver
+                if (isPassengerAction && isLinkedToRequest && status === 'rejected') {
+                    await supabaseClient.from('ride_requests').update({ status: 'open' }).eq('id', offer.linked_request_id);
+                    await supabaseClient.from('bookings').delete().eq('id', bookingId);
+                    await supabaseClient.from('ride_offers').delete().eq('id', offer.id);
+                    const message = `Пассажир отклонил(а) ваше предложение о поездке (${offer.from} → ${offer.to}).`;
+                    await this.utils.sendTelegramNotification(offer.driver_id, message);
+                } 
+                // SCENARIO 2: Passenger ACCEPTS an offer made by a driver
+                else if (isPassengerAction && isLinkedToRequest && status === 'confirmed') {
+                    await supabaseClient.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId);
+                    await supabaseClient.from('ride_requests').update({ status: 'closed' }).eq('id', offer.linked_request_id);
+                    const message = `Пассажир принял(а) ваше предложение о поездке (${offer.from} → ${offer.to})! Поездка подтверждена.`;
+                    await this.utils.sendTelegramNotification(offer.driver_id, message);
+                }
+                // SCENARIO 3: Default driver action (accepting/rejecting a standard booking)
+                else {
+                    await supabaseClient.from('bookings').update({ status }).eq('id', bookingId);
+                    const passengerName = this.state.userProfile.full_name;
                     let message = '';
-                    const offer = booking.ride_offers;
                     if (status === 'confirmed') {
-                        message = `
-*Ваше бронирование подтверждено!* ✅
-
-Водитель *${offer.driver_name}* подтвердил вашу поездку:
-*Маршрут:* ${offer.from} → ${offer.to}
-*Дата:* ${this.utils.formatDate(offer.ride_date)} в *${offer.ride_time}*
-*Авто:* ${offer.driver_car}
-
-Хорошей поездки!
-                        `.trim();
+                        message = `*Ваше бронирование подтверждено!* ✅\n\nВодитель *${offer.driver_name}* подтвердил вашу поездку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${this.utils.formatDate(offer.ride_date)} в *${offer.ride_time}*`;
                     } else if (status === 'rejected') {
-                        message = `
-*Ваше бронирование отклонено* ❌
-
-К сожалению, водитель отклонил вашу заявку на поездку:
-*Маршрут:* ${offer.from} → ${offer.to}
-*Дата:* ${this.utils.formatDate(offer.ride_date)}
-
-Вы можете найти другую поездку или оставить заявку.
-                        `.trim();
+                        message = `*Ваше бронирование отклонено* ❌\n\nК сожалению, водитель отклонил вашу заявку на поездку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${this.utils.formatDate(offer.ride_date)}`;
                     }
-                    this.utils.sendTelegramNotification(booking.passenger_id, message);
+                    if (message) await this.utils.sendTelegramNotification(passengerId, message);
                 }
 
                 this.handlers.onMyTripsClick();
             },
             
             async onCancelBooking(bookingId) {
-                // --- ИЗМЕНЕНИЕ ЗДЕСЬ: Оповещение водителя ---
                 const { data: booking, error: bookingError } = await supabaseClient
                     .from('bookings')
-                    .select('ride_offers(driver_id, from, to, ride_date)')
+                    .select('*, ride_offers(*)')
                     .eq('id', bookingId)
                     .single();
 
-                if (bookingError) {
-                    console.error('Failed to fetch booking for notification:', bookingError);
-                }
-
-                if (booking && booking.ride_offers) {
-                    const driverId = booking.ride_offers.driver_id;
-                    const passengerName = this.state.userProfile.full_name || 'Пассажир';
-                    const message = `
-*Пассажир отменил бронь* 🧍‍♂️
-
-Пассажир *${passengerName}* отменил бронирование на вашу поездку:
-*Маршрут:* ${booking.ride_offers.from} → ${booking.ride_offers.to}
-*Дата:* ${this.utils.formatDate(booking.ride_offers.ride_date)}
-
-Место снова доступно для бронирования.
-                    `.trim();
-                    
-                    await this.utils.sendTelegramNotification(driverId, message);
-                }
-                // --- КОНЕЦ ИЗМЕНЕНИЯ ---
-
+                if (bookingError || !booking) { console.error('Error fetching booking to cancel:', bookingError); return; }
+                
+                const offer = booking.ride_offers;
+                const passengerName = this.state.userProfile.full_name || 'Пассажир';
+                const message = `*Пассажир отменил бронь* 🧍‍♂️\n\nПассажир *${passengerName}* отменил бронирование на вашу поездку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${this.utils.formatDate(offer.ride_date)}`;
+                await this.utils.sendTelegramNotification(offer.driver_id, message);
+                
+                // If this booking was created from a request, we don't re-open the request.
+                // The deal was made and then cancelled by the passenger.
+                
                 const { error } = await supabaseClient.from('bookings').delete().eq('id', bookingId);
                 if (error) { console.error('Failed to cancel booking'); return; }
                 
@@ -861,35 +872,19 @@
             },
             
             async onDeleteOffer(offerId) {
-                // --- ИЗМЕНЕНИЕ ЗДЕСЬ: Оповещение пассажиров ---
                 const { data: bookings, error: bookingsError } = await supabaseClient
                     .from('bookings')
                     .select('passenger_id, ride_offers(from, to, ride_date)')
                     .eq('offer_id', offerId);
 
-                if (bookingsError) {
-                    console.error('Failed to fetch bookings for notification:', bookingsError);
-                }
+                if (bookingsError) { console.error('Failed to fetch bookings for notification:', bookingsError); }
 
                 if (bookings && bookings.length > 0) {
                     const offerDetails = bookings[0].ride_offers;
-                    const message = `
-*Поездка отменена водителем* ❌
-
-К сожалению, водитель отменил поездку:
-*Маршрут:* ${offerDetails.from} → ${offerDetails.to}
-*Дата:* ${this.utils.formatDate(offerDetails.ride_date)}
-
-Ваше бронирование было автоматически отменено. Вы можете найти другую поездку.
-                    `.trim();
-
-                    const notificationPromises = bookings.map(booking =>
-                        this.utils.sendTelegramNotification(booking.passenger_id, message)
-                    );
-                    
+                    const message = `*Поездка отменена водителем* ❌\n\nК сожалению, водитель отменил поездку:\n*Маршрут:* ${offerDetails.from} → ${offerDetails.to}\n*Дата:* ${this.utils.formatDate(offerDetails.ride_date)}\n\nВаше бронирование было автоматически отменено.`;
+                    const notificationPromises = bookings.map(b => this.utils.sendTelegramNotification(b.passenger_id, message));
                     await Promise.all(notificationPromises);
                 }
-                // --- КОНЕЦ ИЗМЕНЕНИЯ ---
 
                 const { error } = await supabaseClient.from('ride_offers').delete().eq('id', offerId);
                 if (error) { console.error('Failed to delete offer'); return; }
@@ -914,6 +909,65 @@
                 this.state.navigationHistory = [screen];
                 this.navigation.to(screen, title);
             },
+
+            async onOfferRideToRequest(requestId) {
+                if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
+                    this.navigation.to('profile-screen', 'Мой профиль');
+                    return;
+                }
+
+                const { data: request, error: requestError } = await supabaseClient
+                    .from('ride_requests')
+                    .select('*')
+                    .eq('id', requestId)
+                    .single();
+
+                if (requestError || !request) { console.error("Request not found:", requestError); return; }
+
+                const { data: newOffer, error: offerError } = await supabaseClient
+                    .from('ride_offers')
+                    .insert({
+                        driver_id: this.state.currentUser.id,
+                        driver_username: this.state.currentUser.username,
+                        driver_name: this.state.userProfile.full_name,
+                        driver_car: this.state.userProfile.driver_car,
+                        from: request.from,
+                        to: request.to,
+                        ride_date: request.ride_date,
+                        ride_time: request.time_interval,
+                        seats: 1,
+                        price: request.price,
+                        linked_request_id: requestId
+                    })
+                    .select()
+                    .single();
+                
+                if (offerError) { console.error("Failed to create offer:", offerError); return; }
+
+                const { error: bookingError } = await supabaseClient.from('bookings').insert({
+                    offer_id: newOffer.id,
+                    passenger_id: request.passenger_id,
+                    status: 'pending',
+                    price: newOffer.price,
+                    from_city: newOffer.from,
+                    to_city: newOffer.to
+                });
+
+                if (bookingError) { console.error("Failed to create booking:", bookingError); return; }
+
+                await supabaseClient.from('ride_requests').update({ status: 'pending_confirmation' }).eq('id', requestId);
+
+                const message = `*Вам предложили поездку!* 🚗\n\nВодитель *${newOffer.driver_name}* на *${newOffer.driver_car}* откликнулся на вашу заявку:\n*Маршрут:* ${newOffer.from} → ${newOffer.to}\n*Дата:* ${this.utils.formatDate(newOffer.ride_date)}\n\nПожалуйста, подтвердите или отклоните предложение в разделе "Мои поездки".`;
+                await this.utils.sendTelegramNotification(request.passenger_id, message);
+
+                const button = document.querySelector(`.offer-ride-btn[data-request-id="${requestId}"]`);
+                if (button) {
+                    button.textContent = 'Предложение отправлено';
+                    button.disabled = true;
+                    button.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    button.classList.add('bg-slate-400', 'cursor-not-allowed');
+                }
+            }
         },
         
         // --- NAVIGATION ---
@@ -1274,6 +1328,10 @@
 
             getPassengerRequestCard(item) {
                 const isParcel = item.type === 'parcel';
+                const buttonHtml = isParcel 
+                    ? `<a href="https://t.me/${item.sender_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors text-sm">Связаться</a>`
+                    : `<button class="offer-ride-btn btn w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors text-sm" data-request-id="${item.id}">Предложить поездку</button>`;
+
                 return `
                     <div class="flex justify-between items-center">
                         <div class="font-bold text-base">${item.from} → ${item.to}</div>
@@ -1287,7 +1345,7 @@
                     <div class="flex items-center gap-2">
                         ${isParcel ? `<div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div>` : `<div class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Пассажир</div>`}
                     </div>
-                    <a href="https://t.me/${isParcel ? item.sender_username : item.passenger_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors text-sm">Связаться</a>
+                    ${this.state.userRole === 'driver' ? buttonHtml : ''}
                 `;
             },
             
@@ -1360,6 +1418,28 @@
                     confirmed: 'Водитель подтвердил',
                     rejected: 'Водитель отклонил'
                 };
+
+                // --- ИЗМЕНЕНИЕ: Кнопки для пассажира для подтверждения предложения ---
+                let actionButtons = '';
+                if (booking.status === 'pending' && offer.linked_request_id) {
+                    // This is an offer from a driver that the passenger needs to act on
+                    statusText[booking.status] = 'Ожидает вашего решения';
+                    actionButtons = `
+                        <div class="flex items-center gap-3">
+                           <button class="reject-booking-btn text-xs bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Отклонить</button>
+                           <button class="accept-booking-btn text-xs bg-green-100 text-green-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Принять</button>
+                        </div>
+                    `;
+                } else {
+                    actionButtons = `
+                        <div class="flex items-center gap-3">
+                            ${booking.status === 'confirmed' && offer.driver_username ? `<a href="https://t.me/${offer.driver_username}" target="_blank" class="text-xs text-blue-600 hover:underline font-semibold">Написать водителю</a>` : ''}
+                            ${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-xs text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}
+                        </div>
+                    `;
+                }
+
+
                 return `
                     <div class="flex justify-between items-start">
                         <div>
@@ -1371,15 +1451,29 @@
                     </div>
                      <div class="flex justify-between items-center mt-2">
                         <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusClasses[booking.status]}">${statusText[booking.status]}</span>
-                        <div class="flex items-center gap-3">
-                            ${booking.status === 'confirmed' && offer.driver_username ? `<a href="https://t.me/${offer.driver_username}" target="_blank" class="text-xs text-blue-600 hover:underline font-semibold">Написать водителю</a>` : ''}
-                            ${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-xs text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}
-                        </div>
+                        ${actionButtons}
                     </div>
                 `;
             },
             
             getMyRequestCard(request) {
+                // If a request is pending confirmation, show a specific status
+                if (request.status === 'pending_confirmation') {
+                    return `
+                        <div class="flex justify-between items-start opacity-60">
+                            <div>
+                                <div class="font-bold text-base">${request.from} → ${request.to}</div>
+                                <div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div>
+                            </div>
+                            <div class="text-base font-semibold">${request.price} ₽</div>
+                        </div>
+                        <div class="text-center text-sm text-amber-700 font-semibold bg-amber-50 p-2 rounded-lg mt-2">
+                            Ожидает вашего подтверждения в "Моих бронированиях"
+                        </div>
+                    `;
+                }
+
+                // Default view for an open request
                 return `
                      <div class="flex justify-between items-start">
                         <div>
