@@ -118,7 +118,7 @@
             <!-- Left item -->
             <div class="flex-1 flex justify-start">
                  <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
             </div>
             <!-- Center item -->
@@ -183,11 +183,11 @@
     <div id="seats-modal" class="modal fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-transparent z-50 transform translate-y-full transition-transform duration-300">
         <div class="p-4">
             <form id="seats-offer-form" class="bg-white rounded-xl p-4 space-y-3">
-                <h3 class="text-lg font-semibold text-center">Предложить места</h3>
+                <h3 class="text-lg font-semibold text-center">Предложить поездку</h3>
                 <p id="seats-modal-text" class="text-sm text-slate-600 text-center"></p>
                 <div>
-                    <label for="seats-offer-input" class="block text-xs font-medium text-slate-600 mb-2">Количество мест</label>
-                    <input type="number" id="seats-offer-input" name="seats" min="1" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
+                    <label for="seats-offer-input" class="block text-xs font-medium text-slate-600 mb-2">Общее количество свободных мест</label>
+                    <input type="number" id="seats-offer-input" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
                 </div>
                 <input type="hidden" name="requestId">
                 <div class="form-error-seats text-red-500 text-xs text-center mt-2 hidden"></div>
@@ -994,8 +994,8 @@
                 const input = document.getElementById('seats-offer-input');
                 
                 form.querySelector('input[name="requestId"]').value = requestId;
-                document.getElementById('seats-modal-text').textContent = `Пассажир запрашивает ${request.seats} ${request.seats > 1 ? 'места' : 'место'}. Сколько вы готовы предложить?`;
-                input.max = request.seats;
+                document.getElementById('seats-modal-text').textContent = `Пассажир запрашивает ${request.seats} ${request.seats > 1 ? 'места' : 'место'}. Укажите общее количество свободных мест для этой поездки.`;
+                input.min = request.seats;
                 input.value = request.seats;
                 form.querySelector('.form-error-seats').classList.add('hidden');
 
@@ -1009,26 +1009,31 @@
             async onConfirmSeatOffer(form) {
                 const formData = new FormData(form);
                 const requestId = formData.get('requestId');
-                const seats = parseInt(formData.get('seats'));
-                const maxSeats = parseInt(form.querySelector('#seats-offer-input').max);
+                const totalSeatsOffered = parseInt(formData.get('seats'));
                 const errorDiv = form.querySelector('.form-error-seats');
-
-                if (!seats || seats <= 0 || seats > maxSeats) {
-                    errorDiv.textContent = `Укажите количество мест (от 1 до ${maxSeats}).`;
-                    errorDiv.classList.remove('hidden');
-                    return;
-                }
-                errorDiv.classList.add('hidden');
-
-                this.handlers.onSeatsModalCancel();
-
+                
                 const { data: request, error: requestError } = await supabaseClient
                     .from('ride_requests')
                     .select('*')
                     .eq('id', requestId)
                     .single();
 
-                if (requestError || !request) { console.error("Request not found:", requestError); return; }
+                if (requestError || !request) { 
+                    console.error("Request not found:", requestError); 
+                    this.handlers.onSeatsModalCancel();
+                    return; 
+                }
+
+                const seatsRequestedByPassenger = request.seats;
+
+                if (!totalSeatsOffered || totalSeatsOffered < seatsRequestedByPassenger) {
+                    errorDiv.textContent = `Укажите количество мест (не менее ${seatsRequestedByPassenger}).`;
+                    errorDiv.classList.remove('hidden');
+                    return;
+                }
+                errorDiv.classList.add('hidden');
+
+                this.handlers.onSeatsModalCancel();
 
                 const { data: newOffer, error: offerError } = await supabaseClient
                     .from('ride_offers')
@@ -1041,8 +1046,8 @@
                         to: request.to,
                         ride_date: request.ride_date,
                         ride_time: request.ride_time,
-                        seats: seats,
-                        price: request.price * seats, // Price is per seat
+                        seats: totalSeatsOffered,
+                        price: request.price, // Price is per seat
                         linked_request_id: requestId
                     })
                     .select()
@@ -1054,10 +1059,10 @@
                     offer_id: newOffer.id,
                     passenger_id: request.passenger_id,
                     status: 'pending',
-                    price: newOffer.price,
+                    price: request.price * seatsRequestedByPassenger, // Total price for this booking
                     from_city: newOffer.from,
                     to_city: newOffer.to,
-                    seats: seats
+                    seats: seatsRequestedByPassenger
                 });
 
                 if (bookingError) { console.error("Failed to create booking:", bookingError); return; }
