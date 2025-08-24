@@ -1475,11 +1475,15 @@
                             <h4 class="font-semibold mt-2 text-sm">Заявки на бронирование:</h4>
                             <div class="space-y-2">
                                 ${pendingBookings.map(b => `
-                                    <div class="flex justify-between items-center bg-amber-50 p-2 rounded-lg">
-                                        <span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span>
-                                        <div class="flex gap-2">
-                                            <button class="accept-booking-btn bg-green-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Принять</button>
-                                            <button class="reject-booking-btn bg-red-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Отклонить</button>
+                                    <div class="bg-amber-50 p-2 rounded-lg">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm font-semibold">${b.profiles?.full_name || 'Пассажир'}</span>
+                                            <span class="text-sm font-bold">${b.price} ₽</span>
+                                        </div>
+                                        <div class="text-xs text-slate-600 mt-1">${b.from_city} → ${b.to_city}</div>
+                                        <div class="flex gap-2 mt-2">
+                                            <button class="accept-booking-btn flex-1 bg-green-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Принять</button>
+                                            <button class="reject-booking-btn flex-1 bg-red-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Отклонить</button>
                                         </div>
                                     </div>
                                 `).join('')}
@@ -1489,9 +1493,15 @@
                             <h4 class="font-semibold mt-2 text-sm">Подтвержденные пассажиры:</h4>
                             <div class="space-y-2">
                                 ${confirmedBookings.map(b => `
-                                    <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
-                                        <span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span>
-                                        ${b.profiles?.username ? `<a href="https://t.me/${b.profiles.username}" target="_blank" class="text-xs bg-blue-500 text-white font-semibold py-1 px-2 rounded-md hover:bg-blue-600">Написать</a>` : ''}
+                                    <div class="bg-slate-50 p-2 rounded-lg">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-sm font-semibold">${b.profiles?.full_name || 'Пассажир'}</span>
+                                            <span class="text-sm font-bold">${b.price} ₽</span>
+                                        </div>
+                                        <div class="flex justify-between items-center mt-1">
+                                            <span class="text-xs text-slate-600">${b.from_city} → ${b.to_city}</span>
+                                            ${b.profiles?.username ? `<a href="https://t.me/${b.profiles.username}" target="_blank" class="text-xs bg-blue-500 text-white font-semibold py-1 px-2 rounded-md hover:bg-blue-600">Написать</a>` : ''}
+                                        </div>
                                     </div>
                                 `).join('')}
                             </div>
