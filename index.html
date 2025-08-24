@@ -16,6 +16,7 @@
         .screen { display: none; animation: fadeIn 0.3s ease-in-out; }
         .screen.active { display: block; }
         #chat-screen.active, #my-trips-screen.active { display: flex; flex-direction: column; height: 100%; }
+
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
@@ -28,7 +29,7 @@
         .message.sent { align-self: flex-end; background-color: #3b82f6; color: white; } /* blue-500 */
         .message.received { align-self: flex-start; background-color: #e5e7eb; color: #1f2937; } /* gray-200 */
         
-        /* Role Switcher Styles - UPDATED */
+        /* Role Switcher Styles */
         #role-switcher {
             position: relative;
         }
@@ -41,7 +42,6 @@
             border-radius: 9999px;
             box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
             transform: translateX(0px);
-            /* Bouncy transition for the background slide */
             transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
         }
         #role-switcher.driver #role-bg {
@@ -51,22 +51,17 @@
             transition: opacity 0.3s ease-in-out;
         }
         #role-passenger-icon span, #role-driver-icon span {
-            display: inline-block; /* Needed to apply transform */
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Bouncy pop effect */
+            display: inline-block;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-
-        /* Active icon pops up and tilts slightly */
         #role-switcher.passenger #role-passenger-icon span,
         #role-switcher.driver #role-driver-icon span {
             transform: scale(1.15) rotate(-8deg);
         }
-
-        /* Inactive icon fades out */
         #role-switcher.passenger #role-driver-icon,
         #role-switcher.driver #role-passenger-icon {
             opacity: 0.5;
         }
-
         #profile-avatar-btn img {
             width: 100%;
             height: 100%;
@@ -97,7 +92,7 @@
             transition: transform 0.3s ease-in-out;
         }
         #filter-content {
-            max-height: 500px; /* Adjust as needed */
+            max-height: 500px;
             overflow: hidden;
             transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
             opacity: 1;
@@ -155,6 +150,17 @@
             <div id="my-trips-screen" class="screen"></div>
             <div id="profile-screen" class="screen"></div>
         </main>
+        
+        <!-- App Footer -->
+        <footer id="app-footer" class="p-5 border-t border-slate-200 bg-white flex-shrink-0">
+            <a href="https://t.me/poputka12rus" target="_blank" class="text-sm btn w-full bg-sky-100 text-sky-800 font-bold py-3 px-4 rounded-xl hover:bg-sky-200 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                <span>Наша группа в Telegram</span>
+            </a>
+            <a href="https://devtol.ru" target="_blank" class="block text-center text-xs text-slate-400 mt-2 hover:underline">
+                powered by devtol
+            </a>
+        </footer>
     </div>
 
     <!-- Booking Options Modal -->
@@ -815,6 +821,34 @@
             },
             
             async onCancelBooking(bookingId) {
+                // --- ИЗМЕНЕНИЕ ЗДЕСЬ: Оповещение водителя ---
+                const { data: booking, error: bookingError } = await supabaseClient
+                    .from('bookings')
+                    .select('ride_offers(driver_id, from, to, ride_date)')
+                    .eq('id', bookingId)
+                    .single();
+
+                if (bookingError) {
+                    console.error('Failed to fetch booking for notification:', bookingError);
+                }
+
+                if (booking && booking.ride_offers) {
+                    const driverId = booking.ride_offers.driver_id;
+                    const passengerName = this.state.userProfile.full_name || 'Пассажир';
+                    const message = `
+*Пассажир отменил бронь* 🧍‍♂️
+
+Пассажир *${passengerName}* отменил бронирование на вашу поездку:
+*Маршрут:* ${booking.ride_offers.from} → ${booking.ride_offers.to}
+*Дата:* ${this.utils.formatDate(booking.ride_offers.ride_date)}
+
+Место снова доступно для бронирования.
+                    `.trim();
+                    
+                    await this.utils.sendTelegramNotification(driverId, message);
+                }
+                // --- КОНЕЦ ИЗМЕНЕНИЯ ---
+
                 const { error } = await supabaseClient.from('bookings').delete().eq('id', bookingId);
                 if (error) { console.error('Failed to cancel booking'); return; }
                 
@@ -827,6 +861,36 @@
             },
             
             async onDeleteOffer(offerId) {
+                // --- ИЗМЕНЕНИЕ ЗДЕСЬ: Оповещение пассажиров ---
+                const { data: bookings, error: bookingsError } = await supabaseClient
+                    .from('bookings')
+                    .select('passenger_id, ride_offers(from, to, ride_date)')
+                    .eq('offer_id', offerId);
+
+                if (bookingsError) {
+                    console.error('Failed to fetch bookings for notification:', bookingsError);
+                }
+
+                if (bookings && bookings.length > 0) {
+                    const offerDetails = bookings[0].ride_offers;
+                    const message = `
+*Поездка отменена водителем* ❌
+
+К сожалению, водитель отменил поездку:
+*Маршрут:* ${offerDetails.from} → ${offerDetails.to}
+*Дата:* ${this.utils.formatDate(offerDetails.ride_date)}
+
+Ваше бронирование было автоматически отменено. Вы можете найти другую поездку.
+                    `.trim();
+
+                    const notificationPromises = bookings.map(booking =>
+                        this.utils.sendTelegramNotification(booking.passenger_id, message)
+                    );
+                    
+                    await Promise.all(notificationPromises);
+                }
+                // --- КОНЕЦ ИЗМЕНЕНИЯ ---
+
                 const { error } = await supabaseClient.from('ride_offers').delete().eq('id', offerId);
                 if (error) { console.error('Failed to delete offer'); return; }
                 this.handlers.onMyTripsClick();
@@ -900,8 +964,31 @@
         render: {
             allScreens() {
                 const screenTemplates = {
-                    'passenger-home-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2></div><div class="space-y-3"><button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button><button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button><button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button><a href="https://t.me/poputka12rus" target="_blank" class="text-sm mt-4 btn w-full bg-sky-100 text-sky-800 font-bold py-3 px-4 rounded-xl hover:bg-sky-200 flex items-center justify-center gap-2"> <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> <span>Наша группа в Telegram</span> </a></div></div>`,
-                    'driver-dashboard-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Кабинет водителя</h2></div><div class="space-y-3"><button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button><button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button><a href="https://t.me/poputka12rus" target="_blank" class="text-sm mt-4 btn w-full bg-sky-100 text-sky-800 font-bold py-3 px-4 rounded-xl hover:bg-sky-200 flex items-center justify-center gap-2"> <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> <span>Наша группа в Telegram</span> </a></div></div>`,
+                    'passenger-home-screen': `
+                        <div class="p-5">
+                            <div class="text-center mb-6">
+                                <h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2>
+                            </div>
+                            <div class="space-y-3">
+                                <button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button>
+                                <button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button>
+                                <button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button>
+                                <button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button>
+                            </div>
+                        </div>
+                    `,
+                    'driver-dashboard-screen': `
+                        <div class="p-5">
+                            <div class="text-center mb-6">
+                                <h2 class="text-xl font-bold mb-1">Кабинет водителя</h2>
+                            </div>
+                            <div class="space-y-3">
+                                <button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button>
+                                <button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button>
+                                <button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button>
+                            </div>
+                        </div>
+                    `,
                     'offer-screen': this.getOfferFormTemplate(),
                     'passenger-request-screen': this.getPassengerRequestFormTemplate(),
                     'parcel-request-screen': this.getParcelRequestFormTemplate(),
@@ -1437,14 +1524,12 @@
                     chat_id: chatId,
                     text: text,
                     parse_mode: 'Markdown',
-                    // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
-                    // Добавляем inline-кнопку к сообщению
                     reply_markup: {
                         inline_keyboard: [
                             [
                                 {
                                     text: 'Открыть приложение', // Текст на кнопке
-                                    url: 'https://t.me/poputka12_bot?startapp='      // Ссылка, которую откроет кнопка
+                                    url: 'https://t.me/poputka12_bot?startapp='    // Ссылка, которую откроет кнопка
                                 }
                             ]
                         ]
