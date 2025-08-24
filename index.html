@@ -200,7 +200,6 @@
         // --- CONFIGURATION ---
         config: {
             botToken: '8202443902:AAEMonQpK3FmOAh5Up4GPBmI89q1mHz8LpY',
-            webAppUrl: 'https://t.me/poputka12rus_bot/app', // Replace with your bot's app URL
             prices: {
                 base: 600,
                 parcel: 300,
@@ -739,9 +738,10 @@
 Пассажир *${passengerName}* хочет забронировать место на вашу поездку:
 *Маршрут:* ${offer.from} → ${offer.to}
 *Дата:* ${this.utils.formatDate(offer.ride_date)}
+
+Пожалуйста, зайдите в приложение в раздел "Мои поездки", чтобы *принять* или *отклонить* заявку.
                     `.trim();
-                    const keyboard = [[{ text: 'Открыть приложение', web_app: { url: this.config.webAppUrl } }]];
-                    this.utils.sendTelegramNotification(offer.driver_id, message, keyboard);
+                    this.utils.sendTelegramNotification(offer.driver_id, message);
                 }
 
                 this.render.success('Заявка отправлена', 'Водитель рассмотрит вашу заявку. Вы можете отслеживать ее статус в разделе "Мои поездки".', 'Отлично');
@@ -779,13 +779,12 @@
                 
                 const { data: booking, error: bookingError } = await supabaseClient
                     .from('bookings')
-                    .select('passenger_id, ride_offers(from, to, ride_date, ride_time, driver_name, driver_car, driver_username)')
+                    .select('passenger_id, ride_offers(from, to, ride_date, ride_time, driver_name, driver_car)')
                     .eq('id', bookingId)
                     .single();
                 
                 if (booking) {
                     let message = '';
-                    let keyboard;
                     const offer = booking.ride_offers;
                     if (status === 'confirmed') {
                         message = `
@@ -798,10 +797,6 @@
 
 Хорошей поездки!
                         `.trim();
-                        keyboard = [
-                            [{ text: 'Открыть приложение', web_app: { url: this.config.webAppUrl } }],
-                            [{ text: 'Связаться с водителем', url: `https://t.me/${offer.driver_username}` }]
-                        ];
                     } else if (status === 'rejected') {
                         message = `
 *Ваше бронирование отклонено* ❌
@@ -812,9 +807,8 @@
 
 Вы можете найти другую поездку или оставить заявку.
                         `.trim();
-                        keyboard = [[{ text: 'Открыть приложение', web_app: { url: this.config.webAppUrl } }]];
                     }
-                    this.utils.sendTelegramNotification(booking.passenger_id, message, keyboard);
+                    this.utils.sendTelegramNotification(booking.passenger_id, message);
                 }
 
                 this.handlers.onMyTripsClick();
@@ -1432,7 +1426,7 @@
                 return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
             },
 
-            async sendTelegramNotification(chatId, text, inlineKeyboard = null) {
+            async sendTelegramNotification(chatId, text) {
                 const botToken = App.config.botToken;
                 if (!botToken) {
                     console.warn('Telegram Bot Token is not configured. Skipping notification.');
@@ -1444,12 +1438,6 @@
                     text: text,
                     parse_mode: 'Markdown',
                 };
-
-                if (inlineKeyboard) {
-                    payload.reply_markup = {
-                        inline_keyboard: inlineKeyboard
-                    };
-                }
 
                 try {
                     const response = await fetch(url, {
