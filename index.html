@@ -173,22 +173,6 @@
             <button id="booking-modal-cancel-btn" class="w-full p-3 mt-2 bg-white rounded-xl text-blue-500 text-lg font-semibold">Отмена</button>
         </div>
     </div>
-
-    <!-- Offer Ride Modal -->
-    <div id="offer-ride-modal-overlay" class="modal-overlay fixed inset-0 bg-black bg-opacity-40 z-40 hidden"></div>
-    <div id="offer-ride-modal" class="modal fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-white rounded-t-2xl z-50 transform translate-y-full transition-transform duration-300 p-5 space-y-4">
-        <h3 class="text-lg font-bold text-center">Предложить поездку</h3>
-        <p class="text-sm text-slate-600 text-center">Укажите, сколько всего свободных мест вы предлагаете для этой поездки. Одно место будет забронировано для этого пассажира.</p>
-        <div>
-            <label for="offer-seats-input" class="block text-xs font-medium text-slate-600 mb-2">Количество свободных мест</label>
-            <input type="number" id="offer-seats-input" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Например: 3" value="1" required>
-            <input type="hidden" id="offer-request-id-input">
-        </div>
-        <div class="flex gap-3 pt-2">
-            <button id="offer-ride-modal-cancel-btn" class="flex-1 text-sm btn border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-lg hover:bg-slate-100">Отмена</button>
-            <button id="confirm-offer-ride-btn" class="flex-1 text-sm btn bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600">Подтвердить</button>
-        </div>
-    </div>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -315,7 +299,7 @@
         // --- EVENT BINDING ---
         bindEvents() {
             document.body.addEventListener('click', (e) => {
-                const button = e.target.closest('button, #role-switcher, #booking-modal-overlay, #offer-ride-modal-overlay');
+                const button = e.target.closest('button, #role-switcher, #booking-modal-overlay');
                 if (!button) return;
 
                 const { id, classList, dataset } = button;
@@ -347,9 +331,6 @@
                     'profile-avatar-btn': () => this.navigation.to('profile-screen', 'Мой профиль'),
                     'booking-modal-cancel-btn': this.handlers.onBookingModalCancel,
                     'booking-modal-overlay': this.handlers.onBookingModalCancel,
-                    'offer-ride-modal-cancel-btn': this.handlers.onOfferRideModalCancel,
-                    'offer-ride-modal-overlay': this.handlers.onOfferRideModalCancel,
-                    'confirm-offer-ride-btn': this.handlers.onConfirmOfferRideToRequest,
                     'apply-filters-btn': this.handlers.onApplyFilters,
                     'reset-filters-btn': this.handlers.onResetFilters,
                     'filter-toggle-btn': this.handlers.onToggleFilter,
@@ -931,28 +912,6 @@
                     this.navigation.to('profile-screen', 'Мой профиль');
                     return;
                 }
-                document.getElementById('offer-request-id-input').value = requestId;
-                document.getElementById('offer-seats-input').value = '1'; // Reset to default
-                
-                const overlay = document.getElementById('offer-ride-modal-overlay');
-                const modal = document.getElementById('offer-ride-modal');
-                overlay.classList.remove('hidden');
-                requestAnimationFrame(() => {
-                    overlay.classList.add('show');
-                    modal.classList.add('show');
-                });
-            },
-
-            async onConfirmOfferRideToRequest() {
-                const requestId = document.getElementById('offer-request-id-input').value;
-                const seats = parseInt(document.getElementById('offer-seats-input').value, 10);
-
-                if (!requestId || isNaN(seats) || seats < 1) {
-                    console.error("Invalid data from offer modal");
-                    return;
-                }
-
-                this.handlers.onOfferRideModalCancel();
 
                 const { data: request, error: requestError } = await supabaseClient
                     .from('ride_requests')
@@ -962,6 +921,8 @@
 
                 if (requestError || !request) { console.error("Request not found:", requestError); return; }
 
+                // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+                // Преобразуем интервал "08-10" в корректный формат времени "08:00"
                 const timeForOffer = request.time_interval.split('-')[0] + ':00';
 
                 const { data: newOffer, error: offerError } = await supabaseClient
@@ -974,8 +935,8 @@
                         from: request.from,
                         to: request.to,
                         ride_date: request.ride_date,
-                        ride_time: timeForOffer,
-                        seats: seats,
+                        ride_time: timeForOffer, // Используем исправленное время
+                        seats: 1,
                         price: request.price,
                         linked_request_id: requestId
                     })
@@ -1007,17 +968,7 @@
                     button.classList.remove('bg-green-500', 'hover:bg-green-600');
                     button.classList.add('bg-slate-400', 'cursor-not-allowed');
                 }
-            },
-
-            onOfferRideModalCancel() {
-                const overlay = document.getElementById('offer-ride-modal-overlay');
-                const modal = document.getElementById('offer-ride-modal');
-                overlay.classList.remove('show');
-                modal.classList.remove('show');
-                setTimeout(() => {
-                    overlay.classList.add('hidden');
-                }, 300);
-            },
+            }
         },
         
         // --- NAVIGATION ---
