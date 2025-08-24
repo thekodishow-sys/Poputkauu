@@ -193,18 +193,17 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
     // --- ВАЖНО: ОБНОВЛЕНИЕ БАЗЫ ДАННЫХ ---
-    // Для работы нового функционала необходимо выполнить эти SQL-команды в Supabase SQL Editor.
+    // Для работы нового функционала необходимо обновить структуру таблиц в Supabase:
     // 1. В таблицу `ride_requests`:
-    //    ALTER TABLE public.ride_requests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'open';
+    //    - Добавьте колонку `status` (тип `text`, значение по умолчанию `'open'`).
     // 2. В таблицу `ride_offers`:
-    //    ALTER TABLE public.ride_offers ADD COLUMN IF NOT EXISTS linked_request_id UUID REFERENCES public.ride_requests(id) ON DELETE SET NULL;
-    //    (Если id в ride_requests типа bigint, используйте "ADD COLUMN IF NOT EXISTS linked_request_id BIGINT...")
+    //    - Добавьте колонку `linked_request_id` (тип `uuid` или `bigint`).
     // 3. В таблицу `parcel_requests`:
-    //    ALTER TABLE public.parcel_requests ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'open';
-    //    ALTER TABLE public.parcel_requests ADD COLUMN IF NOT EXISTS driver_id UUID;
-    //    ALTER TABLE public.parcel_requests ADD COLUMN IF NOT EXISTS driver_username TEXT;
-    //    ALTER TABLE public.parcel_requests ADD COLUMN IF NOT EXISTS driver_name TEXT;
-    //    ALTER TABLE public.parcel_requests ADD COLUMN IF NOT EXISTS driver_car TEXT;
+    //    - Добавьте колонку `status` (тип `text`, default 'open').
+    //    - Добавьте колонку `driver_id` (тип `uuid`, nullable).
+    //    - Добавьте колонку `driver_username` (тип `text`, nullable).
+    //    - Добавьте колонку `driver_name` (тип `text`, nullable).
+    //    - Добавьте колонку `driver_car` (тип `text`, nullable).
     // --- КОНЕЦ ИНСТРУКЦИИ ---
 
     // --- SUPABASE CLIENT INITIALIZATION ---
@@ -546,32 +545,19 @@
                     dateFilterInput.setAttribute('min', today);
                 }
 
-                let rides = [];
-                let parcels = [];
-
-                const { data: rideData, error: ridesError } = await supabaseClient.from('ride_requests')
+                const { data: rides, error: ridesError } = await supabaseClient.from('ride_requests')
                     .select('*')
                     .gte('ride_date', today)
                     .eq('status', 'open') 
                     .order('ride_date', { ascending: true });
-
-                if(ridesError) {
-                    console.error("Error fetching ride requests:", ridesError);
-                } else {
-                    rides = rideData;
-                }
                 
-                const { data: parcelData, error: parcelsError } = await supabaseClient.from('parcel_requests')
+                const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
                     .select('*')
                     .gte('ride_date', today)
                     .eq('status', 'open')
                     .order('ride_date', { ascending: true });
 
-                if(parcelsError) {
-                    console.error("Error fetching parcel requests:", parcelsError);
-                } else {
-                    parcels = parcelData;
-                }
+                if (ridesError || parcelsError) { console.error(ridesError || parcelsError); return; }
                 
                 const allRequests = [
                     ...rides.map(r => ({...r, type: 'ride'})), 
@@ -738,10 +724,7 @@
                     sender_name: this.state.userProfile.full_name, price: this.config.prices.parcel,
                     status: 'open'
                 });
-                if (error) { 
-                    console.error("Error creating parcel request:", error); 
-                    return; 
-                }
+                if (error) { console.error(error); return; }
                 this.resetForm(form);
                 this.render.success('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично');
             },
