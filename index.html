@@ -79,16 +79,6 @@
         .modal.show {
             transform: translateY(0);
         }
-        
-        /* New Banner Modal Style */
-        #add-banner-modal {
-            height: 80%;
-            transform: translateY(100%);
-            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
-        }
-        #add-banner-modal.show {
-            transform: translateY(0);
-        }
 
         /* Filter Button Styles */
         .filter-type-btn.active {
@@ -126,11 +116,8 @@
     <div id="app-container" class="h-screen w-screen max-w-md mx-auto bg-white flex flex-col">
         <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
             <!-- Left item -->
-            <div class="flex-1 flex justify-start relative">
-                 <button id="add-banner-btn" class="absolute left-0 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-800 transition-colors hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                </button>
-                <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
+            <div class="flex-1 flex justify-start">
+                 <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
             </div>
@@ -148,7 +135,7 @@
             </div>
             <!-- Right item -->
             <div class="flex-1 flex justify-end">
-                <button id="profile-avatar-btn" class="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center overflow-hidden shrink-0">
+                 <button id="profile-avatar-btn" class="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center overflow-hidden shrink-0">
                     <!-- Avatar will be rendered here by JS -->
                 </button>
             </div>
@@ -210,44 +197,24 @@
         </div>
     </div>
     
-    <!-- Add Banner Modal -->
-    <div id="add-banner-modal-overlay" class="modal-overlay fixed inset-0 bg-black bg-opacity-40 z-40 hidden"></div>
-    <div id="add-banner-modal" class="modal fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-white z-50 rounded-t-2xl shadow-2xl">
-        <div class="p-4 h-full flex flex-col">
-            <div class="flex justify-between items-center mb-4">
-                 <h3 class="text-lg font-bold">Добавить баннер</h3>
-                 <button id="add-banner-modal-close-btn" class="text-slate-500 hover:text-slate-800">
-                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                 </button>
-            </div>
-            <form id="add-banner-form" class="space-y-3 flex-grow overflow-y-auto pr-2">
-                <div>
-                    <label for="banner-title" class="block text-xs font-medium text-slate-600 mb-1">Название</label>
-                    <input type="text" id="banner-title" name="title" class="w-full p-2 border border-slate-200 rounded-lg text-sm" required>
-                </div>
-                <div>
-                    <label for="banner-description" class="block text-xs font-medium text-slate-600 mb-1">Описание</label>
-                    <textarea id="banner-description" name="description" rows="2" class="w-full p-2 border border-slate-200 rounded-lg text-sm" required></textarea>
-                </div>
-                <div>
-                    <label for="banner-url" class="block text-xs font-medium text-slate-600 mb-1">URL-адрес</label>
-                    <input type="url" id="banner-url" name="url" class="w-full p-2 border border-slate-200 rounded-lg text-sm" placeholder="https://example.com" required>
-                </div>
-                <div>
-                    <label for="banner-image" class="block text-xs font-medium text-slate-600 mb-1">Изображение</label>
-                    <input type="file" id="banner-image" name="image" accept="image/*" class="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200" required>
-                </div>
-                <div id="banner-form-error" class="text-red-500 text-xs text-center hidden"></div>
-                 <div id="banner-upload-progress" class="w-full bg-gray-200 rounded-full h-2.5 hidden">
-                    <div class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
-                </div>
-                <button type="submit" class="w-full p-3 bg-slate-800 text-white rounded-xl text-base font-semibold">Добавить</button>
-            </form>
-        </div>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+    // --- ВАЖНО: ОБНОВЛЕНИЕ БАЗЫ ДАННЫХ ---
+    // Для работы нового функционала необходимо обновить структуру таблиц в Supabase:
+    // 1. В таблицу `ride_requests`:
+    //    - Добавьте колонку `status` (тип `text`).
+    //    - Добавьте колонку `ride_time` (тип `time`).
+    //    - Добавьте колонку `seats` (тип `int`).
+    //    - Добавьте колонку `via_ferry` (тип `boolean`).
+    //    - Удалите колонку `time_interval`.
+    // 2. В таблицу `ride_offers`:
+    //    - Добавьте колонку `linked_request_id` (тип `uuid` или `bigint`).
+    // 3. В таблицу `parcel_requests`:
+    //    - Добавьте колонки `status`, `assigned_driver_id`, `assigned_driver_username`, `assigned_driver_name`, `assigned_driver_car`, `delivered_at`.
+    // 4. В таблицу `bookings`:
+    //    - Добавьте колонку `seats` (тип `int`).
+    // --- КОНЕЦ ИНСТРУКЦИИ ---
+
     // --- SUPABASE CLIENT INITIALIZATION ---
     const SUPABASE_URL = 'https://scqkpvmmoaolahpxinja.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw';
@@ -261,25 +228,23 @@
             userProfile: null,
             userRole: 'passenger', // Default role
             selectedRoute: null,
-            navigationHistory: ['passenger-home-screen'],
-            allRequests: [],
-            currentFilters: {
+            navigationHistory: ['passenger-home-screen'], // New default screen
+            allRequests: [], // To store the fetched requests
+            currentFilters: { // To store the current filter values
                 from: '',
                 to: '',
                 date: '',
-                type: 'all'
+                type: 'all' // 'all', 'ride', 'parcel'
             },
             currentConversation: {
                 id: null,
                 subscription: null
-            },
-            isAdmin: false, // New state for admin status
+            }
         },
 
         // --- CONFIGURATION ---
         config: {
             botToken: '8202443902:AAEMonQpK3FmOAh5Up4GPBmI89q1mHz8LpY',
-            adminId: 5017229451, // Admin Telegram ID
             prices: {
                 base: 600,
                 parcel: 300,
@@ -302,12 +267,10 @@
                 this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
             } catch (e) {
                 console.warn("Telegram WebApp script not found or running in browser.");
-                // For local testing:
-                this.state.currentUser = { id: this.config.adminId, first_name: 'Admin', username: 'adminuser' }; 
+                this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser' };
             }
             
             if (this.state.currentUser) {
-                this.state.isAdmin = this.state.currentUser.id === this.config.adminId;
                 await this.ensureUserProfile();
             }
             
@@ -317,10 +280,6 @@
             this.bindEvents();
             this.setDefaultDates();
             this.render.updateAvatar();
-            
-            if (this.state.isAdmin) {
-                document.getElementById('add-banner-btn').classList.remove('hidden');
-            }
         },
 
         // --- USER PROFILE ---
@@ -369,7 +328,7 @@
         // --- EVENT BINDING ---
         bindEvents() {
             document.body.addEventListener('click', (e) => {
-                const button = e.target.closest('button, #role-switcher, .modal-overlay, a.banner-link');
+                const button = e.target.closest('button, #role-switcher, #booking-modal-overlay, #seats-modal-overlay');
                 if (!button) return;
 
                 const { id, classList, dataset } = button;
@@ -387,12 +346,6 @@
                 if (button.classList.contains('filter-type-btn')) {
                     this.handlers.onFilterTypeSelect(button);
                     return;
-                }
-                
-                if (button.classList.contains('banner-link')) {
-                     e.preventDefault();
-                     window.open(button.href, '_blank');
-                     return;
                 }
 
                 const clickHandlers = {
@@ -412,9 +365,6 @@
                     'apply-filters-btn': this.handlers.onApplyFilters,
                     'reset-filters-btn': this.handlers.onResetFilters,
                     'filter-toggle-btn': this.handlers.onToggleFilter,
-                    'add-banner-btn': this.handlers.onShowBannerModal,
-                    'add-banner-modal-close-btn': this.handlers.onHideBannerModal,
-                    'add-banner-modal-overlay': this.handlers.onHideBannerModal,
                 };
 
                 if (clickHandlers[id]) {
@@ -447,7 +397,6 @@
                     'chat-form': () => this.handlers.onSendMessage(e.target),
                     'profile-form': () => this.handlers.onProfileSubmit(e.target),
                     'seats-offer-form': () => this.handlers.onConfirmSeatOffer(e.target),
-                    'add-banner-form': () => this.handlers.onBannerSubmit(e.target),
                 };
                 if (formHandlers[e.target.id]) formHandlers[e.target.id]();
             });
@@ -472,110 +421,6 @@
                 
                 this.state.navigationHistory = [newScreen];
                 this.navigation.to(newScreen);
-            },
-
-            // --- Banner Handlers ---
-            onShowBannerModal() {
-                const overlay = document.getElementById('add-banner-modal-overlay');
-                const modal = document.getElementById('add-banner-modal');
-                overlay.classList.remove('hidden');
-                requestAnimationFrame(() => {
-                    overlay.classList.add('show');
-                    modal.classList.add('show');
-                });
-            },
-
-            onHideBannerModal() {
-                 const overlay = document.getElementById('add-banner-modal-overlay');
-                const modal = document.getElementById('add-banner-modal');
-                overlay.classList.remove('show');
-                modal.classList.remove('show');
-                setTimeout(() => {
-                    overlay.classList.add('hidden');
-                }, 400);
-            },
-
-            async onBannerSubmit(form) {
-                const formData = new FormData(form);
-                const title = formData.get('title').trim();
-                const description = formData.get('description').trim();
-                const url = formData.get('url').trim();
-                const imageFile = formData.get('image');
-                const errorDiv = document.getElementById('banner-form-error');
-                const progressDiv = document.getElementById('banner-upload-progress');
-                const progressBar = progressDiv.querySelector('div');
-                const submitBtn = form.querySelector('button[type="submit"]');
-
-                if (!title || !description || !url || !imageFile || imageFile.size === 0) {
-                    errorDiv.textContent = 'Все поля обязательны для заполнения.';
-                    errorDiv.classList.remove('hidden');
-                    return;
-                }
-                errorDiv.classList.add('hidden');
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Загрузка...';
-                progressDiv.classList.remove('hidden');
-                progressBar.style.width = '0%';
-
-                try {
-                    // 1. Upload image to Supabase Storage
-                    const fileExt = imageFile.name.split('.').pop();
-                    const fileName = `${Date.now()}.${fileExt}`;
-                    const filePath = `${fileName}`;
-
-                    let { error: uploadError } = await supabaseClient.storage
-                        .from('images')
-                        .upload(filePath, imageFile, {
-                            cacheControl: '3600',
-                            upsert: false
-                        });
-
-                    if (uploadError) {
-                        throw uploadError;
-                    }
-
-                    // 2. Get public URL of the uploaded image
-                    const { data: { publicUrl } } = supabaseClient.storage
-                        .from('images')
-                        .getPublicUrl(filePath);
-                        
-                    progressBar.style.width = '50%';
-
-                    // 3. Insert banner data into the 'banners' table
-                    const { error: insertError } = await supabaseClient
-                        .from('banners')
-                        .insert({
-                            title: title,
-                            description: description,
-                            image_url: publicUrl,
-                            link_url: url
-                        });
-
-                    if (insertError) {
-                        throw insertError;
-                    }
-                    
-                    progressBar.style.width = '100%';
-
-                    // 4. Success
-                    form.reset();
-                    this.handlers.onHideBannerModal();
-                    // Re-render banners on the home screen
-                    this.render.homeScreenContent('passenger-home-screen');
-                    this.render.homeScreenContent('driver-dashboard-screen');
-
-                } catch (error) {
-                    console.error('Error adding banner:', error);
-                    errorDiv.textContent = `Ошибка: ${error.message}`;
-                    errorDiv.classList.remove('hidden');
-                } finally {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Добавить';
-                    setTimeout(() => {
-                       progressDiv.classList.add('hidden');
-                       progressBar.style.width = '0%';
-                    }, 1000);
-                }
             },
 
             onToggleFilter() {
@@ -1130,13 +975,13 @@
             
             async onCancelRequest(requestId) {
                 const { error } = await supabaseClient.from('ride_requests').delete().eq('id', requestId);
-                   if (error) { console.error('Failed to cancel request'); return; }
+                 if (error) { console.error('Failed to cancel request'); return; }
                 this.handlers.onMyTripsClick();
             },
 
             async onCancelParcelRequest(requestId) {
                 const { error } = await supabaseClient.from('parcel_requests').delete().eq('id', requestId);
-                   if (error) { console.error('Failed to cancel parcel request'); return; }
+                 if (error) { console.error('Failed to cancel parcel request'); return; }
                 this.handlers.onMyTripsClick();
             },
 
@@ -1402,8 +1247,31 @@
         render: {
             allScreens() {
                 const screenTemplates = {
-                    'passenger-home-screen': this.homeScreenContent('passenger-home-screen'),
-                    'driver-dashboard-screen': this.homeScreenContent('driver-dashboard-screen'),
+                    'passenger-home-screen': `
+                        <div class="p-5">
+                            <div class="text-center mb-6">
+                                <h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2>
+                            </div>
+                            <div class="space-y-3">
+                                <button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button>
+                                <button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button>
+                                <button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button>
+                                <button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button>
+                            </div>
+                        </div>
+                    `,
+                    'driver-dashboard-screen': `
+                        <div class="p-5">
+                            <div class="text-center mb-6">
+                                <h2 class="text-xl font-bold mb-1">Кабинет водителя</h2>
+                            </div>
+                            <div class="space-y-3">
+                                <button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button>
+                                <button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button>
+                                <button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button>
+                            </div>
+                        </div>
+                    `,
                     'offer-screen': this.getOfferFormTemplate(),
                     'passenger-request-screen': this.getPassengerRequestFormTemplate(),
                     'parcel-request-screen': this.getParcelRequestFormTemplate(),
@@ -1461,78 +1329,8 @@
                     'profile-screen': this.getProfileFormTemplate(),
                 };
                 for (const [id, html] of Object.entries(screenTemplates)) {
-                    const screenElement = document.getElementById(id);
-                    if (screenElement) {
-                        screenElement.innerHTML = html;
-                    }
+                    document.getElementById(id).innerHTML = html;
                 }
-                // After rendering, fetch and display banners
-                this.renderBanners('passenger-home-screen');
-                this.renderBanners('driver-dashboard-screen');
-            },
-
-            homeScreenContent(screenId) {
-                const isPassenger = screenId === 'passenger-home-screen';
-                const title = isPassenger ? 'Что вы хотите сделать?' : 'Кабинет водителя';
-                const buttons = isPassenger ? `
-                    <button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button>
-                    <button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button>
-                    <button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button>
-                ` : `
-                    <button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button>
-                    <button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button>
-                `;
-                const myTripsButtonText = isPassenger ? 'Мои поездки и заявки' : 'Мои поездки';
-
-                return `
-                    <div class="p-5">
-                        <div class="text-center mb-6">
-                            <h2 class="text-xl font-bold mb-1">${title}</h2>
-                        </div>
-                        <div class="space-y-3">
-                            ${buttons}
-                            <button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">${myTripsButtonText}</button>
-                            
-                            <!-- Banner Container -->
-                            <div id="banner-container-${screenId}" class="pt-4 mt-4 border-t border-slate-200 space-y-3">
-                                <!-- Banners will be loaded here -->
-                            </div>
-                        </div>
-                    </div>
-                `;
-            },
-            
-            async renderBanners(screenId) {
-                const container = document.getElementById(`banner-container-${screenId}`);
-                if (!container) return;
-
-                container.innerHTML = `<div class="text-center text-xs text-slate-400">Загрузка рекламы...</div>`;
-
-                const { data: banners, error } = await supabaseClient
-                    .from('banners')
-                    .select('*')
-                    .order('created_at', { ascending: false });
-
-                if (error) {
-                    console.error('Error fetching banners:', error);
-                    container.innerHTML = `<div class="text-center text-xs text-red-500">Не удалось загрузить рекламу.</div>`;
-                    return;
-                }
-
-                if (!banners || banners.length === 0) {
-                    container.innerHTML = ''; // No banners to show
-                    return;
-                }
-
-                container.innerHTML = banners.map(banner => `
-                    <a href="${banner.link_url}" target="_blank" class="banner-link block bg-white border border-slate-200 rounded-xl overflow-hidden hover:shadow-md transition-shadow">
-                        <img src="${banner.image_url}" alt="${banner.title}" class="w-full h-32 object-cover">
-                        <div class="p-3">
-                            <h4 class="font-bold text-sm">${banner.title}</h4>
-                            <p class="text-xs text-slate-600 mt-1">${banner.description}</p>
-                        </div>
-                    </a>
-                `).join('');
             },
             
             updateRoleSwitcherUI() {
@@ -2073,8 +1871,8 @@
                         <div class="border-t border-slate-100 pt-3 mt-3">
                              <p class="text-sm text-slate-600 mb-3"><strong>Отправитель:</strong> ${parcel.sender_name}</p>
                              <div class="flex gap-3">
-                                 <a href="https://t.me/${parcel.sender_username}" target="_blank" class="flex-1 text-center text-sm bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600">Написать</a>
-                                 <button class="mark-parcel-delivered-btn flex-1 text-sm btn bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600" data-request-id="${parcel.id}">Доставлено</button>
+                                <a href="https://t.me/${parcel.sender_username}" target="_blank" class="flex-1 text-center text-sm bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600">Написать</a>
+                                <button class="mark-parcel-delivered-btn flex-1 text-sm btn bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600" data-request-id="${parcel.id}">Доставлено</button>
                              </div>
                         </div>
                     `;
@@ -2243,7 +2041,7 @@
                             [
                                 {
                                     text: 'Открыть приложение', // Текст на кнопке
-                                    web_app: { url: 'https://t.me/poputka12_bot/app' }
+                                    url: 'https://t.me/poputka12_bot?startapp='    // Ссылка, которую откроет кнопка
                                 }
                             ]
                         ]
