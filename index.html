@@ -122,23 +122,23 @@
         <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
             <div class="w-10 h-10 flex items-center justify-center">
                  <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                </button>
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                 </button>
             </div>
             <h1 id="headerTitle" class="text-base font-semibold text-slate-800 text-center flex-grow">Пассажир</h1>
             <div class="flex items-center gap-3">
                  <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
-                    <div id="role-bg"></div>
-                    <div id="role-passenger-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
-                        <span>🧍</span>
-                    </div>
-                    <div id="role-driver-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
-                        <span>🚗</span>
-                    </div>
-                </div>
-                <button id="profile-avatar-btn" class="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center overflow-hidden shrink-0">
-                    <!-- Avatar will be rendered here by JS -->
-                </button>
+                     <div id="role-bg"></div>
+                     <div id="role-passenger-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
+                         <span>🧍</span>
+                     </div>
+                     <div id="role-driver-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
+                         <span>🚗</span>
+                     </div>
+                 </div>
+                 <button id="profile-avatar-btn" class="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center overflow-hidden shrink-0">
+                     <!-- Avatar will be rendered here by JS -->
+                 </button>
             </div>
         </header>
 
@@ -906,55 +906,55 @@
                     'passenger-request-screen': this.getPassengerRequestFormTemplate(),
                     'parcel-request-screen': this.getParcelRequestFormTemplate(),
                     'list-screen': `
-                        <div class="p-4 space-y-4">
-                            <div id="filter-section-container" class="hidden">
-                                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <button id="filter-toggle-btn" class="flex justify-between items-center w-full mb-3">
-                                        <h3 class="text-base font-semibold text-slate-800">Фильтры</h3>
-                                        <svg id="filter-toggle-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><path d="m18 15-6-6-6 6"/></svg>
-                                    </button>
-                                    <div id="filter-content" class="space-y-3">
-                                        <div class="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label for="filter-from" class="block text-xs font-medium text-slate-600 mb-1">Откуда</label>
-                                                <select id="filter-from" name="from" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
-                                                    <option value="">Любой</option>
-                                                    ${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}
-                                                </select>
+                            <div class="p-4 space-y-4">
+                                <div id="filter-section-container" class="hidden">
+                                    <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                                        <button id="filter-toggle-btn" class="flex justify-between items-center w-full mb-3">
+                                            <h3 class="text-base font-semibold text-slate-800">Фильтры</h3>
+                                            <svg id="filter-toggle-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><path d="m18 15-6-6-6 6"/></svg>
+                                        </button>
+                                        <div id="filter-content" class="space-y-3">
+                                            <div class="grid grid-cols-2 gap-3">
+                                                <div>
+                                                    <label for="filter-from" class="block text-xs font-medium text-slate-600 mb-1">Откуда</label>
+                                                    <select id="filter-from" name="from" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
+                                                        <option value="">Любой</option>
+                                                        ${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label for="filter-to" class="block text-xs font-medium text-slate-600 mb-1">Куда</label>
+                                                    <select id="filter-to" name="to" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
+                                                        <option value="">Любой</option>
+                                                        ${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}
+                                                    </select>
+                                                </div>
                                             </div>
                                             <div>
-                                                <label for="filter-to" class="block text-xs font-medium text-slate-600 mb-1">Куда</label>
-                                                <select id="filter-to" name="to" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white">
-                                                    <option value="">Любой</option>
-                                                    ${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}
-                                                </select>
+                                                <label for="filter-date" class="block text-xs font-medium text-slate-600 mb-1">Дата</label>
+                                                <input type="date" id="filter-date" name="date" class="w-full p-2 border border-slate-200 rounded-lg text-sm">
                                             </div>
-                                        </div>
-                                        <div>
-                                            <label for="filter-date" class="block text-xs font-medium text-slate-600 mb-1">Дата</label>
-                                            <input type="date" id="filter-date" name="date" class="w-full p-2 border border-slate-200 rounded-lg text-sm">
-                                        </div>
-                                        <div id="filter-type-container">
-                                            <label class="block text-xs font-medium text-slate-600 mb-1">Тип заявки</label>
-                                            <div id="filter-type-buttons" class="flex p-1 bg-slate-200 rounded-lg">
-                                                <button data-type="all" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600 active">Все</button>
-                                                <button data-type="ride" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Пассажиры</button>
-                                                <button data-type="parcel" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Посылки</button>
+                                            <div id="filter-type-container">
+                                                <label class="block text-xs font-medium text-slate-600 mb-1">Тип заявки</label>
+                                                <div id="filter-type-buttons" class="flex p-1 bg-slate-200 rounded-lg">
+                                                    <button data-type="all" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600 active">Все</button>
+                                                    <button data-type="ride" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Пассажиры</button>
+                                                    <button data-type="parcel" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Посылки</button>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <div class="flex gap-3 pt-2">
-                                            <button id="reset-filters-btn" class="flex-1 text-sm btn border border-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-100">Сбросить</button>
-                                            <button id="apply-filters-btn" class="flex-1 text-sm btn bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700">Применить</button>
+                                            <div class="flex gap-3 pt-2">
+                                                <button id="reset-filters-btn" class="flex-1 text-sm btn border border-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-100">Сбросить</button>
+                                                <button id="apply-filters-btn" class="flex-1 text-sm btn bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700">Применить</button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+                                <div id="list-container" class="space-y-3"></div>
+                                <div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-base font-semibold"></h3><p id="no-results-text" class="text-xs"></p></div>
                             </div>
-                            <div id="list-container" class="space-y-3"></div>
-                            <div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-base font-semibold"></h3><p id="no-results-text" class="text-xs"></p></div>
-                        </div>
-                    `,
+                        `,
                     'success-screen': `<div class="p-5 flex flex-col items-center justify-center h-full text-center"><div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h2 id="success-title" class="text-xl font-bold mt-4 mb-1"></h2><p id="success-text" class="text-slate-600 mb-8 text-sm"></p><button id="back-to-hub-btn" class="text-sm btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button></div>`,
-                    'chat-screen': `<div class="flex-1 flex flex-col h-full"><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
+                    'chat-screen': `<div class="flex-1 flex flex-col h-full"><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
                     'my-trips-screen': `<div class="flex-1 flex flex-col"><div id="my-trips-container" class="p-5 space-y-4 flex-1"></div></div>`,
                     'profile-screen': this.getProfileFormTemplate(),
                 };
@@ -1437,6 +1437,18 @@
                     chat_id: chatId,
                     text: text,
                     parse_mode: 'Markdown',
+                    // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+                    // Добавляем inline-кнопку к сообщению
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                {
+                                    text: 'Открыть ВКонтакте', // Текст на кнопке
+                                    url: 'https://vk.com'      // Ссылка, которую откроет кнопка
+                                }
+                            ]
+                        ]
+                    }
                 };
 
                 try {
