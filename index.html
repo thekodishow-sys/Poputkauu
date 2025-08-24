@@ -236,23 +236,6 @@
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-    // --- ВАЖНО: ОБНОВЛЕНИЕ БАЗЫ ДАННЫХ ---
-    // Для работы нового функционала необходимо обновить структуру таблиц в Supabase:
-    // 1. В таблицу `ride_requests`:
-    //    - Добавьте колонку `status` (тип `text`).
-    //    - Добавьте колонку `ride_time` (тип `time`).
-    //    - Добавьте колонку `seats` (тип `int`).
-    //    - Добавьте колонку `via_ferry` (тип `boolean`).
-    //    - Удалите колонку `time_interval`.
-    // 2. В таблицу `ride_offers`:
-    //    - Добавьте колонку `linked_request_id` (тип `uuid` или `bigint`).
-    // 3. В таблицу `parcel_requests`:
-    //    - Добавьте колонки `status`, `assigned_driver_id`, `assigned_driver_username`, `assigned_driver_name`, `assigned_driver_car`, `delivered_at`.
-    // 4. В таблицу `bookings`:
-    //    - Добавьте колонку `seats` (тип `int`).
-    // 5. Создайте таблицу `banners` и настройте хранилище `images` (см. SQL).
-    // --- КОНЕЦ ИНСТРУКЦИИ ---
-
     // --- SUPABASE CLIENT INITIALIZATION ---
     const SUPABASE_URL = 'https://scqkpvmmoaolahpxinja.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw';
@@ -293,7 +276,7 @@
                 koz_yo: { from: 'Козьмодемьянск', to: 'Йошкар-Ола' }
             },
             cities: ['Йошкар-Ола', 'Чебоксары', 'Козьмодемьянск'],
-            adminId:5017229451,
+            adminId: 5017229451,
         },
 
         // --- INITIALIZATION ---
@@ -319,10 +302,15 @@
             this.bindHandlers();
             this.render.allScreens();
             this.render.updateRoleSwitcherUI();
-            this.render.banners();
             this.bindEvents();
             this.setDefaultDates();
             this.render.updateAvatar();
+            
+            try {
+                await this.render.banners();
+            } catch (error) {
+                console.error("Failed to load banners:", error);
+            }
         },
 
         // --- USER PROFILE ---
