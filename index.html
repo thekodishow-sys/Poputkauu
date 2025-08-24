@@ -116,9 +116,12 @@
     <div id="app-container" class="h-screen w-screen max-w-md mx-auto bg-white flex flex-col">
         <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
             <!-- Left item -->
-            <div class="flex-1 flex justify-start">
+            <div class="flex-1 flex justify-start relative">
+                 <button id="add-banner-btn" class="text-slate-500 hover:text-slate-800 transition-colors hidden">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
                  <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
             </div>
             <!-- Center item -->
@@ -157,8 +160,9 @@
         
         <!-- App Footer -->
         <footer id="app-footer" class="p-5 border-t border-slate-200 bg-white flex-shrink-0">
+            <div id="banner-container" class="space-y-3 my-4"></div>
             <a href="https://t.me/poputka12rus" target="_blank" class="text-sm btn w-full bg-sky-100 text-sky-800 font-bold py-3 px-4 rounded-xl hover:bg-sky-200 flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
                 <span>Наша группа в Telegram</span>
             </a>
             <a href="https://devtol.ru" target="_blank" class="block text-center text-xs text-slate-400 mt-2 hover:underline">
@@ -196,6 +200,39 @@
             <button id="seats-modal-cancel-btn" class="w-full p-3 mt-2 bg-white rounded-xl text-blue-500 text-lg font-semibold">Отмена</button>
         </div>
     </div>
+
+    <!-- Banner Modal -->
+    <div id="banner-modal-overlay" class="modal-overlay fixed inset-0 bg-black bg-opacity-40 z-40 hidden"></div>
+    <div id="banner-modal" class="modal fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto z-50 transform translate-y-full transition-transform duration-300" style="height: 80%;">
+        <div class="bg-white h-full rounded-t-xl flex flex-col">
+            <h3 class="text-lg font-semibold text-center p-4 border-b flex-shrink-0">Добавить баннер</h3>
+            <form id="banner-form" class="p-4 space-y-4 overflow-y-auto flex-1">
+                <div>
+                    <label for="banner-title" class="block text-xs font-medium text-slate-600 mb-2">Заголовок</label>
+                    <input type="text" id="banner-title" name="title" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
+                </div>
+                <div>
+                    <label for="banner-description" class="block text-xs font-medium text-slate-600 mb-2">Описание</label>
+                    <textarea id="banner-description" name="description" rows="3" class="w-full p-3 border border-slate-200 rounded-lg text-sm"></textarea>
+                </div>
+                <div>
+                    <label for="banner-link" class="block text-xs font-medium text-slate-600 mb-2">URL-ссылка</label>
+                    <input type="url" id="banner-link" name="link_url" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="https://example.com" required>
+                </div>
+                <div>
+                    <label for="banner-image" class="block text-xs font-medium text-slate-600 mb-2">Изображение</label>
+                    <input type="file" id="banner-image" name="image" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*" required>
+                </div>
+                <div class="form-error-banner text-red-500 text-xs text-center mt-2 hidden"></div>
+            </form>
+            <div class="p-4 border-t flex-shrink-0">
+                <button type="submit" form="banner-form" id="save-banner-btn" class="w-full p-3 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700">
+                    Сохранить
+                </button>
+                <button id="banner-modal-cancel-btn" class="w-full p-3 mt-2 bg-slate-100 text-slate-700 rounded-xl text-base font-semibold">Отмена</button>
+            </div>
+        </div>
+    </div>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -213,6 +250,7 @@
     //    - Добавьте колонки `status`, `assigned_driver_id`, `assigned_driver_username`, `assigned_driver_name`, `assigned_driver_car`, `delivered_at`.
     // 4. В таблицу `bookings`:
     //    - Добавьте колонку `seats` (тип `int`).
+    // 5. Создайте таблицу `banners` и настройте хранилище `images` (см. SQL).
     // --- КОНЕЦ ИНСТРУКЦИИ ---
 
     // --- SUPABASE CLIENT INITIALIZATION ---
@@ -255,6 +293,7 @@
                 koz_yo: { from: 'Козьмодемьянск', to: 'Йошкар-Ола' }
             },
             cities: ['Йошкар-Ола', 'Чебоксары', 'Козьмодемьянск'],
+            adminId: 5017229451,
         },
 
         // --- INITIALIZATION ---
@@ -272,11 +311,15 @@
             
             if (this.state.currentUser) {
                 await this.ensureUserProfile();
+                if (this.state.currentUser.id === this.config.adminId) {
+                    document.getElementById('add-banner-btn').classList.remove('hidden');
+                }
             }
             
             this.bindHandlers();
             this.render.allScreens();
             this.render.updateRoleSwitcherUI();
+            this.render.banners();
             this.bindEvents();
             this.setDefaultDates();
             this.render.updateAvatar();
@@ -328,7 +371,7 @@
         // --- EVENT BINDING ---
         bindEvents() {
             document.body.addEventListener('click', (e) => {
-                const button = e.target.closest('button, #role-switcher, #booking-modal-overlay, #seats-modal-overlay');
+                const button = e.target.closest('button, #role-switcher, #booking-modal-overlay, #seats-modal-overlay, #banner-modal-overlay');
                 if (!button) return;
 
                 const { id, classList, dataset } = button;
@@ -362,6 +405,9 @@
                     'booking-modal-overlay': this.handlers.onBookingModalCancel,
                     'seats-modal-cancel-btn': this.handlers.onSeatsModalCancel,
                     'seats-modal-overlay': this.handlers.onSeatsModalCancel,
+                    'banner-modal-cancel-btn': this.handlers.onBannerModalCancel,
+                    'banner-modal-overlay': this.handlers.onBannerModalCancel,
+                    'add-banner-btn': this.handlers.onAddBannerClick,
                     'apply-filters-btn': this.handlers.onApplyFilters,
                     'reset-filters-btn': this.handlers.onResetFilters,
                     'filter-toggle-btn': this.handlers.onToggleFilter,
@@ -397,6 +443,7 @@
                     'chat-form': () => this.handlers.onSendMessage(e.target),
                     'profile-form': () => this.handlers.onProfileSubmit(e.target),
                     'seats-offer-form': () => this.handlers.onConfirmSeatOffer(e.target),
+                    'banner-form': () => this.handlers.onBannerSubmit(e.target),
                 };
                 if (formHandlers[e.target.id]) formHandlers[e.target.id]();
             });
@@ -1207,6 +1254,71 @@
                 await this.utils.sendTelegramNotification(request.sender_id, message);
 
                 this.handlers.onMyTripsClick();
+            },
+            
+            onAddBannerClick() {
+                const overlay = document.getElementById('banner-modal-overlay');
+                const modal = document.getElementById('banner-modal');
+                overlay.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    overlay.classList.add('show');
+                    modal.classList.add('show');
+                });
+            },
+
+            onBannerModalCancel() {
+                const overlay = document.getElementById('banner-modal-overlay');
+                const modal = document.getElementById('banner-modal');
+                overlay.classList.remove('show');
+                modal.classList.remove('show');
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                }, 300);
+            },
+
+            async onBannerSubmit(form) {
+                const saveBtn = document.getElementById('save-banner-btn');
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Сохранение...';
+
+                const formData = new FormData(form);
+                const file = formData.get('image');
+                const errorDiv = form.querySelector('.form-error-banner');
+                errorDiv.classList.add('hidden');
+
+                try {
+                    const filePath = `public/${Date.now()}-${file.name}`;
+                    const { error: uploadError } = await supabaseClient.storage.from('images').upload(filePath, file);
+
+                    if (uploadError) {
+                        throw new Error('Ошибка загрузки изображения: ' + uploadError.message);
+                    }
+
+                    const { data: urlData } = supabaseClient.storage.from('images').getPublicUrl(filePath);
+
+                    const { error: insertError } = await supabaseClient.from('banners').insert({
+                        title: formData.get('title'),
+                        description: formData.get('description'),
+                        link_url: formData.get('link_url'),
+                        image_url: urlData.publicUrl,
+                    });
+
+                    if (insertError) {
+                        throw new Error('Ошибка сохранения баннера: ' + insertError.message);
+                    }
+
+                    form.reset();
+                    this.handlers.onBannerModalCancel();
+                    this.render.banners();
+
+                } catch (error) {
+                    console.error(error);
+                    errorDiv.textContent = error.message;
+                    errorDiv.classList.remove('hidden');
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Сохранить';
+                }
             }
         },
         
@@ -1225,7 +1337,11 @@
                     App.state.navigationHistory.push(screenId);
                 }
                 
-                document.getElementById('backButton').classList.toggle('invisible', App.state.navigationHistory.length <= 1);
+                const isAtRoot = App.state.navigationHistory.length <= 1;
+                document.getElementById('backButton').classList.toggle('invisible', isAtRoot);
+                if (App.state.currentUser.id === App.config.adminId) {
+                    document.getElementById('add-banner-btn').classList.toggle('hidden', !isAtRoot);
+                }
                 
                 if (screenId === 'offer-screen') App.render.populateOfferForm();
                 if (screenId === 'profile-screen') App.render.populateProfileForm();
@@ -1239,7 +1355,12 @@
                 
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                 document.getElementById(lastScreen).classList.add('active');
-                document.getElementById('backButton').classList.toggle('invisible', App.state.navigationHistory.length <= 1);
+                
+                const isAtRoot = App.state.navigationHistory.length <= 1;
+                document.getElementById('backButton').classList.toggle('invisible', isAtRoot);
+                if (App.state.currentUser.id === App.config.adminId) {
+                    document.getElementById('add-banner-btn').classList.toggle('hidden', !isAtRoot);
+                }
             }
         },
 
