@@ -183,11 +183,11 @@
     // --- ВАЖНО: ОБНОВЛЕНИЕ БАЗЫ ДАННЫХ ---
     // Для работы нового функционала необходимо обновить структуру таблиц в Supabase:
     // 1. В таблицу `ride_requests`:
-    //    - Добавьте колонку `status` (тип `text`, значение по умолчанию `'open'`).
-    //      Она будет отслеживать состояние заявки: 'open', 'pending_confirmation', 'closed'.
+    //    - Добавьте колонку `status` (тип `text`).
+    //    - Удалите колонку `time_interval`.
+    //    - Добавьте колонку `ride_time` (тип `time`).
     // 2. В таблицу `ride_offers`:
-    //    - Добавьте колонку `linked_request_id` (тип `uuid` или `bigint`, в зависимости от типа id в `ride_requests`).
-    //      Эта колонка будет связывать предложение водителя с конкретной заявкой пассажира.
+    //    - Добавьте колонку `linked_request_id` (тип `uuid` или `bigint`).
     // 3. В таблицу `parcel_requests`:
     //    - Добавьте колонки `status`, `assigned_driver_id`, `assigned_driver_username`, `assigned_driver_name`, `assigned_driver_car`, `delivered_at`.
     // --- КОНЕЦ ИНСТРУКЦИИ ---
@@ -674,7 +674,7 @@
                     form.querySelector('.form-error-direction').classList.remove('hidden'); 
                     valid = false; 
                 }
-                if (!formData.get('timeInterval')) { 
+                if (!formData.get('time')) { 
                     form.querySelector('.form-error-time').classList.remove('hidden'); 
                     valid = false; 
                 }
@@ -686,7 +686,7 @@
                 const { error } = await supabaseClient.from('ride_requests').insert({
                     passenger_id: this.state.currentUser.id, passenger_username: this.state.currentUser.username,
                     "from": from, "to": to, ride_date: formData.get('date'),
-                    time_interval: formData.get('timeInterval'), passenger_name: this.state.userProfile.full_name, price: price,
+                    ride_time: formData.get('time'), passenger_name: this.state.userProfile.full_name, price: price,
                     status: 'open'
                 });
                 if (error) { console.error(error); return; }
@@ -936,8 +936,6 @@
 
                 if (requestError || !request) { console.error("Request not found:", requestError); return; }
 
-                const timeForOffer = request.time_interval.split('-')[0] + ':00';
-
                 const { data: newOffer, error: offerError } = await supabaseClient
                     .from('ride_offers')
                     .insert({
@@ -948,7 +946,7 @@
                         from: request.from,
                         to: request.to,
                         ride_date: request.ride_date,
-                        ride_time: timeForOffer,
+                        ride_time: request.ride_time,
                         seats: 1,
                         price: request.price,
                         linked_request_id: requestId
@@ -1456,7 +1454,7 @@
                     <div class="text-slate-600 text-sm">
                         <p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)}</p>
                         <p><strong>${isParcel ? 'Отправитель' : 'Пассажир'}:</strong> ${isParcel ? item.sender_name : item.passenger_name}</p>
-                        ${!isParcel ? `<p><strong>Время:</strong> ${item.time_interval}</p>` : ''}
+                        ${!isParcel ? `<p><strong>Время:</strong> ~ ${item.ride_time.substring(0, 5)}</p>` : ''}
                     </div>
                     <div class="flex items-center gap-2">
                         ${isParcel ? `<div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div>` : `<div class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Пассажир</div>`}
@@ -1576,7 +1574,7 @@
                         <div class="flex justify-between items-start opacity-60">
                             <div>
                                 <div class="font-bold text-base">${request.from} → ${request.to}</div>
-                                <div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div>
+                                <div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} в ~ ${request.ride_time.substring(0, 5)}</div>
                             </div>
                             <div class="text-base font-semibold">${request.price} ₽</div>
                         </div>
@@ -1590,7 +1588,7 @@
                      <div class="flex justify-between items-start">
                         <div>
                             <div class="font-bold text-base">${request.from} → ${request.to}</div>
-                            <div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div>
+                            <div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} в ~ ${request.ride_time.substring(0, 5)}</div>
                         </div>
                         <div class="text-base font-semibold">${request.price} ₽</div>
                     </div>
@@ -1789,7 +1787,19 @@
                     </div>
                     <input type="hidden" name="from" required><input type="hidden" name="to" required>
                     <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
-                    <input type="date" name="date" id="date-request" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required><div><label class="block text-xs font-medium text-slate-600 mb-2">Желаемое время выезда</label><div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2"><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">04-06</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">06-08</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">08-10</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">10-12</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">12-14</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">14-16</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">16-18</button><button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">18-20</button></div><input type="hidden" name="timeInterval" id="timeIntervalInput" required><div class="form-error-time text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите время</div></div><button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button></form></div>`;
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-2">Дата</label>
+                            <input type="date" name="date" id="date-request" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-600 mb-2">Желаемое время</label>
+                            <input type="time" name="time" id="time-request" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
+                        </div>
+                    </div>
+                    <div class="form-error-time text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите время</div>
+                    <button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button>
+                    </form></div>`;
             },
             
             getParcelRequestFormTemplate() {
