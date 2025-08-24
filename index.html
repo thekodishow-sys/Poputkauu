@@ -106,7 +106,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
             </div>
-            <h1 id="headerTitle" class="text-base font-semibold text-slate-800 text-center flex-grow">Попутка 12</h1>
+            <h1 id="headerTitle" class="text-base font-semibold text-slate-800 text-center flex-grow">Пассажир</h1>
             <div class="flex items-center gap-3">
                  <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
                     <div id="role-bg"></div>
@@ -125,8 +125,7 @@
 
         <main id="main-content" class="flex-grow overflow-y-auto relative">
             <!-- Screens will be rendered here by JS -->
-            <div id="route-selection-screen" class="screen active"></div>
-            <div id="passenger-home-screen" class="screen"></div>
+            <div id="passenger-home-screen" class="screen active"></div>
             <div id="driver-dashboard-screen" class="screen"></div>
             <div id="offer-screen" class="screen"></div>
             <div id="passenger-request-screen" class="screen"></div>
@@ -165,7 +164,7 @@
             userProfile: null,
             userRole: 'passenger', // Default role
             selectedRoute: null,
-            navigationHistory: ['route-selection-screen'], // New default screen
+            navigationHistory: ['passenger-home-screen'], // New default screen
             allRequests: [], // To store the fetched requests
             currentFilters: { // To store the current filter values
                 from: '',
@@ -287,7 +286,6 @@
 
                 const clickHandlers = {
                     'backButton': () => this.navigation.back(),
-                    'select-route-koz-yo': () => this.handlers.onRouteSelect(dataset.from, dataset.to),
                     'view-driver-offers-btn': this.handlers.onViewDriverOffers,
                     'create-passenger-request-btn': () => this.navigation.to('passenger-request-screen', 'Заявка на поездку'),
                     'send-parcel-btn': () => this.navigation.to('parcel-request-screen', 'Отправить посылку'),
@@ -350,7 +348,7 @@
                 const newScreen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
                 const newTitle = this.state.userRole === 'passenger' ? 'Пассажир' : 'Кабинет водителя';
                 
-                this.state.navigationHistory = ['route-selection-screen'];
+                this.state.navigationHistory = [newScreen];
                 this.navigation.to(newScreen, newTitle);
             },
 
@@ -413,13 +411,6 @@
                     form.querySelector('.form-error-direction').classList.add('hidden');
                 }
             },
-
-            onRouteSelect(from, to) {
-                this.state.selectedRoute = { from, to };
-                const screen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
-                const title = this.state.userRole === 'passenger' ? 'Пассажир' : 'Кабинет водителя';
-                this.navigation.to(screen, title);
-            },
             
             onTimeSelect(button) {
                 const form = button.closest('form');
@@ -477,6 +468,12 @@
             async onViewPassengerRequests() {
                 this.navigation.to('list-screen', 'Заявки от пассажиров');
                 document.getElementById('filter-section-container').classList.remove('hidden');
+                if (this.state.userRole === 'driver') {
+                    document.getElementById('filter-type-container').classList.remove('hidden');
+                } else {
+                    document.getElementById('filter-type-container').classList.add('hidden');
+                }
+
 
                 const listContainer = document.getElementById('list-container');
                 listContainer.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
@@ -831,7 +828,7 @@
             onBackToHub() {
                 const screen = this.state.userRole === 'driver' ? 'driver-dashboard-screen' : 'passenger-home-screen';
                 const title = this.state.userRole === 'driver' ? 'Кабинет водителя' : 'Пассажир';
-                this.state.navigationHistory = ['route-selection-screen', screen];
+                this.state.navigationHistory = [screen];
                 this.navigation.to(screen, title);
             },
         },
@@ -865,7 +862,6 @@
                 const lastScreen = App.state.navigationHistory[App.state.navigationHistory.length - 1];
                 
                 const titles = {
-                    'route-selection-screen': 'Выберите маршрут',
                     'passenger-home-screen': 'Пассажир',
                     'driver-dashboard-screen': 'Кабинет водителя',
                     'list-screen': document.getElementById('headerTitle').textContent,
@@ -885,9 +881,8 @@
         render: {
             allScreens() {
                 const screenTemplates = {
-                    'route-selection-screen': `<div class="p-5"><div class="text-center mb-8"><h2 class="text-xl font-bold mb-1">Выберите маршрут</h2></div><div class="space-y-4"><button id="select-route-koz-yo" data-from="${App.config.routes.koz_yo.from}" data-to="${App.config.routes.koz_yo.to}" class="btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700 text-sm">${App.config.routes.koz_yo.from} &lt;—&gt; ${App.config.routes.koz_yo.to}</button></div></div>`,
-                    'passenger-home-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2></div><div class="space-y-3"><button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button><button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button><button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button></div></div>`,
-                    'driver-dashboard-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Кабинет водителя</h2></div><div class="space-y-3"><button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button><button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button></div></div>`,
+                    'passenger-home-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2></div><div class="space-y-3"><button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button><button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button><button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button><a href="https://t.me/poputka12rus" target="_blank" class="text-sm mt-4 btn w-full bg-sky-100 text-sky-800 font-bold py-3 px-4 rounded-xl hover:bg-sky-200 flex items-center justify-center gap-2"> <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> <span>Наша группа в Telegram</span> </a></div></div>`,
+                    'driver-dashboard-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Кабинет водителя</h2></div><div class="space-y-3"><button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button><button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button><a href="https://t.me/poputka12rus" target="_blank" class="text-sm mt-4 btn w-full bg-sky-100 text-sky-800 font-bold py-3 px-4 rounded-xl hover:bg-sky-200 flex items-center justify-center gap-2"> <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg> <span>Наша группа в Telegram</span> </a></div></div>`,
                     'offer-screen': this.getOfferFormTemplate(),
                     'passenger-request-screen': this.getPassengerRequestFormTemplate(),
                     'parcel-request-screen': this.getParcelRequestFormTemplate(),
@@ -895,12 +890,10 @@
                         <div class="p-4 space-y-4">
                             <div id="filter-section-container" class="hidden">
                                 <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                                    <div class="flex justify-between items-center mb-3">
+                                    <button id="filter-toggle-btn" class="flex justify-between items-center w-full mb-3">
                                         <h3 class="text-base font-semibold text-slate-800">Фильтры</h3>
-                                        <button id="filter-toggle-btn">
-                                            <svg id="filter-toggle-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><path d="m18 15-6-6-6 6"/></svg>
-                                        </button>
-                                    </div>
+                                        <svg id="filter-toggle-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><path d="m18 15-6-6-6 6"/></svg>
+                                    </button>
                                     <div id="filter-content" class="space-y-3">
                                         <div class="grid grid-cols-2 gap-3">
                                             <div>
@@ -1481,7 +1474,7 @@
             if (date) {
                 filtered = filtered.filter(item => item.ride_date === date);
             }
-            if (type !== 'all') {
+            if (type !== 'all' && this.state.userRole === 'driver') {
                 filtered = filtered.filter(item => item.type === type);
             }
 
