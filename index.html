@@ -177,13 +177,22 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
     // --- ВАЖНО: ОБНОВЛЕНИЕ БАЗЫ ДАННЫХ ---
-    // Для работы нового функционала необходимо обновить структуру таблиц в Supabase:
+    // Для работы нового функционала необходимо обновить/создать структуру таблиц в Supabase:
     // 1. В таблицу `ride_requests`:
     //    - Добавьте колонку `status` (тип `text`, значение по умолчанию `'open'`).
     //      Она будет отслеживать состояние заявки: 'open', 'pending_confirmation', 'closed'.
     // 2. В таблицу `ride_offers`:
     //    - Добавьте колонку `linked_request_id` (тип `uuid` или `bigint`, в зависимости от типа id в `ride_requests`).
     //      Эта колонка будет связывать предложение водителя с конкретной заявкой пассажира.
+    // 3. В таблицу `parcel_requests`:
+    //    - Добавьте колонку `status` (тип `text`, значение по умолчанию `'open'`).
+    //      Состояния: 'open', 'pending_confirmation', 'closed'.
+    // 4. Создайте новую таблицу `parcel_deliveries`:
+    //    - `id` (primary key, uuid или bigserial)
+    //    - `created_at` (timestamp with time zone, default now())
+    //    - `parcel_request_id` (foreign key к `parcel_requests.id`)
+    //    - `driver_id` (foreign key к `profiles.id`)
+    //    - `status` (text, default 'pending') Состояния: 'pending', 'confirmed', 'declined'
     // --- КОНЕЦ ИНСТРУКЦИИ ---
 
     // --- SUPABASE CLIENT INITIALIZATION ---
@@ -342,6 +351,7 @@
                 }
 
                 if (classList.contains('offer-ride-btn')) this.handlers.onOfferRideToRequest(dataset.requestId);
+                if (classList.contains('pickup-parcel-btn')) this.handlers.onPickupParcel(dataset.requestId); // NEW
                 if (classList.contains('request-booking-btn')) this.handlers.onRequestBooking(dataset.offerId);
                 if (classList.contains('detour-booking-btn')) this.handlers.onDetourBookingClick(dataset.offer);
                 if (classList.contains('confirm-booking-segment-btn')) this.handlers.onConfirmBookingSegment(dataset);
@@ -351,6 +361,8 @@
                 if (classList.contains('delete-offer-btn')) this.handlers.onDeleteOffer(dataset.offerId);
                 if (classList.contains('cancel-request-btn')) this.handlers.onCancelRequest(dataset.requestId);
                 if (classList.contains('cancel-parcel-request-btn')) this.handlers.onCancelParcelRequest(dataset.requestId);
+                if (classList.contains('accept-parcel-btn')) this.handlers.onAcceptParcel(dataset.deliveryId); // NEW
+                if (classList.contains('decline-parcel-btn')) this.handlers.onDeclineParcel(dataset.deliveryId); // NEW
             });
 
             document.body.addEventListener('submit', (e) => {
@@ -526,7 +538,10 @@
                     .order('ride_date', { ascending: true });
                 
                 const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
-                    .select('*').gte('ride_date', today).order('ride_date', { ascending: true });
+                    .select('*')
+                    .gte('ride_date', today)
+                    .eq('status', 'open') // NEW: Only show open parcels
+                    .order('ride_date', { ascending: true });
 
                 if (ridesError || parcelsError) { console.error(ridesError || parcelsError); return; }
                 
@@ -574,14 +589,32 @@
                 container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
 
                 if (this.state.userRole === 'driver') {
-                    const { data: offers, error } = await supabaseClient.from('ride_offers')
+                    // Fetch driver's ride offers
+                    const { data: offers, error: offersError } = await supabaseClient.from('ride_offers')
                         .select(`*, bookings(*, profiles(full_name, username))`)
                         .eq('driver_id', this.state.currentUser.id)
                         .gte('ride_date', new Date().toISOString().split('T')[0])
                         .order('ride_date', { ascending: true });
                     
-                    if (error) { console.error(error); return; }
-                    this.render.myTrips(offers, 'driver');
+                    // NEW: Fetch driver's parcel deliveries
+                    const { data: deliveries, error: deliveriesError } = await supabaseClient.from('parcel_deliveries')
+                        .select(`*, parcel_requests(*)`)
+                        .eq('driver_id', this.state.currentUser.id)
+                        .in('status', ['pending', 'confirmed']) // Fetch pending and confirmed
+                        .order('created_at', { ascending: false });
+
+                    if (offersError || deliveriesError) { 
+                        console.error(offersError || deliveriesError); 
+                        return; 
+                    }
+
+                    // Combine and render
+                    const myTripsData = {
+                        offers: offers || [],
+                        deliveries: deliveries || []
+                    };
+                    this.render.myTrips(myTripsData, 'driver');
+
                 } else { // Passenger
                     const { data: bookings, error: bookingsError } = await supabaseClient.from('bookings')
                         .select(`*, ride_offers(*)`)
@@ -599,6 +632,7 @@
                     const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
                         .select(`*`)
                         .eq('sender_id', this.state.currentUser.id)
+                        .in('status', ['open', 'pending_confirmation']) // Also check for pending
                         .gte('ride_date', new Date().toISOString().split('T')[0])
                         .order('created_at', { ascending: false });
 
@@ -691,7 +725,8 @@
                 const { error } = await supabaseClient.from('parcel_requests').insert({
                     sender_id: this.state.currentUser.id, sender_username: this.state.currentUser.username,
                     "from": from, "to": to, ride_date: formData.get('date'),
-                    sender_name: this.state.userProfile.full_name, price: this.config.prices.parcel
+                    sender_name: this.state.userProfile.full_name, price: this.config.prices.parcel,
+                    status: 'open' // NEW
                 });
                 if (error) { console.error(error); return; }
                 this.resetForm(form);
@@ -921,8 +956,6 @@
 
                 if (requestError || !request) { console.error("Request not found:", requestError); return; }
 
-                // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
-                // Преобразуем интервал "08-10" в корректный формат времени "08:00"
                 const timeForOffer = request.time_interval.split('-')[0] + ':00';
 
                 const { data: newOffer, error: offerError } = await supabaseClient
@@ -935,7 +968,7 @@
                         from: request.from,
                         to: request.to,
                         ride_date: request.ride_date,
-                        ride_time: timeForOffer, // Используем исправленное время
+                        ride_time: timeForOffer,
                         seats: 1,
                         price: request.price,
                         linked_request_id: requestId
@@ -968,6 +1001,105 @@
                     button.classList.remove('bg-green-500', 'hover:bg-green-600');
                     button.classList.add('bg-slate-400', 'cursor-not-allowed');
                 }
+            },
+
+            // --- NEW HANDLER FOR PARCELS ---
+            async onPickupParcel(requestId) {
+                if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
+                    this.navigation.to('profile-screen', 'Мой профиль');
+                    return;
+                }
+
+                const { data: request, error: requestError } = await supabaseClient
+                    .from('parcel_requests')
+                    .select('*')
+                    .eq('id', requestId)
+                    .single();
+
+                if (requestError || !request) { console.error("Parcel request not found:", requestError); return; }
+
+                // 1. Create a new delivery record for the driver
+                const { error: deliveryError } = await supabaseClient
+                    .from('parcel_deliveries')
+                    .insert({
+                        parcel_request_id: requestId,
+                        driver_id: this.state.currentUser.id,
+                        status: 'pending'
+                    });
+                
+                if (deliveryError) { console.error("Failed to create delivery record:", deliveryError); return; }
+
+                // 2. Update the parcel request status to hide it from other drivers
+                await supabaseClient.from('parcel_requests').update({ status: 'pending_confirmation' }).eq('id', requestId);
+
+                // 3. Notify the sender
+                const message = `*Водитель хочет забрать вашу посылку!* 📦\n\nВодитель *${this.state.userProfile.full_name}* на *${this.state.userProfile.driver_car}* откликнулся на вашу заявку:\n*Маршрут:* ${request.from} → ${request.to}\n*Дата:* ${this.utils.formatDate(request.ride_date)}\n\nВодитель ожидает вашего подтверждения. Вы можете связаться с ним в приложении.`;
+                await this.utils.sendTelegramNotification(request.sender_id, message);
+                
+                // 4. Update UI
+                const button = document.querySelector(`.pickup-parcel-btn[data-request-id="${requestId}"]`);
+                if (button) {
+                    button.textContent = 'Заявка отправлена';
+                    button.disabled = true;
+                    button.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    button.classList.add('bg-slate-400', 'cursor-not-allowed');
+                }
+            },
+
+            // --- NEW HANDLER FOR ACCEPTING PARCEL ---
+            async onAcceptParcel(deliveryId) {
+                const { data, error } = await supabaseClient
+                    .from('parcel_deliveries')
+                    .update({ status: 'confirmed' })
+                    .eq('id', deliveryId)
+                    .select('*, parcel_requests(id)')
+                    .single();
+
+                if (error || !data) {
+                    console.error("Failed to accept parcel delivery:", error);
+                    return;
+                }
+
+                // Close the original request so no one else can see it
+                await supabaseClient
+                    .from('parcel_requests')
+                    .update({ status: 'closed' })
+                    .eq('id', data.parcel_requests.id);
+                
+                this.handlers.onMyTripsClick();
+            },
+
+            // --- NEW HANDLER FOR DECLINING PARCEL ---
+            async onDeclineParcel(deliveryId) {
+                const { data, error: fetchError } = await supabaseClient
+                    .from('parcel_deliveries')
+                    .select('parcel_request_id')
+                    .eq('id', deliveryId)
+                    .single();
+
+                if (fetchError || !data) {
+                    console.error("Could not find delivery to decline:", fetchError);
+                    return;
+                }
+
+                // Delete the delivery attempt
+                const { error: deleteError } = await supabaseClient
+                    .from('parcel_deliveries')
+                    .delete()
+                    .eq('id', deliveryId);
+
+                if (deleteError) {
+                    console.error("Failed to decline parcel delivery:", deleteError);
+                    return;
+                }
+
+                // Re-open the original parcel request for other drivers
+                await supabaseClient
+                    .from('parcel_requests')
+                    .update({ status: 'open' })
+                    .eq('id', data.parcel_request_id);
+
+                this.handlers.onMyTripsClick();
             }
         },
         
@@ -1152,13 +1284,24 @@
                 const container = document.getElementById('my-trips-container');
                 container.innerHTML = '';
                 if (role === 'driver') {
-                    if (!data || data.length === 0) {
-                        container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активных поездок</h3><p class="text-xs">Опубликуйте поездку, чтобы она здесь появилась.</p></div>`;
+                    const { offers, deliveries } = data;
+                    if ((!offers || offers.length === 0) && (!deliveries || deliveries.length === 0)) {
+                        container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активных поездок и посылок</h3><p class="text-xs">Опубликуйте поездку или откликнитесь на заявку.</p></div>`;
                         return;
                     }
-                    let content = data.map(offer => 
-                        `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyDriverOfferCard(offer)}</div>`
-                    ).join('');
+                    let content = '';
+                    if(offers && offers.length > 0) {
+                        content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-2">Мои поездки</h3>`;
+                        content += offers.map(offer => 
+                            `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyDriverOfferCard(offer)}</div>`
+                        ).join('');
+                    }
+                    if(deliveries && deliveries.length > 0) {
+                        content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои посылки</h3>`;
+                        content += deliveries.map(delivery => 
+                            `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyDriverParcelCard(delivery)}</div>`
+                        ).join('');
+                    }
                     container.innerHTML = content;
 
                 } else { // Passenger
@@ -1329,8 +1472,9 @@
 
             getPassengerRequestCard(item) {
                 const isParcel = item.type === 'parcel';
+                // --- MODIFICATION HERE ---
                 const buttonHtml = isParcel 
-                    ? `<a href="https://t.me/${item.sender_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors text-sm">Связаться</a>`
+                    ? `<button class="pickup-parcel-btn btn w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors text-sm" data-request-id="${item.id}">Забрать посылку</button>`
                     : `<button class="offer-ride-btn btn w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors text-sm" data-request-id="${item.id}">Предложить поездку</button>`;
 
                 return `
@@ -1404,6 +1548,51 @@
                 `;
             },
             
+            // --- NEW CARD FOR DRIVER'S PARCEL DELIVERIES ---
+            getMyDriverParcelCard(delivery) {
+                const parcel = delivery.parcel_requests;
+                if (!parcel) return '<div>Ошибка: заявка на посылку не найдена.</div>';
+
+                let contentHtml = '';
+                if (delivery.status === 'pending') {
+                    contentHtml = `
+                        <div class="text-sm text-amber-800 bg-amber-100 p-2 rounded-lg text-center font-semibold">
+                            Ожидает вашего решения
+                        </div>
+                        <div class="flex gap-2 pt-2">
+                            <button class="decline-parcel-btn flex-1 btn bg-red-50 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 transition-colors text-sm" data-delivery-id="${delivery.id}">Отклонить</button>
+                            <button class="accept-parcel-btn flex-1 btn bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors text-sm" data-delivery-id="${delivery.id}">Принять</button>
+                        </div>
+                    `;
+                } else if (delivery.status === 'confirmed') {
+                    contentHtml = `
+                        <div class="text-sm text-green-800 bg-green-100 p-2 rounded-lg text-center font-semibold">
+                            Вы приняли эту посылку
+                        </div>
+                        <a href="https://t.me/${parcel.sender_username}" target="_blank" class="mt-2 block w-full text-center bg-blue-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors text-sm">Связаться с отправителем</a>
+                    `;
+                }
+
+                return `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-base">${parcel.from} → ${parcel.to}</div>
+                            <div class="text-xs text-slate-500">${App.utils.formatDate(parcel.ride_date)}</div>
+                        </div>
+                        <div class="text-base font-semibold">${parcel.price} ₽</div>
+                    </div>
+                    <div class="text-slate-600 text-sm">
+                        <p><strong>Отправитель:</strong> ${parcel.sender_name}</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div>
+                    </div>
+                    <div class="border-t border-slate-100 pt-2 mt-2">
+                        ${contentHtml}
+                    </div>
+                `;
+            },
+
             getMyBookingCard(booking) {
                 const offer = booking.ride_offers;
                 if (!offer) {
@@ -1486,6 +1675,20 @@
             },
 
             getMyParcelRequestCard(parcel) {
+                if (parcel.status === 'pending_confirmation') {
+                     return `
+                        <div class="flex justify-between items-start opacity-60">
+                            <div>
+                                <div class="font-bold text-base">${parcel.from} → ${parcel.to}</div>
+                                <div class="text-xs text-slate-500">${App.utils.formatDate(parcel.ride_date)}</div>
+                            </div>
+                            <div class="text-base font-semibold">${parcel.price} ₽</div>
+                        </div>
+                        <div class="text-center text-sm text-amber-700 font-semibold bg-amber-50 p-2 rounded-lg mt-2">
+                            Водитель откликнулся, ожидайте связи.
+                        </div>
+                    `;
+                }
                 return `
                      <div class="flex justify-between items-start">
                         <div>
@@ -1620,7 +1823,7 @@
                             [
                                 {
                                     text: 'Открыть приложение', // Текст на кнопке
-                                    url: 'https://t.me/poputka12_bot?startapp='    // Ссылка, которую откроет кнопка
+                                    url: 'https://t.me/poputka12_bot?startapp='   // Ссылка, которую откроет кнопка
                                 }
                             ]
                         ]
