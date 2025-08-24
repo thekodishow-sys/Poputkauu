@@ -522,9 +522,9 @@
                 const { data: rides, error: ridesError } = await supabaseClient.from('ride_requests')
                     .select('*')
                     .gte('ride_date', today)
-                    .eq('status', 'open') // --- ИЗМЕНЕНИЕ: Показывать только открытые заявки
+                    .eq('status', 'open') 
                     .order('ride_date', { ascending: true });
-                // Note: Parcel logic would need a similar status field if it should have this feature.
+                
                 const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
                     .select('*').gte('ride_date', today).order('ride_date', { ascending: true });
 
@@ -592,7 +592,7 @@
                     const { data: requests, error: requestsError } = await supabaseClient.from('ride_requests')
                         .select(`*`)
                         .eq('passenger_id', this.state.currentUser.id)
-                        .in('status', ['open', 'pending_confirmation']) // Show own open requests too
+                        .in('status', ['open', 'pending_confirmation']) 
                         .gte('ride_date', new Date().toISOString().split('T')[0])
                         .order('created_at', { ascending: false });
 
@@ -921,6 +921,10 @@
 
                 if (requestError || !request) { console.error("Request not found:", requestError); return; }
 
+                // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+                // Преобразуем интервал "08-10" в корректный формат времени "08:00"
+                const timeForOffer = request.time_interval.split('-')[0] + ':00';
+
                 const { data: newOffer, error: offerError } = await supabaseClient
                     .from('ride_offers')
                     .insert({
@@ -931,7 +935,7 @@
                         from: request.from,
                         to: request.to,
                         ride_date: request.ride_date,
-                        ride_time: request.time_interval,
+                        ride_time: timeForOffer, // Используем исправленное время
                         seats: 1,
                         price: request.price,
                         linked_request_id: requestId
