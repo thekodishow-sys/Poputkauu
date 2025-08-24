@@ -484,6 +484,8 @@
 
                 if (form.id === 'offer-form') {
                     this.render.updateOfferOptionsUI(form);
+                } else if (form.id === 'passenger-request-form') {
+                    this.render.updateRequestPriceUI(form);
                 }
 
                 if (fromValue && toValue) {
@@ -736,8 +738,14 @@
                 if (!valid) return;
                 
                 const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
-                const price = isCheboksaryRoute ? this.config.prices.cheboksary : this.config.prices.base;
                 const viaFerry = form.querySelector('#via-ferry-toggle-request')?.checked || false;
+                
+                let pricePerSeat = this.config.prices.base;
+                if (isCheboksaryRoute) {
+                    pricePerSeat = this.config.prices.cheboksary;
+                } else if (viaFerry) {
+                    pricePerSeat += this.config.prices.ferrySurcharge;
+                }
 
                 const { error } = await supabaseClient.from('ride_requests').insert({
                     passenger_id: this.state.currentUser.id, passenger_username: this.state.currentUser.username,
@@ -745,7 +753,8 @@
                     ride_time: formData.get('time'), 
                     seats: parseInt(formData.get('seats')),
                     via_ferry: viaFerry,
-                    passenger_name: this.state.userProfile.full_name, price: price,
+                    passenger_name: this.state.userProfile.full_name, 
+                    price: pricePerSeat,
                     status: 'open'
                 });
                 if (error) { console.error(error); return; }
@@ -1314,7 +1323,7 @@
                                 <div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-base font-semibold"></h3><p id="no-results-text" class="text-xs"></p></div>
                             </div>
                         `,
-                    'success-screen': `<div class="p-5 flex flex-col items-center justify-center h-full text-center"><div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h2 id="success-title" class="text-xl font-bold mt-4 mb-1"></h2><p id="success-text" class="text-slate-600 mb-8 text-sm"></p><button id="back-to-hub-btn" class="text-sm btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button></div>`,
+                    'success-screen': `<div class="p-5 flex flex-col items-center justify-center h-full text-center"><div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h2 id="success-title" class="text-xl font-bold mt-4 mb-1"></h2><p id="success-text" class="text-slate-600 mb-8 text-sm"></p><button id="back-to-hub-btn" class="text-sm btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button></div>`,
                     'chat-screen': `<div class="flex-1 flex flex-col h-full"><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
                     'my-trips-screen': `<div class="flex-1 flex flex-col"><div id="my-trips-container" class="p-5 space-y-4 flex-1"></div></div>`,
                     'profile-screen': this.getProfileFormTemplate(),
@@ -1469,6 +1478,28 @@
                 }
                 
                 form.querySelector('#publish-price').textContent = price;
+            },
+
+            updateRequestPriceUI(form) {
+                const from = form.querySelector('input[name="from"]').value;
+                const to = form.querySelector('input[name="to"]').value;
+                const ferryToggle = form.querySelector('#via-ferry-toggle-request');
+                
+                let price = App.config.prices.base;
+                const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
+
+                if (isCheboksaryRoute) {
+                    price = App.config.prices.cheboksary;
+                    form.querySelector('#ferry-price-increase-request').classList.add('hidden');
+                } else {
+                    const isFerryChecked = ferryToggle && ferryToggle.checked;
+                    form.querySelector('#ferry-price-increase-request').classList.toggle('hidden', !isFerryChecked);
+                    if (isFerryChecked) {
+                        price += App.config.prices.ferrySurcharge;
+                    }
+                }
+                
+                form.querySelector('#request-price').textContent = price;
             },
 
             bookingOptionsModal(offer) {
@@ -1923,10 +1954,13 @@
                     <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
                     <div id="ferry-toggle-container-request" class="hidden p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
                         <label for="via-ferry-toggle-request" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label>
-                        <label class="relative inline-flex items-center cursor-pointer">
-                            <input type="checkbox" id="via-ferry-toggle-request" name="via_ferry" class="sr-only peer">
-                            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                        </label>
+                        <div class="flex items-center space-x-3">
+                             <span id="ferry-price-increase-request" class="text-sm text-slate-800 font-semibold hidden">(+${App.config.prices.ferrySurcharge} ₽)</span>
+                            <label class="relative inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="via-ferry-toggle-request" name="via_ferry" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                            </label>
+                        </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
@@ -1943,7 +1977,7 @@
                         <label class="block text-xs font-medium text-slate-600 mb-2">Количество мест</label>
                         <input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg text-sm" value="1" required>
                     </div>
-                    <button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button>
+                    <button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку (<span id="request-price">${App.config.prices.base}</span> ₽)</button>
                     </form></div>`;
             },
             
