@@ -1417,6 +1417,40 @@
                 }
             },
             
+            async banners() {
+                const bannerContainer = document.getElementById('banner-container');
+                if (!bannerContainer) return;
+
+                const { data: banners, error } = await supabaseClient
+                    .from('banners')
+                    .select('*')
+                    .eq('is_active', true)
+                    .order('created_at', { ascending: false });
+
+                if (error) {
+                    console.error('Error fetching banners:', error);
+                    bannerContainer.innerHTML = ''; // Clear in case of error
+                    return;
+                }
+
+                if (!banners || banners.length === 0) {
+                    bannerContainer.innerHTML = ''; // Clear if no banners
+                    return;
+                }
+
+                const bannerHtml = banners.map(banner => `
+                    <a href="${banner.link_url}" target="_blank" class="block rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300">
+                        <img src="${banner.image_url}" alt="${banner.title}" class="w-full h-auto object-cover">
+                        <div class="p-3 bg-white">
+                            <h4 class="font-bold text-sm text-slate-800">${banner.title}</h4>
+                            <p class="text-xs text-slate-600">${banner.description || ''}</p>
+                        </div>
+                    </a>
+                `).join('');
+
+                bannerContainer.innerHTML = bannerHtml;
+            },
+            
             updateRoleSwitcherUI() {
                 const switcher = document.getElementById('role-switcher');
                 if (App.state.userRole === 'driver') {
