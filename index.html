@@ -118,11 +118,11 @@
             <!-- Left item -->
             <div class="flex-1 flex justify-start relative">
                  <button id="add-banner-btn" class="text-slate-500 hover:text-slate-800 transition-colors hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                </button>
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                 </button>
                  <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-                </button>
+                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                 </button>
             </div>
             <!-- Center item -->
             <div class="flex-shrink-0">
@@ -139,8 +139,8 @@
             <!-- Right item -->
             <div class="flex-1 flex justify-end">
                  <button id="profile-avatar-btn" class="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center overflow-hidden shrink-0">
-                    <!-- Avatar will be rendered here by JS -->
-                </button>
+                     <!-- Avatar will be rendered here by JS -->
+                 </button>
             </div>
         </header>
 
@@ -289,13 +289,16 @@
                 this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
             } catch (e) {
                 console.warn("Telegram WebApp script not found or running in browser.");
-                this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser' };
+                this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
             }
 
-            // **FIX: Authenticate with Supabase anonymously**
+            // [РУС] Чтобы взаимодействовать с таблицами Supabase, в которых включена RLS (Row Level Security),
+            // нам необходимо пройти аутентификацию. Мы входим в систему "анонимно", чтобы повысить
+            // роль пользователя с 'anon' до 'authenticated' на время сеанса.
+            // Это требует, чтобы у вас были настроены политики RLS для роли 'authenticated'.
             const { data: { session }, error } = await supabaseClient.auth.signInAnonymously();
             if (error) {
-                console.error('Error signing in anonymously:', error);
+                console.error('Error signing in to Supabase anonymously:', error);
                 return; // Stop initialization if auth fails
             }
             
@@ -324,13 +327,46 @@
         async ensureUserProfile() {
             if (!this.state.currentUser) return;
 
+            /*
+            * [РУС] ВАЖНОЕ ЗАМЕЧАНИЕ ПО БЕЗОПАСНОСТИ (ROW LEVEL SECURITY)
+            * ---------------------------------------------------------
+            * Проблема, из-за которой пользователи не создаются, скорее всего, связана с правилами
+            * безопасности на уровне строк (RLS) в вашей базе данных Supabase.
+            *
+            * Ваш код использует `signInAnonymously()`, чтобы получить права 'authenticated'.
+            * Это значит, что для таблиц с включенным RLS вам нужны правила (Policies),
+            * разрешающие действия для роли 'authenticated'.
+            *
+            * ЧТОБЫ ИСПРАВИТЬ ОШИБКУ СОЗДАНИЯ ПРОФИЛЯ:
+            * 1. Зайдите в ваш проект Supabase.
+            * 2. Перейдите в раздел 'Database' -> 'Policies'.
+            * 3. Выберите таблицу 'profiles'.
+            * 4. Убедитесь, что RLS включен (Enable RLS).
+            * 5. Создайте два новых правила (New Policy -> From scratch):
+            *
+            * ПРАВИЛО ДЛЯ СОЗДАНИЯ (INSERT):
+            * - Policy Name: "Allow authenticated users to create profiles"
+            * - For INSERT operation
+            * - Target roles: authenticated
+            * - WITH CHECK expression: true
+            *
+            * ПРАВИЛО ДЛЯ ЧТЕНИЯ (SELECT):
+            * - Policy Name: "Allow authenticated users to view profiles"
+            * - For SELECT operation
+            * - Target roles: authenticated
+            * - USING expression: true
+            *
+            * Это позволит вашему приложению создавать и читать профили.
+            */
+
             let { data: profile, error: fetchError } = await supabaseClient
                 .from('profiles')
                 .select('*')
                 .eq('id', this.state.currentUser.id)
                 .single();
 
-            if (fetchError && fetchError.code === 'PGRST116') {
+            if (fetchError && fetchError.code === 'PGRST116') { // 'PGRST116' означает, что пользователь не найден
+                // Пользователь не существует, создаем новый профиль
                 const { data: newProfile, error: insertError } = await supabaseClient
                     .from('profiles')
                     .insert({
@@ -343,11 +379,15 @@
 
                 if (insertError) {
                     console.error('Error creating user profile:', insertError);
+                    // Если вы видите здесь ошибку, это почти наверняка проблема с политикой RLS.
+                    // См. блок комментариев выше этой функции.
                     return;
                 }
                 profile = newProfile;
             } else if (fetchError) {
                 console.error('Error fetching user profile:', fetchError);
+                // Если вы видите ошибку "401 Unauthorized" или "permission denied", проверьте вашу политику RLS для SELECT.
+                // См. блок комментариев выше этой функции.
                 return;
             }
             
@@ -1996,8 +2036,8 @@
                         <div class="border-t border-slate-100 pt-3 mt-3">
                              <p class="text-sm text-slate-600 mb-3"><strong>Отправитель:</strong> ${parcel.sender_name}</p>
                              <div class="flex gap-3">
-                                <a href="https://t.me/${parcel.sender_username}" target="_blank" class="flex-1 text-center text-sm bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600">Написать</a>
-                                <button class="mark-parcel-delivered-btn flex-1 text-sm btn bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600" data-request-id="${parcel.id}">Доставлено</button>
+                                 <a href="https://t.me/${parcel.sender_username}" target="_blank" class="flex-1 text-center text-sm bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600">Написать</a>
+                                 <button class="mark-parcel-delivered-btn flex-1 text-sm btn bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600" data-request-id="${parcel.id}">Доставлено</button>
                              </div>
                         </div>
                     `;
@@ -2166,7 +2206,7 @@
                             [
                                 {
                                     text: 'Открыть приложение', // Текст на кнопке
-                                    url: 'https://t.me/poputka12_bot?startapp='    // Ссылка, которую откроет кнопка
+                                    url: 'https://t.me/poputka12_bot?startapp='  // Ссылка, которую откроет кнопка
                                 }
                             ]
                         ]
