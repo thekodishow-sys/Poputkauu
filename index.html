@@ -257,7 +257,6 @@
                 date: '',
                 type: 'all'
             },
-            // [НОВОЕ] Хранилище для активных real-time подписок
             subscriptions: {
                 main: null, 
                 banners: null
@@ -283,7 +282,6 @@
         // --- INITIALIZATION ---
         async init() {
             try {
-                // --- Telegram Web App Setup ---
                 this.state.currentUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
                 
                 if (!this.state.currentUser) {
@@ -291,14 +289,6 @@
                     console.warn("Telegram user data not found. Using mock user for testing.");
                 }
 
-                // --- Supabase Authentication ---
-                // [ИЗМЕНЕНО] Убрана анонимная аутентификация, так как RLS отключен
-                // и она не требуется для сессии.
-
-                // [УДАЛЕНО] Вызов RPC для установки RLS сессии.
-                // Так как RLS отключен, этот вызов больше не нужен и может вызывать ошибку.
-
-                // --- User Profile and UI Rendering ---
                 await this.ensureUserProfile();
                 if (this.state.currentUser.id === this.config.adminId) {
                     document.getElementById('add-banner-btn').classList.remove('hidden');
@@ -311,7 +301,6 @@
                 this.setDefaultDates();
                 this.render.updateAvatar();
                 
-                // [НОВОЕ] Запускаем постоянную подписку на баннеры
                 this.realtime.subscribeToBanners();
 
             } catch (error) {
@@ -326,8 +315,6 @@
         },
 
         // --- USER PROFILE ---
-        // [OK] Эта функция отлично справляется с созданием пользователя при первом входе.
-        // Никаких изменений не требуется.
         async ensureUserProfile() {
             if (!this.state.currentUser) return;
 
@@ -337,7 +324,7 @@
                 .eq('id', this.state.currentUser.id)
                 .single();
 
-            if (fetchError && fetchError.code === 'PGRST116') { // 'PGRST116' means no rows found
+            if (fetchError && fetchError.code === 'PGRST116') {
                 const { data: newProfile, error: insertError } = await supabaseClient
                     .from('profiles')
                     .insert({
@@ -350,12 +337,13 @@
 
                 if (insertError) {
                     console.error('Error creating user profile:', insertError);
-                    throw new Error("Не удалось создать профиль пользователя.");
+                    throw new Error(`Не удалось создать профиль: ${insertError.message}`);
                 }
                 profile = newProfile;
             } else if (fetchError) {
                 console.error('Error fetching user profile:', fetchError);
-                throw new Error("Не удалось загрузить профиль пользователя.");
+                // [ИЗМЕНЕНО] Выводим более детальную ошибку для диагностики.
+                throw new Error(`Не удалось загрузить профиль пользователя. Ошибка: ${fetchError.message}`);
             }
             
             this.state.userProfile = profile;
@@ -558,11 +546,6 @@
                     this.navigation.to('offer-screen');
                 }
             },
-
-            // [УДАЛЕНО] Вся логика загрузки данных перенесена в realtime.js
-            // onViewDriverOffers() { ... }
-            // onViewPassengerRequests() { ... }
-            // onMyTripsClick() { ... }
 
             onFilterTypeSelect(button) {
                 button.parentElement.querySelectorAll('.filter-type-btn').forEach(btn => btn.classList.remove('active'));
@@ -848,9 +831,6 @@
                     }
                     if (message) await this.utils.sendTelegramNotification(passengerId, message);
                 }
-
-                // No need to manually refresh, realtime will handle it.
-                // this.handlers.onMyTripsClick();
             },
             
             async onCancelBooking(bookingId) {
@@ -869,8 +849,6 @@
                 
                 const { error } = await supabaseClient.from('bookings').delete().eq('id', bookingId);
                 if (error) { console.error('Failed to cancel booking'); return; }
-                
-                // No need to manually refresh, realtime will handle it.
             },
             
             async onDeleteOffer(offerId) {
@@ -890,19 +868,16 @@
 
                 const { error } = await supabaseClient.from('ride_offers').delete().eq('id', offerId);
                 if (error) { console.error('Failed to delete offer'); return; }
-                // No need to manually refresh, realtime will handle it.
             },
             
             async onCancelRequest(requestId) {
                 const { error } = await supabaseClient.from('ride_requests').delete().eq('id', requestId);
                  if (error) { console.error('Failed to cancel request'); return; }
-                // No need to manually refresh, realtime will handle it.
             },
 
             async onCancelParcelRequest(requestId) {
                 const { error } = await supabaseClient.from('parcel_requests').delete().eq('id', requestId);
                  if (error) { console.error('Failed to cancel parcel request'); return; }
-                // No need to manually refresh, realtime will handle it.
             },
 
             onBackToHub() {
@@ -1065,8 +1040,6 @@
 
                 const message = `*Водитель откликнулся на вашу посылку!* 📦\n\nВодитель *${this.state.userProfile.full_name}* на *${this.state.userProfile.driver_car}* готов доставить вашу посылку.\n\nПожалуйста, подтвердите или отклоните предложение в разделе "Мои поездки и заявки".`;
                 await this.utils.sendTelegramNotification(request.sender_id, message);
-
-                // UI will update via realtime
             },
 
             async onUpdateParcelOffer(requestId, decision) {
@@ -1095,7 +1068,6 @@
                     const message = `*Ваше предложение по доставке посылки отклонено.* ❌`;
                     await this.utils.sendTelegramNotification(request.assigned_driver_id, message);
                 }
-                // UI will update via realtime
             },
 
             async onMarkParcelDelivered(requestId) {
@@ -1122,7 +1094,6 @@
 
                 const message = `*Ваша посылка доставлена!* ✅\n\nВодитель подтвердил доставку вашей посылки по маршруту *${request.from} → ${request.to}*.`;
                 await this.utils.sendTelegramNotification(request.sender_id, message);
-                // UI will update via realtime
             },
             
             onAddBannerClick() {
@@ -1178,7 +1149,6 @@
 
                     form.reset();
                     this.handlers.onBannerModalCancel();
-                    // Banners will update via realtime
                 } catch (error) {
                     console.error(error);
                     errorDiv.textContent = error.message;
@@ -1193,7 +1163,6 @@
         // --- NAVIGATION ---
         navigation: {
             to(screenId, params = {}) {
-                // [НОВОЕ] Отписываемся от старого канала перед переходом
                 if (App.state.subscriptions.main) {
                     supabaseClient.removeChannel(App.state.subscriptions.main);
                     App.state.subscriptions.main = null;
@@ -1212,7 +1181,6 @@
                     document.getElementById('add-banner-btn').classList.toggle('hidden', !isAtRoot);
                 }
                 
-                // [НОВОЕ] Подписываемся на real-time обновления для нужных экранов
                 if (screenId === 'list-screen') {
                     if (params.type === 'driverOffers') {
                         App.realtime.subscribeToDriverOffersScreen();
@@ -1231,7 +1199,6 @@
             back() {
                 if (App.state.navigationHistory.length <= 1) return;
 
-                // [НОВОЕ] Отписываемся от канала при возврате назад
                 if (App.state.subscriptions.main) {
                     supabaseClient.removeChannel(App.state.subscriptions.main);
                     App.state.subscriptions.main = null;
@@ -1249,10 +1216,7 @@
                     document.getElementById('add-banner-btn').classList.toggle('hidden', !isAtRoot);
                 }
 
-                // [НОВОЕ] Повторно подписываемся на канал предыдущего экрана, если нужно
                 if (lastScreen === 'list-screen') {
-                    // We need to know which list it was, this is a simplification.
-                    // A more robust solution would store the params in navigation history.
                     App.realtime.subscribeToListScreen(); 
                 } else if (lastScreen === 'my-trips-screen') {
                     App.realtime.subscribeToMyTripsScreen();
@@ -1262,7 +1226,6 @@
 
         // --- REALTIME SUBSCRIPTIONS ---
         realtime: {
-            // [НОВОЕ] Подписка на баннеры (постоянная)
             subscribeToBanners() {
                 const channel = supabaseClient.channel('public:banners');
                 channel.on('postgres_changes', { event: '*', schema: 'public', table: 'banners' }, payload => {
@@ -1278,7 +1241,6 @@
                 App.state.subscriptions.banners = channel;
             },
 
-            // [НОВОЕ] Подписка на экран "Предложения водителей"
             subscribeToDriverOffersScreen() {
                 const listContainer = document.getElementById('list-container');
                 listContainer.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
@@ -1323,7 +1285,6 @@
                 App.state.subscriptions.main = channel;
             },
 
-            // [НОВОЕ] Подписка на экран "Заявки пассажиров"
             subscribeToListScreen() {
                 document.getElementById('filter-section-container').classList.remove('hidden');
                 if (App.state.userRole === 'driver') {
@@ -1368,7 +1329,6 @@
                 App.state.subscriptions.main = channel;
             },
 
-            // [НОВОЕ] Подписка на экран "Мои поездки"
             subscribeToMyTripsScreen() {
                  const container = document.getElementById('my-trips-container');
                  container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
