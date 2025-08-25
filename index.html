@@ -295,21 +295,18 @@
                     this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
                 }
 
-                // If no user data is available (e.g., privacy settings), stop initialization.
                 if (!this.state.currentUser) {
                     console.error("Could not retrieve user data from Telegram.");
-                    document.getElementById('main-content').innerHTML = `<div class="p-5 text-center text-red-500"><h2 class="font-bold">Не удалось получить данные пользователя</h2></div>`;
+                    document.getElementById('main-content').innerHTML = `<div class="p-5 text-center text-red-500"><h2 class="font-bold">Не удалось получить данные пользователя</h2><p class="text-sm">Пожалуйста, проверьте настройки конфиденциальности в Telegram.</p></div>`;
                     return;
                 }
 
                 // --- Supabase Authentication ---
-                // [ИСПРАВЛЕНО] Более безопасный способ обработки ответа от signInAnonymously.
-                // Оригинальный код мог вызвать ошибку, если `data` было null, что останавливало
-                // выполнение всего скрипта и приводило к пустому экрану.
                 const { data, error } = await supabaseClient.auth.signInAnonymously();
                 if (error) {
                     console.error('Error signing in to Supabase anonymously:', error);
-                    return; // Stop initialization if auth fails
+                    document.getElementById('main-content').innerHTML = `<div class="p-5 text-center text-red-500"><h2 class="font-bold">Ошибка подключения к базе данных</h2></div>`;
+                    return;
                 }
 
                 // --- User Profile and UI Rendering ---
@@ -319,7 +316,7 @@
                 }
                 
                 this.bindHandlers();
-                this.render.allScreens(); // This function populates the main content
+                this.render.allScreens();
                 this.render.updateRoleSwitcherUI();
                 this.bindEvents();
                 this.setDefaultDates();
@@ -328,8 +325,6 @@
                 await this.render.banners();
 
             } catch (error) {
-                // [ДОБАВЛЕНО] Общий обработчик ошибок для всей функции init.
-                // Это предотвратит "тихий" сбой приложения и покажет ошибку в консоли.
                 console.error("An error occurred during app initialization:", error);
                 document.getElementById('main-content').innerHTML = `
                     <div class="p-5 text-center text-red-500">
@@ -564,7 +559,7 @@
             },
             
             onPublishRideClick() {
-                if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
+                if (!this.state.userProfile || !this.state.userProfile.driver_car || !this.state.userProfile.driver_car.trim()) {
                     console.error('Driver car info missing');
                     this.navigation.to('profile-screen');
                 } else {
@@ -720,16 +715,22 @@
             },
             
             async onOfferSubmit(form) {
+                if (!this.state.userProfile) {
+                    console.error("Profile not loaded, cannot submit offer.");
+                    return;
+                }
+                if (!this.state.userProfile.full_name || !this.state.userProfile.driver_car) { 
+                    console.error('Profile info missing, redirecting to profile screen.'); 
+                    this.navigation.to('profile-screen');
+                    return; 
+                }
+                
                 const formData = new FormData(form);
                 const from = formData.get('from');
                 const to = formData.get('to');
 
                 if (!from || !to) { 
                     form.querySelector('.form-error-direction').classList.remove('hidden'); 
-                    return; 
-                }
-                if (!this.state.userProfile.full_name || !this.state.userProfile.driver_car) { 
-                    console.error('Profile info missing'); 
                     return; 
                 }
                 
@@ -759,6 +760,10 @@
             },
 
             async onPassengerRequestSubmit(form) {
+                if (!this.state.userProfile) {
+                    console.error("Profile not loaded, cannot submit request.");
+                    return;
+                }
                 const formData = new FormData(form);
                 const from = formData.get('from');
                 const to = formData.get('to');
@@ -800,6 +805,10 @@
             },
             
             async onParcelRequestSubmit(form) {
+                if (!this.state.userProfile) {
+                    console.error("Profile not loaded, cannot submit parcel request.");
+                    return;
+                }
                 const formData = new FormData(form);
                 const from = formData.get('from');
                 const to = formData.get('to');
@@ -952,7 +961,7 @@
                 // SCENARIO 3: Default driver action (accepting/rejecting a standard booking)
                 else {
                     await supabaseClient.from('bookings').update({ status }).eq('id', bookingId);
-                    const passengerName = this.state.userProfile.full_name;
+                    const passengerName = this.state.userProfile?.full_name;
                     let message = '';
                     if (status === 'confirmed') {
                         message = `*Ваше бронирование подтверждено!* ✅\n\nВодитель *${offer.driver_name}* подтвердил вашу поездку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${this.utils.formatDate(offer.ride_date)} в *${offer.ride_time}*`;
@@ -975,7 +984,7 @@
                 if (bookingError || !booking) { console.error('Error fetching booking to cancel:', bookingError); return; }
                 
                 const offer = booking.ride_offers;
-                const passengerName = this.state.userProfile.full_name || 'Пассажир';
+                const passengerName = this.state.userProfile?.full_name || 'Пассажир';
                 const message = `*Пассажир отменил бронь* 🧍‍♂️\n\nПассажир *${passengerName}* отменил бронирование на вашу поездку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${this.utils.formatDate(offer.ride_date)}`;
                 await this.utils.sendTelegramNotification(offer.driver_id, message);
                 
@@ -1029,7 +1038,7 @@
             },
 
             async onOfferRideToRequest(requestId) {
-                if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
+                if (!this.state.userProfile || !this.state.userProfile.driver_car || !this.state.userProfile.driver_car.trim()) {
                     this.navigation.to('profile-screen');
                     return;
                 }
@@ -1064,6 +1073,10 @@
             },
 
             async onConfirmSeatOffer(form) {
+                if (!this.state.userProfile) {
+                    console.error("Profile not loaded, cannot confirm seat offer.");
+                    return;
+                }
                 const formData = new FormData(form);
                 const requestId = formData.get('requestId');
                 const totalSeatsOffered = parseInt(formData.get('seats'));
@@ -1150,7 +1163,7 @@
             },
 
             async onOfferParcelDelivery(requestId) {
-                if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
+                if (!this.state.userProfile || !this.state.userProfile.driver_car || !this.state.userProfile.driver_car.trim()) {
                     this.navigation.to('profile-screen');
                     return;
                 }
@@ -2256,7 +2269,20 @@
     };
 
     // --- APP START ---
-    document.addEventListener('DOMContentLoaded', () => App.init());
+    // [ИЗМЕНЕНО] Добавлена проверка на существование библиотеки Supabase перед запуском приложения.
+    // Это предотвращает "белый экран", если скрипт не смог загрузиться.
+    document.addEventListener('DOMContentLoaded', () => {
+        if (typeof supabase === 'undefined') {
+            document.getElementById('main-content').innerHTML = `
+                <div class="p-5 text-center text-red-500">
+                    <h2 class="font-bold">Ошибка загрузки библиотеки</h2>
+                    <p class="text-sm">Не удалось подключиться к базе данных. Пожалуйста, проверьте ваше интернет-соединение и попробуйте перезапустить приложение.</p>
+                </div>
+            `;
+            return;
+        }
+        App.init();
+    });
     </script>
 </body>
 </html>
