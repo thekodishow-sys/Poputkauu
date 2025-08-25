@@ -309,6 +309,15 @@
                     return;
                 }
 
+                // [ИЗМЕНЕНО] Вызываем функцию в базе данных, чтобы установить ID текущего пользователя для этой сессии
+                // Это необходимо для корректной работы политик безопасности (RLS).
+                const { error: rpcError } = await supabaseClient.rpc('set_current_telegram_id', { telegram_id: this.state.currentUser.id });
+                if (rpcError) {
+                    console.error('Error setting session telegram_id:', rpcError);
+                    document.getElementById('main-content').innerHTML = `<div class="p-5 text-center text-red-500"><h2 class="font-bold">Ошибка установки сессии</h2></div>`;
+                    return;
+                }
+
                 // --- User Profile and UI Rendering ---
                 await this.ensureUserProfile();
                 if (this.state.currentUser.id === this.config.adminId) {
@@ -559,8 +568,8 @@
             },
             
             onPublishRideClick() {
-                if (!this.state.userProfile || !this.state.userProfile.driver_car || !this.state.userProfile.driver_car.trim()) {
-                    console.error('Driver car info missing');
+                if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
+                    console.error('Driver car info missing, redirecting to profile screen.');
                     this.navigation.to('profile-screen');
                 } else {
                     this.navigation.to('offer-screen');
@@ -1038,7 +1047,7 @@
             },
 
             async onOfferRideToRequest(requestId) {
-                if (!this.state.userProfile || !this.state.userProfile.driver_car || !this.state.userProfile.driver_car.trim()) {
+                if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
                     this.navigation.to('profile-screen');
                     return;
                 }
@@ -1163,7 +1172,7 @@
             },
 
             async onOfferParcelDelivery(requestId) {
-                if (!this.state.userProfile || !this.state.userProfile.driver_car || !this.state.userProfile.driver_car.trim()) {
+                if (!this.state.userProfile?.driver_car || !this.state.userProfile.driver_car.trim()) {
                     this.navigation.to('profile-screen');
                     return;
                 }
