@@ -249,17 +249,18 @@
             userProfile: null,
             userRole: 'passenger', // Default role
             selectedRoute: null,
-            navigationHistory: ['passenger-home-screen'], // New default screen
-            allRequests: [], // To store the fetched requests
-            currentFilters: { // To store the current filter values
+            navigationHistory: ['passenger-home-screen'],
+            allRequests: [], 
+            currentFilters: { 
                 from: '',
                 to: '',
                 date: '',
-                type: 'all' // 'all', 'ride', 'parcel'
+                type: 'all'
             },
-            currentConversation: {
-                id: null,
-                subscription: null
+            // [НОВОЕ] Хранилище для активных real-time подписок
+            subscriptions: {
+                main: null, 
+                banners: null
             }
         },
 
@@ -286,22 +287,16 @@
                 this.state.currentUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
                 
                 if (!this.state.currentUser) {
-                    // Используем мок-пользователя для локального тестирования, если нет данных от Telegram
                     this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
                     console.warn("Telegram user data not found. Using mock user for testing.");
                 }
 
                 // --- Supabase Authentication ---
-                const { error: signInError } = await supabaseClient.auth.signInAnonymously();
-                if (signInError) {
-                    throw new Error(`Ошибка входа в Supabase: ${signInError.message}`);
-                }
+                // [ИЗМЕНЕНО] Убрана анонимная аутентификация, так как RLS отключен
+                // и она не требуется для сессии.
 
-                // --- Установка сессии для RLS ---
-                const { error: rpcError } = await supabaseClient.rpc('set_current_telegram_id', { telegram_id: this.state.currentUser.id });
-                if (rpcError) {
-                    throw new Error(`Ошибка установки сессии RLS: ${rpcError.message}`);
-                }
+                // [УДАЛЕНО] Вызов RPC для установки RLS сессии.
+                // Так как RLS отключен, этот вызов больше не нужен и может вызывать ошибку.
 
                 // --- User Profile and UI Rendering ---
                 await this.ensureUserProfile();
@@ -316,7 +311,8 @@
                 this.setDefaultDates();
                 this.render.updateAvatar();
                 
-                await this.render.banners();
+                // [НОВОЕ] Запускаем постоянную подписку на баннеры
+                this.realtime.subscribeToBanners();
 
             } catch (error) {
                 console.error("Критическая ошибка при инициализации приложения:", error);
@@ -330,6 +326,8 @@
         },
 
         // --- USER PROFILE ---
+        // [OK] Эта функция отлично справляется с созданием пользователя при первом входе.
+        // Никаких изменений не требуется.
         async ensureUserProfile() {
             if (!this.state.currentUser) return;
 
@@ -339,7 +337,7 @@
                 .eq('id', this.state.currentUser.id)
                 .single();
 
-            if (fetchError && fetchError.code === 'PGRST116') {
+            if (fetchError && fetchError.code === 'PGRST116') { // 'PGRST116' means no rows found
                 const { data: newProfile, error: insertError } = await supabaseClient
                     .from('profiles')
                     .insert({
@@ -397,12 +395,12 @@
 
                 const clickHandlers = {
                     'backButton': () => this.navigation.back(),
-                    'view-driver-offers-btn': this.handlers.onViewDriverOffers,
+                    'view-driver-offers-btn': () => this.navigation.to('list-screen', { type: 'driverOffers' }),
                     'create-passenger-request-btn': () => this.navigation.to('passenger-request-screen'),
                     'send-parcel-btn': () => this.navigation.to('parcel-request-screen'),
-                    'view-passenger-requests-btn': this.handlers.onViewPassengerRequests,
+                    'view-passenger-requests-btn': () => this.navigation.to('list-screen', { type: 'passengerRequests' }),
                     'publish-ride-btn': this.handlers.onPublishRideClick,
-                    'my-trips-btn': this.handlers.onMyTripsClick,
+                    'my-trips-btn': () => this.navigation.to('my-trips-screen'),
                     'back-to-hub-btn': this.handlers.onBackToHub,
                     'profile-avatar-btn': () => this.navigation.to('profile-screen'),
                     'booking-modal-cancel-btn': this.handlers.onBookingModalCancel,
@@ -561,76 +559,10 @@
                 }
             },
 
-            async onViewDriverOffers() {
-                this.navigation.to('list-screen');
-                document.getElementById('filter-section-container').classList.add('hidden');
-
-                const { data: offers, error: offersError } = await supabaseClient.from('ride_offers_with_seats')
-                    .select('*')
-                    .gte('ride_date', new Date().toISOString().split('T')[0])
-                    .gt('seats_left', 0)
-                    .order('ride_date', { ascending: true })
-                    .order('ride_time', { ascending: true });
-
-                if (offersError) { console.error(offersError); return; }
-
-                const { data: userBookings, error: userBookingsError } = await supabaseClient.from('bookings')
-                    .select('id, offer_id')
-                    .eq('passenger_id', this.state.currentUser.id);
-
-                if (userBookingsError) { console.error("Error fetching user bookings:", userBookingsError); }
-                
-                const userBookingsMap = new Map();
-                if (userBookings) {
-                    userBookings.forEach(b => userBookingsMap.set(b.offer_id, b.id));
-                }
-
-                const augmentedOffers = offers.map(offer => ({
-                    ...offer,
-                    currentUserBookingId: userBookingsMap.get(offer.id) || null
-                }));
-
-                this.render.list(augmentedOffers, 'driverOffer');
-            },
-
-            async onViewPassengerRequests() {
-                this.navigation.to('list-screen');
-                document.getElementById('filter-section-container').classList.remove('hidden');
-                if (this.state.userRole === 'driver') {
-                    document.getElementById('filter-type-container').classList.remove('hidden');
-                } else {
-                    document.getElementById('filter-type-container').classList.add('hidden');
-                }
-
-                const listContainer = document.getElementById('list-container');
-                listContainer.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
-                
-                const today = new Date().toISOString().split('T')[0];
-                const dateFilterInput = document.getElementById('filter-date');
-                if (dateFilterInput) {
-                    dateFilterInput.setAttribute('min', today);
-                }
-
-                const { data: rides, error: ridesError } = await supabaseClient.from('ride_requests')
-                    .select('*')
-                    .gte('ride_date', today)
-                    .eq('status', 'open') 
-                    .order('ride_date', { ascending: true });
-                
-                const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
-                    .select('*').gte('ride_date', today).eq('status', 'open').order('ride_date', { ascending: true });
-
-                if (ridesError || parcelsError) { console.error(ridesError || parcelsError); return; }
-                
-                const allRequests = [
-                    ...rides.map(r => ({...r, type: 'ride'})), 
-                    ...parcels.map(p => ({...p, type: 'parcel'}))
-                ];
-                allRequests.sort((a, b) => new Date(a.ride_date) - new Date(b.ride_date));
-                
-                this.state.allRequests = allRequests;
-                this.handlers.onResetFilters();
-            },
+            // [УДАЛЕНО] Вся логика загрузки данных перенесена в realtime.js
+            // onViewDriverOffers() { ... }
+            // onViewPassengerRequests() { ... }
+            // onMyTripsClick() { ... }
 
             onFilterTypeSelect(button) {
                 button.parentElement.querySelectorAll('.filter-type-btn').forEach(btn => btn.classList.remove('active'));
@@ -658,54 +590,6 @@
                 });
 
                 this.renderFilteredList();
-            },
-            
-            async onMyTripsClick() {
-                this.navigation.to('my-trips-screen');
-                const container = document.getElementById('my-trips-container');
-                container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
-
-                if (this.state.userRole === 'driver') {
-                    const { data: offers, error: offersError } = await supabaseClient.from('ride_offers')
-                        .select(`*, bookings(id, status, seats, price, from_city, to_city, profiles(full_name, username))`)
-                        .eq('driver_id', this.state.currentUser.id)
-                        .gte('ride_date', new Date().toISOString().split('T')[0])
-                        .order('ride_date', { ascending: true });
-                    
-                    const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
-                        .select(`*`)
-                        .eq('assigned_driver_id', this.state.currentUser.id)
-                        .in('status', ['pending_confirmation', 'confirmed', 'delivered'])
-                        .order('ride_date', { ascending: false });
-
-                    if (offersError || parcelsError) { console.error(offersError || parcelsError); return; }
-                    this.render.myTrips({ offers, parcels }, 'driver');
-
-                } else { // Passenger
-                    const { data: bookings, error: bookingsError } = await supabaseClient.from('bookings')
-                        .select(`*, ride_offers(*)`)
-                        .eq('passenger_id', this.state.currentUser.id)
-                        .gte('ride_offers.ride_date', new Date().toISOString().split('T')[0])
-                        .order('created_at', { ascending: false });
-
-                    const { data: requests, error: requestsError } = await supabaseClient.from('ride_requests')
-                        .select(`*`)
-                        .eq('passenger_id', this.state.currentUser.id)
-                        .in('status', ['open', 'pending_confirmation']) 
-                        .gte('ride_date', new Date().toISOString().split('T')[0])
-                        .order('created_at', { ascending: false });
-
-                    const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
-                        .select(`*`)
-                        .eq('sender_id', this.state.currentUser.id)
-                        .order('ride_date', { ascending: false });
-
-                    if (bookingsError || requestsError || parcelsError) { 
-                        console.error(bookingsError || requestsError || parcelsError); 
-                        return; 
-                    }
-                    this.render.myTrips({ bookings, requests, parcels }, 'passenger');
-                }
             },
             
             async onOfferSubmit(form) {
@@ -965,7 +849,8 @@
                     if (message) await this.utils.sendTelegramNotification(passengerId, message);
                 }
 
-                this.handlers.onMyTripsClick();
+                // No need to manually refresh, realtime will handle it.
+                // this.handlers.onMyTripsClick();
             },
             
             async onCancelBooking(bookingId) {
@@ -985,12 +870,7 @@
                 const { error } = await supabaseClient.from('bookings').delete().eq('id', bookingId);
                 if (error) { console.error('Failed to cancel booking'); return; }
                 
-                const currentScreen = this.state.navigationHistory[this.state.navigationHistory.length - 1];
-                if (currentScreen === 'list-screen') {
-                    this.handlers.onViewDriverOffers();
-                } else {
-                    this.handlers.onMyTripsClick();
-                }
+                // No need to manually refresh, realtime will handle it.
             },
             
             async onDeleteOffer(offerId) {
@@ -1010,19 +890,19 @@
 
                 const { error } = await supabaseClient.from('ride_offers').delete().eq('id', offerId);
                 if (error) { console.error('Failed to delete offer'); return; }
-                this.handlers.onMyTripsClick();
+                // No need to manually refresh, realtime will handle it.
             },
             
             async onCancelRequest(requestId) {
                 const { error } = await supabaseClient.from('ride_requests').delete().eq('id', requestId);
                  if (error) { console.error('Failed to cancel request'); return; }
-                this.handlers.onMyTripsClick();
+                // No need to manually refresh, realtime will handle it.
             },
 
             async onCancelParcelRequest(requestId) {
                 const { error } = await supabaseClient.from('parcel_requests').delete().eq('id', requestId);
                  if (error) { console.error('Failed to cancel parcel request'); return; }
-                this.handlers.onMyTripsClick();
+                // No need to manually refresh, realtime will handle it.
             },
 
             onBackToHub() {
@@ -1186,13 +1066,7 @@
                 const message = `*Водитель откликнулся на вашу посылку!* 📦\n\nВодитель *${this.state.userProfile.full_name}* на *${this.state.userProfile.driver_car}* готов доставить вашу посылку.\n\nПожалуйста, подтвердите или отклоните предложение в разделе "Мои поездки и заявки".`;
                 await this.utils.sendTelegramNotification(request.sender_id, message);
 
-                const button = document.querySelector(`.offer-parcel-delivery-btn[data-request-id="${requestId}"]`);
-                if (button) {
-                    button.textContent = 'Предложение отправлено';
-                    button.disabled = true;
-                    button.classList.remove('bg-green-500', 'hover:bg-green-600');
-                    button.classList.add('bg-slate-400', 'cursor-not-allowed');
-                }
+                // UI will update via realtime
             },
 
             async onUpdateParcelOffer(requestId, decision) {
@@ -1221,8 +1095,7 @@
                     const message = `*Ваше предложение по доставке посылки отклонено.* ❌`;
                     await this.utils.sendTelegramNotification(request.assigned_driver_id, message);
                 }
-
-                this.handlers.onMyTripsClick();
+                // UI will update via realtime
             },
 
             async onMarkParcelDelivered(requestId) {
@@ -1249,8 +1122,7 @@
 
                 const message = `*Ваша посылка доставлена!* ✅\n\nВодитель подтвердил доставку вашей посылки по маршруту *${request.from} → ${request.to}*.`;
                 await this.utils.sendTelegramNotification(request.sender_id, message);
-
-                this.handlers.onMyTripsClick();
+                // UI will update via realtime
             },
             
             onAddBannerClick() {
@@ -1306,8 +1178,7 @@
 
                     form.reset();
                     this.handlers.onBannerModalCancel();
-                    this.render.banners();
-
+                    // Banners will update via realtime
                 } catch (error) {
                     console.error(error);
                     errorDiv.textContent = error.message;
@@ -1321,10 +1192,11 @@
         
         // --- NAVIGATION ---
         navigation: {
-            to(screenId) {
-                if (App.state.currentConversation.subscription) {
-                    supabaseClient.removeChannel(App.state.currentConversation.subscription);
-                    App.state.currentConversation.subscription = null;
+            to(screenId, params = {}) {
+                // [НОВОЕ] Отписываемся от старого канала перед переходом
+                if (App.state.subscriptions.main) {
+                    supabaseClient.removeChannel(App.state.subscriptions.main);
+                    App.state.subscriptions.main = null;
                 }
 
                 document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -1340,6 +1212,17 @@
                     document.getElementById('add-banner-btn').classList.toggle('hidden', !isAtRoot);
                 }
                 
+                // [НОВОЕ] Подписываемся на real-time обновления для нужных экранов
+                if (screenId === 'list-screen') {
+                    if (params.type === 'driverOffers') {
+                        App.realtime.subscribeToDriverOffersScreen();
+                    } else {
+                        App.realtime.subscribeToListScreen();
+                    }
+                } else if (screenId === 'my-trips-screen') {
+                    App.realtime.subscribeToMyTripsScreen();
+                }
+
                 if (screenId === 'offer-screen') App.render.populateOfferForm();
                 if (screenId === 'profile-screen') App.render.populateProfileForm();
                 
@@ -1347,6 +1230,13 @@
             },
             back() {
                 if (App.state.navigationHistory.length <= 1) return;
+
+                // [НОВОЕ] Отписываемся от канала при возврате назад
+                if (App.state.subscriptions.main) {
+                    supabaseClient.removeChannel(App.state.subscriptions.main);
+                    App.state.subscriptions.main = null;
+                }
+
                 App.state.navigationHistory.pop();
                 const lastScreen = App.state.navigationHistory[App.state.navigationHistory.length - 1];
                 
@@ -1358,6 +1248,188 @@
                 if (App.state.currentUser.id === App.config.adminId) {
                     document.getElementById('add-banner-btn').classList.toggle('hidden', !isAtRoot);
                 }
+
+                // [НОВОЕ] Повторно подписываемся на канал предыдущего экрана, если нужно
+                if (lastScreen === 'list-screen') {
+                    // We need to know which list it was, this is a simplification.
+                    // A more robust solution would store the params in navigation history.
+                    App.realtime.subscribeToListScreen(); 
+                } else if (lastScreen === 'my-trips-screen') {
+                    App.realtime.subscribeToMyTripsScreen();
+                }
+            }
+        },
+
+        // --- REALTIME SUBSCRIPTIONS ---
+        realtime: {
+            // [НОВОЕ] Подписка на баннеры (постоянная)
+            subscribeToBanners() {
+                const channel = supabaseClient.channel('public:banners');
+                channel.on('postgres_changes', { event: '*', schema: 'public', table: 'banners' }, payload => {
+                    console.log('Banners changed, rerendering:', payload);
+                    App.render.banners();
+                })
+                .subscribe(status => {
+                    if (status === 'SUBSCRIBED') {
+                        console.log('Subscribed to banners channel');
+                        App.render.banners(); // Initial load
+                    }
+                });
+                App.state.subscriptions.banners = channel;
+            },
+
+            // [НОВОЕ] Подписка на экран "Предложения водителей"
+            subscribeToDriverOffersScreen() {
+                const listContainer = document.getElementById('list-container');
+                listContainer.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
+
+                const fetchData = async () => {
+                    const { data: offers, error: offersError } = await supabaseClient.from('ride_offers_with_seats')
+                        .select('*')
+                        .gte('ride_date', new Date().toISOString().split('T')[0])
+                        .gt('seats_left', 0)
+                        .order('ride_date', { ascending: true })
+                        .order('ride_time', { ascending: true });
+
+                    if (offersError) { console.error(offersError); return; }
+
+                    const { data: userBookings, error: userBookingsError } = await supabaseClient.from('bookings')
+                        .select('id, offer_id')
+                        .eq('passenger_id', App.state.currentUser.id);
+
+                    if (userBookingsError) { console.error("Error fetching user bookings:", userBookingsError); }
+                    
+                    const userBookingsMap = new Map();
+                    if (userBookings) {
+                        userBookings.forEach(b => userBookingsMap.set(b.offer_id, b.id));
+                    }
+
+                    const augmentedOffers = offers.map(offer => ({
+                        ...offer,
+                        currentUserBookingId: userBookingsMap.get(offer.id) || null
+                    }));
+
+                    App.render.list(augmentedOffers, 'driverOffer');
+                };
+
+                const channel = supabaseClient.channel('public:ride_offers_and_bookings');
+                channel.on('postgres_changes', { event: '*', schema: 'public', table: 'ride_offers' }, fetchData)
+                       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, fetchData)
+                       .subscribe(status => {
+                           if (status === 'SUBSCRIBED') {
+                               fetchData(); // Initial load
+                           }
+                       });
+                App.state.subscriptions.main = channel;
+            },
+
+            // [НОВОЕ] Подписка на экран "Заявки пассажиров"
+            subscribeToListScreen() {
+                document.getElementById('filter-section-container').classList.remove('hidden');
+                if (App.state.userRole === 'driver') {
+                    document.getElementById('filter-type-container').classList.remove('hidden');
+                } else {
+                    document.getElementById('filter-type-container').classList.add('hidden');
+                }
+                const listContainer = document.getElementById('list-container');
+                listContainer.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
+                
+                const fetchData = async () => {
+                    const today = new Date().toISOString().split('T')[0];
+                    const { data: rides, error: ridesError } = await supabaseClient.from('ride_requests')
+                        .select('*')
+                        .gte('ride_date', today)
+                        .eq('status', 'open') 
+                        .order('ride_date', { ascending: true });
+                    
+                    const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
+                        .select('*').gte('ride_date', today).eq('status', 'open').order('ride_date', { ascending: true });
+
+                    if (ridesError || parcelsError) { console.error(ridesError || parcelsError); return; }
+                    
+                    const allRequests = [
+                        ...rides.map(r => ({...r, type: 'ride'})), 
+                        ...parcels.map(p => ({...p, type: 'parcel'}))
+                    ];
+                    allRequests.sort((a, b) => new Date(a.ride_date) - new Date(b.ride_date));
+                    
+                    App.state.allRequests = allRequests;
+                    App.renderFilteredList();
+                };
+
+                const channel = supabaseClient.channel('public:requests');
+                channel.on('postgres_changes', { event: '*', schema: 'public', table: 'ride_requests' }, fetchData)
+                       .on('postgres_changes', { event: '*', schema: 'public', table: 'parcel_requests' }, fetchData)
+                       .subscribe(status => {
+                           if (status === 'SUBSCRIBED') {
+                               fetchData(); // Initial load
+                           }
+                       });
+                App.state.subscriptions.main = channel;
+            },
+
+            // [НОВОЕ] Подписка на экран "Мои поездки"
+            subscribeToMyTripsScreen() {
+                 const container = document.getElementById('my-trips-container');
+                 container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
+
+                const fetchData = async () => {
+                    if (App.state.userRole === 'driver') {
+                        const { data: offers, error: offersError } = await supabaseClient.from('ride_offers')
+                            .select(`*, bookings(id, status, seats, price, from_city, to_city, profiles(full_name, username))`)
+                            .eq('driver_id', App.state.currentUser.id)
+                            .gte('ride_date', new Date().toISOString().split('T')[0])
+                            .order('ride_date', { ascending: true });
+                        
+                        const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
+                            .select(`*`)
+                            .eq('assigned_driver_id', App.state.currentUser.id)
+                            .in('status', ['pending_confirmation', 'confirmed', 'delivered'])
+                            .order('ride_date', { ascending: false });
+
+                        if (offersError || parcelsError) { console.error(offersError || parcelsError); return; }
+                        App.render.myTrips({ offers, parcels }, 'driver');
+
+                    } else { // Passenger
+                        const { data: bookings, error: bookingsError } = await supabaseClient.from('bookings')
+                            .select(`*, ride_offers(*)`)
+                            .eq('passenger_id', App.state.currentUser.id)
+                            .order('created_at', { ascending: false });
+
+                        const { data: requests, error: requestsError } = await supabaseClient.from('ride_requests')
+                            .select(`*`)
+                            .eq('passenger_id', App.state.currentUser.id)
+                            .order('created_at', { ascending: false });
+
+                        const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests')
+                            .select(`*`)
+                            .eq('sender_id', App.state.currentUser.id)
+                            .order('ride_date', { ascending: false });
+
+                        if (bookingsError || requestsError || parcelsError) { 
+                            console.error(bookingsError || requestsError || parcelsError); 
+                            return; 
+                        }
+                        // Filter out old bookings client-side
+                        const today = new Date().toISOString().split('T')[0];
+                        const validBookings = bookings.filter(b => b.ride_offers && b.ride_offers.ride_date >= today);
+                        const validRequests = requests.filter(r => r.ride_date >= today);
+
+                        App.render.myTrips({ bookings: validBookings, requests: validRequests, parcels }, 'passenger');
+                    }
+                };
+
+                const channel = supabaseClient.channel('all-my-trips-changes');
+                channel.on('postgres_changes', { event: '*', schema: 'public', table: 'ride_offers' }, fetchData)
+                       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, fetchData)
+                       .on('postgres_changes', { event: '*', schema: 'public', table: 'ride_requests' }, fetchData)
+                       .on('postgres_changes', { event: '*', schema: 'public', table: 'parcel_requests' }, fetchData)
+                       .subscribe(status => {
+                           if (status === 'SUBSCRIBED') {
+                               fetchData(); // Initial load
+                           }
+                       });
+                App.state.subscriptions.main = channel;
             }
         },
 
@@ -1900,6 +1972,20 @@
                         </div>
                     `;
                 }
+                if (request.status === 'closed') {
+                    return `
+                        <div class="flex justify-between items-start opacity-50">
+                            <div>
+                                <div class="font-bold text-base">${request.from} → ${request.to}</div>
+                                <div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} в ~ ${request.ride_time.substring(0, 5)}</div>
+                            </div>
+                            <div class="text-base font-semibold">${request.price} ₽</div>
+                        </div>
+                        <div class="text-center text-sm text-green-700 font-semibold bg-green-50 p-2 rounded-lg mt-2">
+                           Поездка найдена
+                        </div>
+                    `;
+                }
 
                 return `
                      <div class="flex justify-between items-start">
@@ -2193,7 +2279,7 @@
                             [
                                 {
                                     text: 'Открыть приложение', // Текст на кнопке
-                                    url: 'https://t.me/poputka12_bot?startapp='  // Ссылка, которую откроет кнопка
+                                    url: 'https://t.me/poputka12_bot?startapp=' // Ссылка, которую откроет кнопка
                                 }
                             ]
                         ]
@@ -2263,9 +2349,7 @@
     };
 
     // --- APP START ---
-    // [ИЗМЕНЕНО] Правильная и безопасная инициализация приложения.
     document.addEventListener('DOMContentLoaded', () => {
-        // 1. Проверяем, что все внешние скрипты загрузились
         if (typeof supabase === 'undefined' || typeof Telegram === 'undefined') {
             document.getElementById('main-content').innerHTML = `
                 <div class="p-5 text-center text-red-500">
@@ -2276,7 +2360,6 @@
             return;
         }
 
-        // 2. Запускаем основную логику ТОЛЬКО ПОСЛЕ того, как Telegram Web App будет полностью готов.
         Telegram.WebApp.ready();
         App.init();
     });
