@@ -282,44 +282,61 @@
         // --- INITIALIZATION ---
         async init() {
             try {
-                Telegram.WebApp.ready();
-                Telegram.WebApp.expand();
-                Telegram.WebApp.setHeaderColor('#ffffff');
-                Telegram.WebApp.setBackgroundColor('#f8fafc');
-                this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
-            } catch (e) {
-                console.warn("Telegram WebApp script not found or running in browser.");
-                this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
-            }
+                // --- Telegram Web App Setup ---
+                try {
+                    Telegram.WebApp.ready();
+                    Telegram.WebApp.expand();
+                    Telegram.WebApp.setHeaderColor('#ffffff');
+                    Telegram.WebApp.setBackgroundColor('#f8fafc');
+                    this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
+                } catch (e) {
+                    console.warn("Telegram WebApp script not found or running in browser.");
+                    // Use a mock user for local testing
+                    this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
+                }
 
-            // [РУС] Чтобы взаимодействовать с таблицами Supabase, в которых включена RLS (Row Level Security),
-            // нам необходимо пройти аутентификацию. Мы входим в систему "анонимно", чтобы повысить
-            // роль пользователя с 'anon' до 'authenticated' на время сеанса.
-            // Это требует, чтобы у вас были настроены политики RLS для роли 'authenticated'.
-            const { data: { session }, error } = await supabaseClient.auth.signInAnonymously();
-            if (error) {
-                console.error('Error signing in to Supabase anonymously:', error);
-                return; // Stop initialization if auth fails
-            }
-            
-            if (this.state.currentUser) {
+                // If no user data is available (e.g., privacy settings), stop initialization.
+                if (!this.state.currentUser) {
+                    console.error("Could not retrieve user data from Telegram.");
+                    document.getElementById('main-content').innerHTML = `<div class="p-5 text-center text-red-500"><h2 class="font-bold">Не удалось получить данные пользователя</h2></div>`;
+                    return;
+                }
+
+                // --- Supabase Authentication ---
+                // [ИСПРАВЛЕНО] Более безопасный способ обработки ответа от signInAnonymously.
+                // Оригинальный код мог вызвать ошибку, если `data` было null, что останавливало
+                // выполнение всего скрипта и приводило к пустому экрану.
+                const { data, error } = await supabaseClient.auth.signInAnonymously();
+                if (error) {
+                    console.error('Error signing in to Supabase anonymously:', error);
+                    return; // Stop initialization if auth fails
+                }
+
+                // --- User Profile and UI Rendering ---
                 await this.ensureUserProfile();
                 if (this.state.currentUser.id === this.config.adminId) {
                     document.getElementById('add-banner-btn').classList.remove('hidden');
                 }
-            }
-            
-            this.bindHandlers();
-            this.render.allScreens();
-            this.render.updateRoleSwitcherUI();
-            this.bindEvents();
-            this.setDefaultDates();
-            this.render.updateAvatar();
-            
-            try {
+                
+                this.bindHandlers();
+                this.render.allScreens(); // This function populates the main content
+                this.render.updateRoleSwitcherUI();
+                this.bindEvents();
+                this.setDefaultDates();
+                this.render.updateAvatar();
+                
                 await this.render.banners();
+
             } catch (error) {
-                console.error("Failed to load banners:", error);
+                // [ДОБАВЛЕНО] Общий обработчик ошибок для всей функции init.
+                // Это предотвратит "тихий" сбой приложения и покажет ошибку в консоли.
+                console.error("An error occurred during app initialization:", error);
+                document.getElementById('main-content').innerHTML = `
+                    <div class="p-5 text-center text-red-500">
+                        <h2 class="font-bold">Ошибка при загрузке приложения</h2>
+                        <p class="text-sm">Пожалуйста, попробуйте перезапустить приложение. Подробности в консоли разработчика.</p>
+                    </div>
+                `;
             }
         },
 
@@ -327,46 +344,13 @@
         async ensureUserProfile() {
             if (!this.state.currentUser) return;
 
-            /*
-            * [РУС] ВАЖНОЕ ЗАМЕЧАНИЕ ПО БЕЗОПАСНОСТИ (ROW LEVEL SECURITY)
-            * ---------------------------------------------------------
-            * Проблема, из-за которой пользователи не создаются, скорее всего, связана с правилами
-            * безопасности на уровне строк (RLS) в вашей базе данных Supabase.
-            *
-            * Ваш код использует `signInAnonymously()`, чтобы получить права 'authenticated'.
-            * Это значит, что для таблиц с включенным RLS вам нужны правила (Policies),
-            * разрешающие действия для роли 'authenticated'.
-            *
-            * ЧТОБЫ ИСПРАВИТЬ ОШИБКУ СОЗДАНИЯ ПРОФИЛЯ:
-            * 1. Зайдите в ваш проект Supabase.
-            * 2. Перейдите в раздел 'Database' -> 'Policies'.
-            * 3. Выберите таблицу 'profiles'.
-            * 4. Убедитесь, что RLS включен (Enable RLS).
-            * 5. Создайте два новых правила (New Policy -> From scratch):
-            *
-            * ПРАВИЛО ДЛЯ СОЗДАНИЯ (INSERT):
-            * - Policy Name: "Allow authenticated users to create profiles"
-            * - For INSERT operation
-            * - Target roles: authenticated
-            * - WITH CHECK expression: true
-            *
-            * ПРАВИЛО ДЛЯ ЧТЕНИЯ (SELECT):
-            * - Policy Name: "Allow authenticated users to view profiles"
-            * - For SELECT operation
-            * - Target roles: authenticated
-            * - USING expression: true
-            *
-            * Это позволит вашему приложению создавать и читать профили.
-            */
-
             let { data: profile, error: fetchError } = await supabaseClient
                 .from('profiles')
                 .select('*')
                 .eq('id', this.state.currentUser.id)
                 .single();
 
-            if (fetchError && fetchError.code === 'PGRST116') { // 'PGRST116' означает, что пользователь не найден
-                // Пользователь не существует, создаем новый профиль
+            if (fetchError && fetchError.code === 'PGRST116') {
                 const { data: newProfile, error: insertError } = await supabaseClient
                     .from('profiles')
                     .insert({
@@ -379,15 +363,11 @@
 
                 if (insertError) {
                     console.error('Error creating user profile:', insertError);
-                    // Если вы видите здесь ошибку, это почти наверняка проблема с политикой RLS.
-                    // См. блок комментариев выше этой функции.
                     return;
                 }
                 profile = newProfile;
             } else if (fetchError) {
                 console.error('Error fetching user profile:', fetchError);
-                // Если вы видите ошибку "401 Unauthorized" или "permission denied", проверьте вашу политику RLS для SELECT.
-                // См. блок комментариев выше этой функции.
                 return;
             }
             
