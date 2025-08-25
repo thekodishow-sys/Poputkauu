@@ -291,6 +291,13 @@
                 console.warn("Telegram WebApp script not found or running in browser.");
                 this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser' };
             }
+
+            // **FIX: Authenticate with Supabase anonymously**
+            const { data: { session }, error } = await supabaseClient.auth.signInAnonymously();
+            if (error) {
+                console.error('Error signing in anonymously:', error);
+                return; // Stop initialization if auth fails
+            }
             
             if (this.state.currentUser) {
                 await this.ensureUserProfile();
@@ -1408,7 +1415,7 @@
                             </div>
                         `,
                     'success-screen': `<div class="p-5 flex flex-col items-center justify-center h-full text-center"><div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h2 id="success-title" class="text-xl font-bold mt-4 mb-1"></h2><p id="success-text" class="text-slate-600 mb-8 text-sm"></p><button id="back-to-hub-btn" class="text-sm btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button></div>`,
-                    'chat-screen': `<div class="flex-1 flex flex-col h-full"><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
+                    'chat-screen': `<div class="flex-1 flex flex-col h-full"><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
                     'my-trips-screen': `<div class="flex-1 flex flex-col"><div id="my-trips-container" class="p-5 space-y-4 flex-1"></div></div>`,
                     'profile-screen': this.getProfileFormTemplate(),
                 };
