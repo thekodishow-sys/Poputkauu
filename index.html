@@ -283,39 +283,24 @@
         async init() {
             try {
                 // --- Telegram Web App Setup ---
-                try {
-                    Telegram.WebApp.ready();
-                    Telegram.WebApp.expand();
-                    Telegram.WebApp.setHeaderColor('#ffffff');
-                    Telegram.WebApp.setBackgroundColor('#f8fafc');
-                    this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
-                } catch (e) {
-                    console.warn("Telegram WebApp script not found or running in browser.");
-                    // Use a mock user for local testing
-                    this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
-                }
-
+                this.state.currentUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+                
                 if (!this.state.currentUser) {
-                    console.error("Could not retrieve user data from Telegram.");
-                    document.getElementById('main-content').innerHTML = `<div class="p-5 text-center text-red-500"><h2 class="font-bold">Не удалось получить данные пользователя</h2><p class="text-sm">Пожалуйста, проверьте настройки конфиденциальности в Telegram.</p></div>`;
-                    return;
+                    // Используем мок-пользователя для локального тестирования, если нет данных от Telegram
+                    this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
+                    console.warn("Telegram user data not found. Using mock user for testing.");
                 }
 
                 // --- Supabase Authentication ---
-                const { data, error } = await supabaseClient.auth.signInAnonymously();
-                if (error) {
-                    console.error('Error signing in to Supabase anonymously:', error);
-                    document.getElementById('main-content').innerHTML = `<div class="p-5 text-center text-red-500"><h2 class="font-bold">Ошибка подключения к базе данных</h2></div>`;
-                    return;
+                const { error: signInError } = await supabaseClient.auth.signInAnonymously();
+                if (signInError) {
+                    throw new Error(`Ошибка входа в Supabase: ${signInError.message}`);
                 }
 
-                // [ИЗМЕНЕНО] Вызываем функцию в базе данных, чтобы установить ID текущего пользователя для этой сессии
-                // Это необходимо для корректной работы политик безопасности (RLS).
+                // --- Установка сессии для RLS ---
                 const { error: rpcError } = await supabaseClient.rpc('set_current_telegram_id', { telegram_id: this.state.currentUser.id });
                 if (rpcError) {
-                    console.error('Error setting session telegram_id:', rpcError);
-                    document.getElementById('main-content').innerHTML = `<div class="p-5 text-center text-red-500"><h2 class="font-bold">Ошибка установки сессии</h2></div>`;
-                    return;
+                    throw new Error(`Ошибка установки сессии RLS: ${rpcError.message}`);
                 }
 
                 // --- User Profile and UI Rendering ---
@@ -334,11 +319,11 @@
                 await this.render.banners();
 
             } catch (error) {
-                console.error("An error occurred during app initialization:", error);
+                console.error("Критическая ошибка при инициализации приложения:", error);
                 document.getElementById('main-content').innerHTML = `
                     <div class="p-5 text-center text-red-500">
                         <h2 class="font-bold">Ошибка при загрузке приложения</h2>
-                        <p class="text-sm">Пожалуйста, попробуйте перезапустить приложение. Подробности в консоли разработчика.</p>
+                        <p class="text-sm">${error.message}</p>
                     </div>
                 `;
             }
@@ -367,12 +352,12 @@
 
                 if (insertError) {
                     console.error('Error creating user profile:', insertError);
-                    return;
+                    throw new Error("Не удалось создать профиль пользователя.");
                 }
                 profile = newProfile;
             } else if (fetchError) {
                 console.error('Error fetching user profile:', fetchError);
-                return;
+                throw new Error("Не удалось загрузить профиль пользователя.");
             }
             
             this.state.userProfile = profile;
@@ -2278,18 +2263,21 @@
     };
 
     // --- APP START ---
-    // [ИЗМЕНЕНО] Добавлена проверка на существование библиотеки Supabase перед запуском приложения.
-    // Это предотвращает "белый экран", если скрипт не смог загрузиться.
+    // [ИЗМЕНЕНО] Правильная и безопасная инициализация приложения.
     document.addEventListener('DOMContentLoaded', () => {
-        if (typeof supabase === 'undefined') {
+        // 1. Проверяем, что все внешние скрипты загрузились
+        if (typeof supabase === 'undefined' || typeof Telegram === 'undefined') {
             document.getElementById('main-content').innerHTML = `
                 <div class="p-5 text-center text-red-500">
-                    <h2 class="font-bold">Ошибка загрузки библиотеки</h2>
-                    <p class="text-sm">Не удалось подключиться к базе данных. Пожалуйста, проверьте ваше интернет-соединение и попробуйте перезапустить приложение.</p>
+                    <h2 class="font-bold">Ошибка загрузки компонентов</h2>
+                    <p class="text-sm">Пожалуйста, проверьте ваше интернет-соединение и попробуйте перезапустить приложение.</p>
                 </div>
             `;
             return;
         }
+
+        // 2. Запускаем основную логику ТОЛЬКО ПОСЛЕ того, как Telegram Web App будет полностью готов.
+        Telegram.WebApp.ready();
         App.init();
     });
     </script>
