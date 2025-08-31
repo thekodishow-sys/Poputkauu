@@ -8,11 +8,875 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-…        };
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain;
+        }
+        .screen { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .screen.active { display: block; }
+        #chat-screen.active, #my-trips-screen.active { display: flex; flex-direction: column; height: 100%; }
 
-        // Запускаем приложение
-        app.init();
-    })();
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .role-btn.active, .direction-buttons button.active, #time-interval-buttons button.active {
+            background-color: #1e293b; /* slate-800 */
+            color: white;
+        }
+        .message { max-width: 75%; word-wrap: break-word; }
+        .message.sent { align-self: flex-end; background-color: #3b82f6; color: white; } /* blue-500 */
+        .message.received { align-self: flex-start; background-color: #e5e7eb; color: #1f2937; } /* gray-200 */
+        
+        #role-switcher { position: relative; }
+        #role-bg {
+            position: absolute; width: 36px; height: 36px;
+            top: 2px; left: 2px; background-color: white;
+            border-radius: 9999px;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            transform: translateX(0px);
+            transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        #role-switcher.driver #role-bg { transform: translateX(36px); }
+        #role-passenger-icon, #role-driver-icon { transition: opacity 0.3s ease-in-out; }
+        #role-passenger-icon span, #role-driver-icon span {
+            display: inline-block;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #role-switcher.passenger #role-passenger-icon span,
+        #role-switcher.driver #role-driver-icon span { transform: scale(1.15) rotate(-8deg); }
+        #role-switcher.passenger #role-driver-icon,
+        #role-switcher.driver #role-passenger-icon { opacity: 0.5; }
+        #profile-avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
+        .modal-overlay { opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .modal-overlay.show { opacity: 1; }
+        .modal.show { transform: translateY(0); }
+        .filter-type-btn.active { background-color: white; color: #1e293b; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
+        #filter-toggle-icon { transition: transform 0.3s ease-in-out; }
+        #filter-content {
+            max-height: 500px; overflow: hidden;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out; opacity: 1;
+        }
+        #filter-content.collapsed { max-height: 0; opacity: 0; }
+        #filter-toggle-btn.collapsed #filter-toggle-icon { transform: rotate(-180deg); }
+        #main-content::-webkit-scrollbar { width: 4px; }
+        #main-content::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        #main-content::-webkit-scrollbar-track { background: transparent; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 overflow-hidden">
+
+    <div id="app-container" class="h-screen w-screen max-w-md mx-auto bg-white flex flex-col">
+        <!-- HEADER -->
+        <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
+            <div class="w-10 h-10 flex items-center justify-start">
+                <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+            </div>
+            <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
+                <div id="role-bg"></div>
+                <div id="role-passenger-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl"><span>🧍</span></div>
+                <div id="role-driver-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl"><span>🚗</span></div>
+            </div>
+            <div class="w-10 h-10 flex items-center justify-end">
+                <button id="profile-avatar-btn" class="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center overflow-hidden shrink-0"></button>
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main id="main-content" class="flex-grow overflow-y-auto relative">
+            <div id="passenger-home-screen" class="screen active"></div>
+            <div id="driver-dashboard-screen" class="screen"></div>
+            <div id="offer-screen" class="screen"></div>
+            <div id="passenger-request-screen" class="screen"></div>
+            <div id="parcel-request-screen" class="screen"></div>
+            <div id="list-screen" class="screen"></div>
+            <div id="success-screen" class="screen"></div>
+            <div id="my-trips-screen" class="screen"></div>
+            <div id="profile-screen" class="screen"></div>
+        </main>
+        
+        <!-- FOOTER -->
+        <footer id="app-footer" class="p-5 border-t border-slate-200 bg-white flex-shrink-0">
+            <a href="https://t.me/poputka12rus" target="_blank" class="text-sm btn w-full bg-sky-100 text-sky-800 font-bold py-3 px-4 rounded-xl hover:bg-sky-200 flex items-center justify-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                <span>Наша группа в Telegram</span>
+            </a>
+            <a href="https://devtol.ru" target="_blank" class="block text-center text-xs text-slate-400 mt-2 hover:underline">
+                powered by devtol
+            </a>
+        </footer>
+    </div>
+
+    <!-- MODALS -->
+    <div id="booking-modal-overlay" class="modal-overlay fixed inset-0 bg-black bg-opacity-40 z-40 hidden"></div>
+    <div id="booking-modal" class="modal fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-transparent z-50 transform translate-y-full transition-transform duration-300">
+        <div class="p-4">
+            <div id="booking-options-container" class="space-y-2 bg-slate-100 rounded-xl"></div>
+            <button id="booking-modal-cancel-btn" class="w-full p-3 mt-2 bg-white rounded-xl text-blue-500 text-lg font-semibold">Отмена</button>
+        </div>
+    </div>
+
+    <!-- HTML TEMPLATES FOR SCREENS -->
+    <template id="passenger-home-screen-template">
+        <div class="p-5">
+            <div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2></div>
+            <div class="space-y-3">
+                <button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button>
+                <button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button>
+                <button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button>
+                <button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button>
+            </div>
+        </div>
+    </template>
+    <template id="driver-dashboard-screen-template">
+        <div class="p-5">
+            <div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Кабинет водителя</h2></div>
+            <div class="space-y-3">
+                <button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button>
+                <button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button>
+                <button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button>
+            </div>
+        </div>
+    </template>
+    <template id="list-screen-template">
+         <div class="p-4 space-y-4">
+            <div id="filter-section-container" class="hidden">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <button id="filter-toggle-btn" class="flex justify-between items-center w-full mb-3">
+                        <h3 class="text-base font-semibold text-slate-800">Фильтры</h3>
+                        <svg id="filter-toggle-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><path d="m18 15-6-6-6 6"/></svg>
+                    </button>
+                    <div id="filter-content" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="filter-from" class="block text-xs font-medium text-slate-600 mb-1">Откуда</label>
+                                <select id="filter-from" name="from" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                            </div>
+                            <div>
+                                <label for="filter-to" class="block text-xs font-medium text-slate-600 mb-1">Куда</label>
+                                <select id="filter-to" name="to" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="filter-date" class="block text-xs font-medium text-slate-600 mb-1">Дата</label>
+                            <input type="date" id="filter-date" name="date" class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                        </div>
+                        <div id="filter-type-container">
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Тип заявки</label>
+                            <div id="filter-type-buttons" class="flex p-1 bg-slate-200 rounded-lg">
+                                <button data-type="all" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600 active">Все</button>
+                                <button data-type="ride" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Пассажиры</button>
+                                <button data-type="parcel" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Посылки</button>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button id="reset-filters-btn" class="flex-1 text-sm btn border border-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-100">Сбросить</button>
+                            <button id="apply-filters-btn" class="flex-1 text-sm btn bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700">Применить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="list-container" class="space-y-3"></div>
+            <div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-base font-semibold"></h3><p id="no-results-text" class="text-xs"></p></div>
+        </div>
+    </template>
+    <template id="success-screen-template">
+        <div class="p-5 flex flex-col items-center justify-center h-full text-center">
+            <div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+            <h2 id="success-title" class="text-xl font-bold mt-4 mb-1"></h2>
+            <p id="success-text" class="text-slate-600 mb-8 text-sm"></p>
+            <button id="back-to-hub-btn" class="text-sm btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button>
+        </div>
+    </template>
+    <template id="my-trips-screen-template">
+         <div class="flex-1 flex flex-col">
+            <div id="my-trips-container" class="p-5 space-y-4 flex-1"></div>
+        </div>
+    </template>
+    <template id="profile-screen-template">
+         <div class="p-5">
+            <h2 class="text-lg font-bold mb-4">Мой профиль</h2>
+            <p class="text-xs text-slate-600 mb-4">Здесь вы можете изменить ваше имя. Если вы планируете быть водителем, пожалуйста, укажите данные вашего автомобиля.</p>
+            <form id="profile-form" class="space-y-4">
+                <div>
+                    <label for="profile-name" class="block text-xs font-medium text-slate-600 mb-2">Ваше имя</label>
+                    <input type="text" name="fullName" id="profile-name" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Алексей" required>
+                </div>
+                <div>
+                    <label for="profile-car" class="block text-xs font-medium text-slate-600 mb-2">Марка и модель машины (для водителей)</label>
+                    <input type="text" name="driverCar" id="profile-car" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Kia Rio">
+                </div>
+                <button type="submit" class="text-sm btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button>
+            </form>
+        </div>
+    </template>
+    <template id="offer-screen-template">
+        <div class="p-5">
+            <h2 class="text-lg font-bold mb-4">Данные о поездке</h2>
+            <form id="offer-form" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Откуда</label>
+                        <select name="from-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Куда</label>
+                        <select name="to-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                </div>
+                <input type="hidden" name="from" required><input type="hidden" name="to" required>
+                <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
+                <div id="ferry-toggle-container" class="hidden p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
+                    <label for="via-ferry-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label>
+                    <div class="flex items-center space-x-3">
+                        <span id="ferry-price-increase" class="text-sm text-slate-800 font-semibold hidden"></span>
+                        <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-ferry-toggle" name="via_ferry" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label>
+                    </div>
+                </div>
+                <div id="cheboksary-detour-container" class="hidden p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
+                    <label for="via-cheboksary-detour-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Заезжаю в Чебоксары</label>
+                    <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-cheboksary-detour-toggle" name="via_cheboksary_detour" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div></label>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-medium text-slate-600 mb-2">Дата</label><input type="date" name="date" id="date-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div>
+                    <div><label class="block text-xs font-medium text-slate-600 mb-2">Время</label><input type="time" name="time" id="time-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-2">Количество мест</label>
+                    <input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Например: 3" required>
+                </div>
+                <button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Опубликовать (<span id="publish-price"></span> ₽)</button>
+            </form>
+        </div>
+    </template>
+    <template id="passenger-request-screen-template">
+        <div class="p-5">
+            <h2 class="text-lg font-bold mb-4">Ваша заявка</h2>
+            <form id="passenger-request-form" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Откуда</label>
+                        <select name="from-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Куда</label>
+                        <select name="to-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                </div>
+                <input type="hidden" name="from" required><input type="hidden" name="to" required>
+                <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
+                <input type="date" name="date" id="date-request" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-2">Желаемое время выезда</label>
+                    <div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">04-06</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">06-08</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">08-10</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">10-12</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">12-14</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">14-16</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">16-18</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">18-20</button>
+                    </div>
+                    <input type="hidden" name="timeInterval" id="timeIntervalInput" required>
+                    <div class="form-error-time text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите время</div>
+                </div>
+                <button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button>
+            </form>
+        </div>
+    </template>
+    <template id="parcel-request-screen-template">
+        <div class="p-5">
+            <h2 class="text-lg font-bold mb-4">Отправить посылку</h2>
+            <form id="parcel-request-form" class="space-y-4">
+                 <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Откуда</label>
+                        <select name="from-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Куда</label>
+                        <select name="to-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                </div>
+                <input type="hidden" name="from" required><input type="hidden" name="to" required>
+                <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
+                <div><label for="date-parcel" class="block text-xs font-medium text-slate-600 mb-2">Дата отправки</label><input type="date" name="date" id="date-parcel" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div>
+                <div id="parcel-price-info" class="bg-slate-100 p-3 rounded-lg text-center text-slate-600 text-sm">Стоимость отправки: <span class="font-bold"></span> ₽</div>
+                <button type="submit" class="text-sm btn w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">Создать заявку на посылку</button>
+            </form>
+        </div>
+    </template>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const { createClient } = supabase;
+
+        const App = {
+            config: {
+                supabaseUrl: 'https://scqkpvmmoaolahpxinja.supabase.co',
+                supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw',
+                botToken: '8202443902:AAEMonQpK3FmOAh5Up4GPBmI89q1mHz8LpY',
+                prices: { base: 600, parcel: 300, cheboksary: 400, ferrySurcharge: 100 },
+                cities: ['Йошкар-Ола', 'Чебоксары', 'Козьмодемьянск'],
+            },
+            state: {
+                currentUser: null, userProfile: null, userRole: 'passenger',
+                navigationHistory: ['passenger-home-screen'], allRequests: [],
+                currentFilters: { from: '', to: '', date: '', type: 'all' },
+            },
+            supabaseClient: null,
+            
+            async init() {
+                this.supabaseClient = createClient(this.config.supabaseUrl, this.config.supabaseAnonKey);
+                
+                try {
+                    Telegram.WebApp.ready();
+                    Telegram.WebApp.expand();
+                    this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
+                } catch (e) {
+                    console.warn("Тестовый режим.");
+                    this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
+                }
+                
+                await this.ensureUserProfile();
+                this.bindEvents();
+                this.render.allScreens(); 
+                this.render.updateRoleSwitcherUI();
+                this.render.updateAvatar();
+            },
+
+            async ensureUserProfile() {
+                if (!this.state.currentUser) return;
+                let { data: profile, error } = await this.supabaseClient.from('profiles').select('*').eq('id', this.state.currentUser.id).single();
+                if (error && error.code === 'PGRST116') {
+                    const { data: newProfile, error: insertError } = await this.supabaseClient.from('profiles').insert({ id: this.state.currentUser.id, username: this.state.currentUser.username, full_name: this.state.currentUser.first_name || 'Пользователь' }).select().single();
+                    if (insertError) { console.error('Ошибка создания профиля:', insertError); return; }
+                    profile = newProfile;
+                } else if (error) {
+                    console.error('Ошибка получения профиля:', error); return;
+                }
+                this.state.userProfile = profile;
+            },
+            
+            bindEvents() {
+                document.body.addEventListener('click', (e) => {
+                    const button = e.target.closest('button, #role-switcher, #booking-modal-overlay');
+                    if (!button) return;
+                    
+                    const handlers = {
+                        'role-switcher': this.handlers.onRoleSwitch.bind(this),
+                        'backButton': this.navigation.back.bind(this),
+                        'view-driver-offers-btn': this.handlers.onViewDriverOffers.bind(this),
+                        'create-passenger-request-btn': () => this.navigation.to('passenger-request-screen'),
+                        'send-parcel-btn': () => this.navigation.to('parcel-request-screen'),
+                        'view-passenger-requests-btn': this.handlers.onViewPassengerRequests.bind(this),
+                        'publish-ride-btn': this.handlers.onPublishRideClick.bind(this),
+                        'my-trips-btn': this.handlers.onMyTripsClick.bind(this),
+                        'back-to-hub-btn': this.handlers.onBackToHub.bind(this),
+                        'profile-avatar-btn': () => this.navigation.to('profile-screen'),
+                        'booking-modal-cancel-btn': this.handlers.onBookingModalCancel.bind(this),
+                        'booking-modal-overlay': this.handlers.onBookingModalCancel.bind(this),
+                        'apply-filters-btn': this.handlers.onApplyFilters.bind(this),
+                        'reset-filters-btn': this.handlers.onResetFilters.bind(this),
+                        'filter-toggle-btn': this.handlers.onToggleFilter.bind(this),
+                    };
+
+                    if(handlers[button.id]) { handlers[button.id](); return; }
+                    
+                    if(button.closest('#time-interval-buttons')) { this.handlers.onTimeSelect(button); return; }
+                    if(button.classList.contains('filter-type-btn')) { this.handlers.onFilterTypeSelect(button); return; }
+                    
+                    const classHandlers = {
+                        'offer-ride-btn': () => this.handlers.onOfferRideToRequest(button.dataset.requestId),
+                        'request-booking-btn': () => this.handlers.onRequestBooking(button.dataset.offerId),
+                        'detour-booking-btn': () => this.handlers.onDetourBookingClick(button.dataset.offer),
+                        'confirm-booking-segment-btn': () => this.handlers.onConfirmBookingSegment(button.dataset),
+                        'cancel-booking-btn': () => this.handlers.onCancelBooking(button.dataset.bookingId),
+                        'accept-booking-btn': () => this.handlers.onUpdateBookingStatus(button.dataset.bookingId, 'confirmed'),
+                        'reject-booking-btn': () => this.handlers.onUpdateBookingStatus(button.dataset.bookingId, 'rejected'),
+                        'delete-offer-btn': () => this.handlers.onDeleteOffer(button.dataset.offerId),
+                        'cancel-request-btn': () => this.handlers.onCancelRequest(button.dataset.requestId),
+                        'cancel-parcel-request-btn': () => this.handlers.onCancelParcelRequest(button.dataset.requestId),
+                    };
+                    for (const className in classHandlers) {
+                        if (button.classList.contains(className)) { classHandlers[className].call(this); return; }
+                    }
+                });
+                document.body.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const formHandlers = {
+                        'passenger-request-form': () => this.handlers.onPassengerRequestSubmit(e.target),
+                        'parcel-request-form': () => this.handlers.onParcelRequestSubmit(e.target),
+                        'offer-form': () => this.handlers.onOfferSubmit(e.target),
+                        'profile-form': () => this.handlers.onProfileSubmit(e.target),
+                    };
+                    if (formHandlers[e.target.id]) formHandlers[e.target.id].call(this);
+                });
+                document.body.addEventListener('change', (e) => {
+                    if (e.target.id === 'via-ferry-toggle' || e.target.id === 'via-cheboksary-detour-toggle') this.handlers.onRouteOptionChange.call(this, e.target);
+                    if (e.target.name === 'from-select' || e.target.name === 'to-select') this.handlers.onRouteDropdownChange.call(this, e.target);
+                });
+            },
+        }; 
+
+        App.handlers = {
+            onRoleSwitch() {
+                this.state.userRole = this.state.userRole === 'passenger' ? 'driver' : 'passenger';
+                this.render.updateRoleSwitcherUI();
+                const newScreen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
+                this.state.navigationHistory = [newScreen];
+                this.navigation.to(newScreen);
+            },
+            onToggleFilter() {
+                document.getElementById('filter-content').classList.toggle('collapsed');
+                document.getElementById('filter-toggle-btn').classList.toggle('collapsed');
+            },
+            onRouteOptionChange(checkbox) {
+                const form = checkbox.closest('form');
+                if (checkbox.id === 'via-ferry-toggle' && checkbox.checked) {
+                    form.querySelector('#via-cheboksary-detour-toggle').checked = false;
+                }
+                this.handlers.onRouteDropdownChange(form.querySelector('select[name="from-select"]'));
+            },
+            onRouteDropdownChange(selectElement) {
+                const form = selectElement.closest('form');
+                const fromSelect = form.querySelector('select[name="from-select"]');
+                const toSelect = form.querySelector('select[name="to-select"]');
+                form.querySelector('input[name="from"]').value = fromSelect.value;
+                form.querySelector('input[name="to"]').value = toSelect.value;
+                Array.from(toSelect.options).forEach(opt => { opt.disabled = opt.value === fromSelect.value; });
+                Array.from(fromSelect.options).forEach(opt => { opt.disabled = opt.value === toSelect.value; });
+                const isKozYoRoute = (fromSelect.value === 'Козьмодемьянск' && toSelect.value === 'Йошкар-Ола') || (fromSelect.value === 'Йошкар-Ола' && toSelect.value === 'Козьмодемьянск');
+                const ferryContainer = form.querySelector('#ferry-toggle-container');
+                const detourContainer = form.querySelector('#cheboksary-detour-container');
+                const ferryToggle = form.querySelector('#via-ferry-toggle');
+                if (ferryContainer) ferryContainer.classList.toggle('hidden', !isKozYoRoute);
+                if (detourContainer) detourContainer.classList.toggle('hidden', !(isKozYoRoute && !ferryToggle.checked));
+                this.render.updateOfferOptionsUI(form);
+            },
+            onTimeSelect(button) {
+                const form = button.closest('form');
+                button.parentElement.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                form.querySelector('#timeIntervalInput').value = button.textContent;
+                form.querySelector('.form-error-time').classList.add('hidden');
+            },
+            onPublishRideClick() {
+                if (!this.state.userProfile?.driver_car?.trim()) this.navigation.to('profile-screen');
+                else this.navigation.to('offer-screen');
+            },
+            async onViewDriverOffers() {
+                this.navigation.to('list-screen');
+                document.getElementById('filter-section-container').classList.add('hidden');
+                this.render.list([], 'driverOffer', true);
+                const { data: offers, error } = await this.supabaseClient.from('ride_offers_with_seats').select('*').gte('ride_date', new Date().toISOString().split('T')[0]).gt('seats_left', 0).order('ride_date', { ascending: true }).order('ride_time', { ascending: true });
+                if (error) { console.error(error); this.render.list([], 'driverOffer'); return; }
+                const { data: userBookings } = await this.supabaseClient.from('bookings').select('id, offer_id').eq('passenger_id', this.state.currentUser.id);
+                const userBookingsMap = new Map(userBookings?.map(b => [b.offer_id, b.id]) || []);
+                const augmentedOffers = offers.map(offer => ({ ...offer, currentUserBookingId: userBookingsMap.get(offer.id) || null }));
+                this.render.list(augmentedOffers, 'driverOffer');
+            },
+            async onViewPassengerRequests() {
+                this.navigation.to('list-screen');
+                document.getElementById('filter-section-container').classList.remove('hidden');
+                document.getElementById('filter-type-container').classList.toggle('hidden', this.state.userRole !== 'driver');
+                this.render.list([], 'passengerRequest', true);
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('filter-date').setAttribute('min', today);
+                const [ridesRes, parcelsRes] = await Promise.all([
+                    this.supabaseClient.from('ride_requests').select('*').gte('ride_date', today).eq('status', 'open').order('ride_date', { ascending: true }),
+                    this.supabaseClient.from('parcel_requests').select('*').gte('ride_date', today).order('ride_date', { ascending: true })
+                ]);
+                if (ridesRes.error || parcelsRes.error) { console.error(ridesRes.error || parcelsRes.error); this.render.list([], 'passengerRequest'); return; }
+                const allRequests = [ ...(ridesRes.data || []).map(r => ({ ...r, type: 'ride' })), ...(parcelsRes.data || []).map(p => ({ ...p, type: 'parcel' }))];
+                allRequests.sort((a, b) => new Date(a.ride_date) - new Date(b.ride_date));
+                this.state.allRequests = allRequests;
+                this.handlers.onResetFilters();
+            },
+            onFilterTypeSelect(button) {
+                button.parentElement.querySelectorAll('.filter-type-btn').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+            },
+            onApplyFilters() {
+                this.state.currentFilters = { from: document.getElementById('filter-from').value, to: document.getElementById('filter-to').value, date: document.getElementById('filter-date').value, type: document.querySelector('#filter-type-buttons .active').dataset.type };
+                this.render.renderFilteredList();
+            },
+            onResetFilters() {
+                this.state.currentFilters = { from: '', to: '', date: '', type: 'all' };
+                document.getElementById('filter-from').value = '';
+                document.getElementById('filter-to').value = '';
+                document.getElementById('filter-date').value = '';
+                document.querySelectorAll('#filter-type-buttons .filter-type-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.type === 'all'));
+                this.render.renderFilteredList();
+            },
+            async onMyTripsClick() {
+                this.navigation.to('my-trips-screen');
+                const container = document.getElementById('my-trips-container');
+                container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
+                
+                if (this.state.userRole === 'driver') {
+                    const { data, error } = await this.supabaseClient.from('ride_offers').select(`*, bookings(*, profiles(full_name, username))`).eq('driver_id', this.state.currentUser.id).gte('ride_date', new Date().toISOString().split('T')[0]).order('ride_date', { ascending: true });
+                    if (error) { container.innerHTML = `<div class="text-center text-red-500 py-10"><h3 class="text-base font-semibold">Ошибка загрузки</h3><p class="text-xs">Не удалось загрузить ваши поездки.</p></div>`; return; }
+                    this.render.myTrips(data, 'driver');
+                } else {
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    const [bookingsRes, requestsRes, parcelsRes] = await Promise.all([
+                        this.supabaseClient.from('bookings').select(`*, ride_offers(*)`).eq('passenger_id', this.state.currentUser.id),
+                        this.supabaseClient.from('ride_requests').select(`*`).eq('passenger_id', this.state.currentUser.id).in('status', ['open', 'pending_confirmation']).gte('ride_date', new Date().toISOString().split('T')[0]),
+                        this.supabaseClient.from('parcel_requests').select(`*`).eq('sender_id', this.state.currentUser.id).gte('ride_date', new Date().toISOString().split('T')[0])
+                    ]);
+
+                    if (bookingsRes.error || requestsRes.error || parcelsRes.error) {
+                        container.innerHTML = `<div class="text-center text-red-500 py-10"><h3 class="text-base font-semibold">Ошибка загрузки</h3><p class="text-xs">Не удалось загрузить ваши данные.</p></div>`; return;
+                    }
+
+                    const activeBookings = (bookingsRes.data || []).filter(b => b.ride_offers && new Date(b.ride_offers.ride_date) >= today);
+                    this.render.myTrips({ bookings: activeBookings, requests: requestsRes.data, parcels: parcelsRes.data }, 'passenger');
+                }
+            },
+            async onOfferSubmit(form) {
+                const formData = new FormData(form);
+                const from = formData.get('from'); const to = formData.get('to');
+                if (!from || !to) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; }
+                const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
+                const finalPrice = isCheboksaryRoute ? this.config.prices.cheboksary : (formData.get('via_ferry') ? this.config.prices.base + this.config.prices.ferrySurcharge : this.config.prices.base);
+                
+                const { error } = await this.supabaseClient.from('ride_offers').insert({ driver_id: this.state.currentUser.id, driver_username: this.state.currentUser.username, from, to, ride_date: formData.get('date'), ride_time: formData.get('time'), seats: parseInt(formData.get('seats')), price: finalPrice, driver_name: this.state.userProfile.full_name, driver_car: this.state.userProfile.driver_car, via_cheboksary: isCheboksaryRoute, via_ferry: formData.get('via_ferry') === 'on', via_cheboksary_detour: formData.get('via_cheboksary_detour') === 'on' });
+                if (error) { console.error(error); return; }
+                this.render.resetForm(form);
+                this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет');
+            },
+            async onPassengerRequestSubmit(form) {
+                if (!this.state.userProfile) { alert("Профиль не загружен, попробуйте еще раз."); return; }
+                const formData = new FormData(form);
+                const from = formData.get('from'); const to = formData.get('to'); const timeInterval = formData.get('timeInterval');
+                if (!from || !to || !timeInterval) {
+                    if (!from || !to) form.querySelector('.form-error-direction').classList.remove('hidden');
+                    if (!timeInterval) form.querySelector('.form-error-time').classList.remove('hidden');
+                    return;
+                }
+                const price = (from === 'Чебоксары' || to === 'Чебоксары') ? this.config.prices.cheboksary : this.config.prices.base;
+                const { error } = await this.supabaseClient.from('ride_requests').insert({ passenger_id: this.state.currentUser.id, passenger_username: this.state.currentUser.username, from, to, ride_date: formData.get('date'), time_interval: timeInterval, passenger_name: this.state.userProfile.full_name, price, status: 'open' });
+                if (error) { console.error(error); return; }
+                this.render.resetForm(form);
+                this.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично');
+            },
+            async onParcelRequestSubmit(form) {
+                if (!this.state.userProfile) { alert("Профиль не загружен, попробуйте еще раз."); return; }
+                const formData = new FormData(form);
+                const from = formData.get('from'); const to = formData.get('to');
+                if (!from || !to) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; }
+                const { error } = await this.supabaseClient.from('parcel_requests').insert({ sender_id: this.state.currentUser.id, sender_username: this.state.currentUser.username, from, to, ride_date: formData.get('date'), sender_name: this.state.userProfile.full_name, price: this.config.prices.parcel });
+                if (error) { console.error(error); return; }
+                this.render.resetForm(form);
+                this.render.success('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично');
+            },
+            async onProfileSubmit(form) {
+                if (!this.state.currentUser) { console.error("Пользователь не определен."); return; }
+                const formData = new FormData(form);
+                const fullName = formData.get('fullName').trim();
+                if (!fullName) { return; }
+                const { data, error } = await this.supabaseClient.from('profiles').update({ full_name: fullName, driver_car: formData.get('driverCar').trim() }).eq('id', this.state.currentUser.id).select().single();
+                if (error) { console.error('Ошибка сохранения профиля:', error); alert("Не удалось сохранить профиль."); return; }
+                this.state.userProfile = data;
+                this.navigation.back();
+            },
+            async onRequestBooking(offerId, bookingDetails = null) {
+                if (!this.state.userProfile) { alert("Профиль не загружен, попробуйте еще раз."); return; }
+                const { data: offer, error: offerError } = await this.supabaseClient.from('ride_offers').select('*').eq('id', offerId).single();
+                if(offerError || !offer) { console.error("Предложение не найдено"); return; }
+                const bookingData = { offer_id: offerId, passenger_id: this.state.currentUser.id, status: 'pending', booking_segment: bookingDetails?.segment || 'full', price: bookingDetails?.price || offer.price, from_city: bookingDetails?.from || offer.from, to_city: bookingDetails?.to || offer.to };
+                const { error } = await this.supabaseClient.from('bookings').insert(bookingData);
+                if (error) { console.error('Ошибка бронирования:', error); return; }
+                this.utils.sendTelegramNotification(offer.driver_id, `*Новое бронирование!* 🚗\n\nПассажир *${this.state.userProfile.full_name || 'Новый пассажир'}* хочет забронировать место:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${this.utils.formatDate(offer.ride_date)}`);
+                this.render.success('Заявка отправлена', 'Водитель рассмотрит вашу заявку.', 'Отлично');
+            },
+            onDetourBookingClick: (offerData) => app.render.bookingOptionsModal(JSON.parse(decodeURIComponent(offerData))),
+            onConfirmBookingSegment: (dataset) => {
+                app.handlers.onBookingModalCancel();
+                app.handlers.onRequestBooking(dataset.offerId, { segment: dataset.segment, price: parseInt(dataset.price), from: dataset.from, to: dataset.to });
+            },
+            onBookingModalCancel: () => {
+                const overlay = document.getElementById('booking-modal-overlay');
+                const modal = document.getElementById('booking-modal');
+                overlay.classList.remove('show');
+                modal.classList.remove('show');
+                setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+            },
+            async onUpdateBookingStatus(bookingId, status) {
+                const { data: booking, error: bookingError } = await this.supabaseClient.from('bookings').select('*, ride_offers(*)').eq('id', bookingId).single();
+                if (bookingError || !booking) { console.error('Бронь не найдена:', bookingError); return; }
+                const offer = booking.ride_offers;
+                const isPassengerAction = this.state.currentUser.id === booking.passenger_id;
+                if (isPassengerAction && offer.linked_request_id) {
+                    if (status === 'rejected') {
+                        await Promise.all([ this.supabaseClient.from('ride_requests').update({ status: 'open' }).eq('id', offer.linked_request_id), this.supabaseClient.from('bookings').delete().eq('id', bookingId), this.supabaseClient.from('ride_offers').delete().eq('id', offer.id) ]);
+                        this.utils.sendTelegramNotification(offer.driver_id, `Пассажир отклонил ваше предложение.`);
+                    } else if (status === 'confirmed') {
+                        await Promise.all([ this.supabaseClient.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId), this.supabaseClient.from('ride_requests').update({ status: 'closed' }).eq('id', offer.linked_request_id) ]);
+                        this.utils.sendTelegramNotification(offer.driver_id, `Пассажир принял ваше предложение!`);
+                    }
+                } else {
+                    await this.supabaseClient.from('bookings').update({ status }).eq('id', bookingId);
+                    const message = status === 'confirmed' ? `*Бронь подтверждена!* ✅` : `*Бронь отклонена* ❌`;
+                    this.utils.sendTelegramNotification(booking.passenger_id, `${message}\n\nПоездка: ${offer.from} → ${offer.to}, ${this.utils.formatDate(offer.ride_date)}`);
+                }
+                this.handlers.onMyTripsClick();
+            },
+            async onCancelBooking(bookingId) {
+                const { data: booking, error } = await this.supabaseClient.from('bookings').select('*, ride_offers(driver_id, from, to, ride_date)').eq('id', bookingId).single();
+                if (error || !booking) { console.error('Ошибка отмены:', error); return; }
+                await this.supabaseClient.from('bookings').delete().eq('id', bookingId);
+                this.utils.sendTelegramNotification(booking.ride_offers.driver_id, `*Пассажир отменил бронь* 🧍‍♂️`);
+                if (this.state.navigationHistory.at(-1) === 'list-screen') this.handlers.onViewDriverOffers();
+                else this.handlers.onMyTripsClick();
+            },
+            async onDeleteOffer(offerId) {
+                const { data: bookings } = await this.supabaseClient.from('bookings').select('passenger_id').eq('offer_id', offerId);
+                if (bookings?.length > 0) {
+                    const message = `*Поездка отменена водителем* ❌`;
+                    await Promise.all(bookings.map(b => this.utils.sendTelegramNotification(b.passenger_id, message)));
+                }
+                await this.supabaseClient.from('ride_offers').delete().eq('id', offerId);
+                this.handlers.onMyTripsClick();
+            },
+            async onCancelRequest(requestId) { await this.supabaseClient.from('ride_requests').delete().eq('id', requestId); this.handlers.onMyTripsClick(); },
+            async onCancelParcelRequest(requestId) { await this.supabaseClient.from('parcel_requests').delete().eq('id', requestId); this.handlers.onMyTripsClick(); },
+            onBackToHub() {
+                const screen = this.state.userRole === 'driver' ? 'driver-dashboard-screen' : 'passenger-home-screen';
+                this.state.navigationHistory = [screen];
+                this.navigation.to(screen);
+            },
+            async onOfferRideToRequest(requestId) {
+                if (!this.state.userProfile?.driver_car?.trim()) { this.navigation.to('profile-screen'); return; }
+                const { data: request, error: requestError } = await this.supabaseClient.from('ride_requests').select('*').eq('id', requestId).single();
+                if (requestError || !request) { console.error("Заявка не найдена:", requestError); return; }
+                const timeForOffer = request.time_interval.split('-')[0] + ':00';
+                const { data: newOffer, error: offerError } = await this.supabaseClient.from('ride_offers').insert({ driver_id: this.state.currentUser.id, driver_username: this.state.currentUser.username, driver_name: this.state.userProfile.full_name, driver_car: this.state.userProfile.driver_car, from: request.from, to: request.to, ride_date: request.ride_date, ride_time: timeForOffer, seats: 1, price: request.price, linked_request_id: requestId }).select().single();
+                if (offerError) { console.error("Не удалось создать предложение:", offerError); return; }
+                await this.supabaseClient.from('bookings').insert({ offer_id: newOffer.id, passenger_id: request.passenger_id, status: 'pending', price: newOffer.price, from_city: newOffer.from, to_city: newOffer.to });
+                await this.supabaseClient.from('ride_requests').update({ status: 'pending_confirmation' }).eq('id', requestId);
+                this.utils.sendTelegramNotification(request.passenger_id, `*Вам предложили поездку!* 🚗`);
+                const button = document.querySelector(`.offer-ride-btn[data-request-id="${requestId}"]`);
+                if (button) {
+                    button.textContent = 'Отправлено'; button.disabled = true;
+                    button.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    button.classList.add('bg-slate-400', 'cursor-not-allowed');
+                }
+            }
+        };
+        App.navigation = {
+            to(screenId) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                const screenElement = document.getElementById(screenId);
+                if (screenElement) screenElement.classList.add('active');
+                else { console.error(`Screen "${screenId}" not found.`); return; }
+                if (App.state.navigationHistory.at(-1) !== screenId) App.state.navigationHistory.push(screenId);
+                document.getElementById('backButton').classList.toggle('invisible', App.state.navigationHistory.length <= 1);
+                if (screenId === 'offer-screen') App.render.populateOfferForm();
+                if (screenId === 'profile-screen') App.render.populateProfileForm();
+                document.getElementById('main-content').scrollTop = 0;
+            },
+            back() {
+                if (App.state.navigationHistory.length <= 1) return;
+                App.state.navigationHistory.pop();
+                const lastScreen = App.state.navigationHistory.at(-1);
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(lastScreen).classList.add('active');
+                document.getElementById('backButton').classList.toggle('invisible', App.state.navigationHistory.length <= 1);
+            }
+        };
+        App.render = {
+            allScreens() {
+                const screenIds = ['passenger-home-screen', 'driver-dashboard-screen', 'list-screen', 'success-screen', 'my-trips-screen', 'profile-screen', 'offer-screen', 'passenger-request-screen', 'parcel-request-screen'];
+                screenIds.forEach(id => {
+                    const template = document.getElementById(`${id}-template`);
+                    const screen = document.getElementById(id);
+                    if (template && screen) screen.innerHTML = template.innerHTML;
+                });
+                this.setDefaultDates();
+                this.populateSelects();
+                const offerPriceSpan = document.querySelector('#offer-form #publish-price');
+                if (offerPriceSpan) offerPriceSpan.textContent = App.config.prices.base;
+                const parcelPriceSpan = document.querySelector('#parcel-request-form #parcel-price-info span');
+                if(parcelPriceSpan) parcelPriceSpan.textContent = App.config.prices.parcel;
+            },
+            updateRoleSwitcherUI() {
+                const switcher = document.getElementById('role-switcher');
+                switcher.classList.toggle('driver', App.state.userRole === 'driver');
+                switcher.classList.toggle('passenger', App.state.userRole === 'passenger');
+            },
+            updateAvatar() {
+                const avatarBtn = document.getElementById('profile-avatar-btn');
+                if (!avatarBtn || !App.state.currentUser) return;
+                avatarBtn.innerHTML = App.state.currentUser.photo_url ? `<img src="${App.state.currentUser.photo_url}" alt="Avatar">` : `<span>${App.state.currentUser.first_name ? App.state.currentUser.first_name.charAt(0).toUpperCase() : '?'}</span>`;
+            },
+            list(items, type, isLoading = false) {
+                const container = document.getElementById('list-container');
+                const noResults = document.getElementById('no-results');
+                container.innerHTML = '';
+                if (isLoading) {
+                    container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
+                    noResults.classList.add('hidden'); return;
+                }
+                if (!items || items.length === 0) {
+                    noResults.classList.remove('hidden');
+                    document.getElementById('no-results-title').textContent = type === 'driverOffer' ? 'Поездок не найдено' : 'Заявок не найдено';
+                    document.getElementById('no-results-text').textContent = type === 'driverOffer' ? 'Попробуйте зайти позже или оставьте свою заявку.' : 'По вашим фильтрам ничего не найдено.';
+                    return;
+                }
+                noResults.classList.add('hidden');
+                container.innerHTML = items.map(item => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${type === 'driverOffer' ? this.getDriverOfferCard(item) : this.getPassengerRequestCard(item)}</div>`).join('');
+            },
+            myTrips(data, role) {
+                const container = document.getElementById('my-trips-container');
+                if (role === 'driver') {
+                    if (!data || data.length === 0) { container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активных поездок</h3></div>`; return; }
+                    container.innerHTML = data.map(offer => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyDriverOfferCard(offer)}</div>`).join('');
+                } else {
+                    const { bookings, requests, parcels } = data;
+                    if (!bookings?.length && !requests?.length && !parcels?.length) { container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активностей</h3></div>`; return; }
+                    let content = '';
+                    if (bookings?.length) content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-2">Мои бронирования</h3>` + bookings.map(b => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyBookingCard(b)}</div>`).join('');
+                    if (requests?.length) content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои заявки на поездки</h3>` + requests.map(r => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyRequestCard(r)}</div>`).join('');
+                    if (parcels?.length) content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои посылки</h3>` + parcels.map(p => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyParcelRequestCard(p)}</div>`).join('');
+                    container.innerHTML = content;
+                }
+            },
+            success(title, text, buttonText) {
+                document.getElementById('success-title').textContent = title;
+                document.getElementById('success-text').textContent = text;
+                document.getElementById('back-to-hub-btn').textContent = buttonText;
+                this.navigation.to('success-screen');
+            },
+            populateOfferForm() {
+                this.handlers.onRouteDropdownChange(document.querySelector('#offer-form select'))
+            },
+            populateProfileForm() {
+                const form = document.getElementById('profile-form');
+                if(form && this.state.userProfile) {
+                    form.querySelector('#profile-name').value = this.state.userProfile.full_name || this.state.currentUser.first_name || '';
+                    form.querySelector('#profile-car').value = this.state.userProfile.driver_car || '';
+                }
+            },
+            updateOfferOptionsUI(form) {
+                const from = form.querySelector('input[name="from"]').value;
+                const to = form.querySelector('input[name="to"]').value;
+                const isFerryChecked = form.querySelector('#via-ferry-toggle')?.checked;
+                const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
+                let price = isCheboksaryRoute ? this.config.prices.cheboksary : (isFerryChecked ? this.config.prices.base + this.config.prices.ferrySurcharge : this.config.prices.base);
+                const priceIncreaseSpan = form.querySelector('#ferry-price-increase');
+                if(priceIncreaseSpan) { priceIncreaseSpan.classList.toggle('hidden', !isFerryChecked || isCheboksaryRoute); priceIncreaseSpan.textContent = `(+${this.config.prices.ferrySurcharge} ₽)`; }
+                form.querySelector('#publish-price').textContent = price;
+            },
+            bookingOptionsModal(offer) {
+                const container = document.getElementById('booking-options-container');
+                container.innerHTML = `<button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="full" data-price="${this.config.prices.base}" data-from="${offer.from}" data-to="${offer.to}"><span>${offer.from} → ${offer.to}</span><span class="font-semibold">${this.config.prices.base} ₽</span></button><div class="h-px bg-slate-200"></div><button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="start_to_cheb" data-price="${this.config.prices.cheboksary}" data-from="${offer.from}" data-to="Чебоксары"><span>${offer.from} → Чебоксары</span><span class="font-semibold">${this.config.prices.cheboksary} ₽</span></button><div class="h-px bg-slate-200"></div><button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="cheb_to_end" data-price="${this.config.prices.cheboksary}" data-from="Чебоксары" data-to="${offer.to}"><span>Чебоксары → ${offer.to}</span><span class="font-semibold">${this.config.prices.cheboksary} ₽</span></button>`;
+                document.getElementById('booking-modal-overlay').classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    document.getElementById('booking-modal-overlay').classList.add('show');
+                    document.getElementById('booking-modal').classList.add('show');
+                });
+            },
+            getDriverOfferCard(item) {
+                const seatsLeft = item.seats_left;
+                const seatsText = seatsLeft === 1 ? '1 место' : (seatsLeft > 1 && seatsLeft < 5 ? `${seatsLeft} места` : `${seatsLeft} мест`);
+                let buttonHtml = '';
+                if (item.currentUserBookingId) {
+                    buttonHtml = `<button class="cancel-booking-btn btn w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 text-sm" data-booking-id="${item.currentUserBookingId}">Отменить бронь</button>`;
+                } else {
+                    const disabled = seatsLeft <= 0 ? 'disabled' : '';
+                    const btnClass = seatsLeft <= 0 ? 'bg-slate-300' : 'bg-blue-500 hover:bg-blue-600';
+                    const btnText = seatsLeft <= 0 ? 'Мест нет' : 'Забронировать';
+                    buttonHtml = item.via_cheboksary_detour ? `<button class="detour-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg text-sm ${btnClass}" data-offer='${encodeURIComponent(JSON.stringify(item))}' ${disabled}>${btnText}</button>` : `<button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg text-sm ${btnClass}" data-offer-id="${item.id}" ${disabled}>${btnText}</button>`;
+                }
+                return `<div class="flex justify-between items-center"><div class="font-bold text-base">${item.from} → ${item.to}</div><div class="text-base font-semibold">${item.price} ₽</div></div><div class="text-slate-600 text-sm"><p><strong>Дата:</strong> ${this.utils.formatDate(item.ride_date)} в <strong>${item.ride_time}</strong></p><p><strong>Водитель:</strong> ${item.driver_name} на ${item.driver_car}</p><p><strong>Свободно:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsText}</span></p></div> ${item.via_ferry ? `<div class="text-xs font-semibold text-blue-800 bg-blue-100 rounded-full px-3 py-1 text-center">⛴️ Через паром</div>` : ''}${item.via_cheboksary_detour ? `<div class="text-xs font-semibold text-orange-800 bg-orange-100 rounded-full px-3 py-1 text-center">Через Чебоксары</div>` : ''}${item.via_cheboksary ? `<div class="text-xs font-semibold text-green-800 bg-green-100 rounded-full px-3 py-1 text-center">До/Из Чебоксар</div>` : ''}${buttonHtml}`;
+            },
+            getPassengerRequestCard(item) {
+                const isParcel = item.type === 'parcel';
+                const buttonHtml = this.state.userRole !== 'driver' ? '' : (isParcel ? `<a href="https://t.me/${item.sender_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm">Связаться</a>` : `<button class="offer-ride-btn btn w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm" data-request-id="${item.id}">Предложить поездку</button>`);
+                return `<div class="flex justify-between items-center"><div class="font-bold text-base">${item.from} → ${item.to}</div><div class="text-base font-semibold">${item.price} ₽</div></div><div class="text-slate-600 text-sm"><p><strong>Дата:</strong> ${this.utils.formatDate(item.ride_date)}</p><p><strong>${isParcel ? 'Отправитель' : 'Пассажир'}:</strong> ${isParcel ? item.sender_name : item.passenger_name}</p>${!isParcel ? `<p><strong>Время:</strong> ${item.time_interval}</p>` : ''}</div><div class="flex items-center gap-2"><div class="${isParcel ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} text-xs font-semibold px-2.5 py-0.5 rounded-full">${isParcel ? 'Посылка' : 'Пассажир'}</div></div>${buttonHtml}`;
+            },
+            getMyDriverOfferCard(offer) {
+                 const confirmed = offer.bookings.filter(b => b.status === 'confirmed');
+                 const pending = offer.bookings.filter(b => b.status === 'pending');
+                 const seatsLeft = offer.seats - confirmed.length;
+                 let bookingsHtml = '<div class="text-xs text-slate-500">Пока нет пассажиров.</div>';
+                 if (offer.bookings.length > 0) {
+                     bookingsHtml = `${pending.length > 0 ? `<h4 class="font-semibold mt-2 text-sm">Заявки:</h4><div class="space-y-2">${pending.map(b => `<div class="flex justify-between items-center bg-amber-50 p-2 rounded-lg"><span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span><div class="flex gap-2"><button class="accept-booking-btn bg-green-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Принять</button><button class="reject-booking-btn bg-red-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Отклонить</button></div></div>`).join('')}</div>` : ''} ${confirmed.length > 0 ? `<h4 class="font-semibold mt-2 text-sm">Пассажиры:</h4><div class="space-y-2">${confirmed.map(b => `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg"><span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span>${b.profiles?.username ? `<a href="https://t.me/${b.profiles.username}" target="_blank" class="text-xs bg-blue-500 text-white font-semibold py-1 px-2 rounded-md hover:bg-blue-600">Написать</a>` : ''}</div>`).join('')}</div>` : ''}`;
+                 }
+                 return `<div class="flex justify-between items-center"><div><div class="font-bold text-base">${offer.from} → ${offer.to}</div><div class="text-xs text-slate-500">${this.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div></div><div class="text-base font-semibold">${offer.price} ₽</div></div><div class="text-slate-600 text-sm"><p><strong>Свободно мест:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsLeft} из ${offer.seats}</span></p></div><div class="border-t border-slate-100 pt-2 mt-2">${bookingsHtml}</div><button class="delete-offer-btn btn w-full bg-red-50 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 mt-2 text-sm" data-offer-id="${offer.id}">Удалить поездку</button>`;
+            },
+            getMyBookingCard(booking) {
+                const offer = booking.ride_offers;
+                if (!offer) return `<div class="text-red-500 text-sm">Ошибка: поездка удалена водителем.</div>`;
+                const statuses = { pending: { text: 'Ожидает', class: 'bg-amber-100 text-amber-800' }, confirmed: { text: 'Подтверждено', class: 'bg-green-100 text-green-800' }, rejected: { text: 'Отклонено', class: 'bg-red-100 text-red-800' } };
+                let statusInfo = statuses[booking.status];
+                let actionButtons = '';
+                if (booking.status === 'pending' && offer.linked_request_id) {
+                    statusInfo.text = 'Ваше решение?';
+                    actionButtons = `<div class="flex items-center gap-3"><button class="reject-booking-btn text-xs bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Отклонить</button><button class="accept-booking-btn text-xs bg-green-100 text-green-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Принять</button></div>`;
+                } else {
+                    actionButtons = `<div class="flex items-center gap-3">${booking.status === 'confirmed' && offer.driver_username ? `<a href="https://t.me/${offer.driver_username}" target="_blank" class="text-xs text-blue-600 hover:underline font-semibold">Написать</a>` : ''}${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-xs text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}</div>`;
+                }
+                return `<div class="flex justify-between items-start"><div><div class="font-bold text-base">${booking.from_city} → ${booking.to_city}</div><div class="text-xs text-slate-500">${this.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div><div class="text-xs text-slate-500">Водитель: ${offer.driver_name} (${offer.driver_car})</div></div><div class="text-base font-semibold">${booking.price} ₽</div></div><div class="flex justify-between items-center mt-2"><span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusInfo.class}">${statusInfo.text}</span>${actionButtons}</div>`;
+            },
+            getMyRequestCard(request) {
+                if (request.status === 'pending_confirmation') return `<div class="flex justify-between items-start opacity-60"><div><div class="font-bold text-base">${request.from} → ${request.to}</div><div class="text-xs text-slate-500">${this.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div></div><div class="text-base font-semibold">${request.price} ₽</div></div><div class="text-center text-sm text-amber-700 font-semibold bg-amber-50 p-2 rounded-lg mt-2">Ожидает подтверждения в "Бронированиях"</div>`;
+                return `<div class="flex justify-between items-start"><div><div class="font-bold text-base">${request.from} → ${request.to}</div><div class="text-xs text-slate-500">${this.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div></div><div class="text-base font-semibold">${request.price} ₽</div></div><div class="flex justify-end items-center mt-2"><button class="cancel-request-btn text-xs text-red-600 hover:underline" data-request-id="${request.id}">Отменить заявку</button></div>`;
+            },
+            getMyParcelRequestCard: (parcel) => `<div class="flex justify-between items-start"><div><div class="font-bold text-base">${parcel.from} → ${parcel.to}</div><div class="text-xs text-slate-500">${app.utils.formatDate(parcel.ride_date)}</div></div><div class="text-base font-semibold">${parcel.price} ₽</div></div><div class="flex justify-between items-center mt-2"><div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div><button class="cancel-parcel-request-btn text-xs text-red-600 hover:underline" data-request-id="${parcel.id}">Отменить заявку</button></div>`,
+            setDefaultDates: () => {
+                const today = new Date().toISOString().split('T')[0];
+                document.querySelectorAll('input[type="date"]').forEach(input => { input.setAttribute('min', today); input.value = today; });
+            },
+            populateSelects: () => {
+                const optionsHtml = app.config.cities.map(city => `<option value="${city}">${city}</option>`).join('');
+                document.querySelectorAll('select[name="from"], select[name="to"]').forEach(select => select.innerHTML = `<option value="">Любой</option>${optionsHtml}`);
+                document.querySelectorAll('select[name="from-select"], select[name="to-select"]').forEach(select => select.innerHTML = `<option value="" disabled selected>Выберите город</option>${optionsHtml}`);
+            },
+            resetForm: (form) => {
+                form.reset();
+                app.render.setDefaultDates();
+                form.querySelectorAll('.active').forEach(el => el.classList.remove('active'));
+                form.querySelector('#ferry-toggle-container')?.classList.add('hidden');
+                form.querySelector('#cheboksary-detour-container')?.classList.add('hidden');
+            },
+            renderFilteredList: () => {
+                const { from, to, date, type } = app.state.currentFilters;
+                let filtered = app.state.allRequests.filter(item => (!from || item.from === from) && (!to || item.to === to) && (!date || item.ride_date === date) && (type === 'all' || app.state.userRole !== 'driver' || item.type === type));
+                app.render.list(filtered, 'passengerRequest');
+            },
+        };
+        App.utils = {
+            formatDate(dateString) {
+                const date = new Date(dateString + 'T00:00:00');
+                const today = new Date(); today.setHours(0,0,0,0);
+                const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+                if (date.getTime() === today.getTime()) return 'Сегодня';
+                if (date.getTime() === tomorrow.getTime()) return 'Завтра';
+                return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+            },
+            async sendTelegramNotification(chatId, text) {
+                if (!App.config.botToken) { console.warn('Bot Token не настроен.'); return; }
+                const url = `https://api.telegram.org/bot${App.config.botToken}/sendMessage`;
+                const payload = { chat_id: chatId, text, parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Открыть приложение', url: 'https://t.me/poputka12_bot?startapp=' }]] } };
+                try {
+                    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) console.error("Telegram API error:", await response.json());
+                } catch (error) {
+                    console.error("Не удалось отправить сообщение Telegram:", error);
+                }
+            }
+        };
+
+        App.init();
+    });
     </script>
 </body>
 </html>
