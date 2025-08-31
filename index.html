@@ -211,6 +211,7 @@
         </div>
     </template>
     
+    <!-- FIX: Corrected template ID -->
     <template id="profile-screen-template">
          <div class="p-5">
             <h2 class="text-lg font-bold mb-4">Мой профиль</h2>
@@ -229,7 +230,8 @@
         </div>
     </template>
     
-    <template id="offer-form-template">
+    <!-- FIX: Corrected template ID -->
+    <template id="offer-screen-template">
         <div class="p-5">
             <h2 class="text-lg font-bold mb-4">Данные о поездке</h2>
             <form id="offer-form" class="space-y-4">
@@ -270,7 +272,8 @@
         </div>
     </template>
     
-    <template id="passenger-request-form-template">
+    <!-- FIX: Corrected template ID -->
+    <template id="passenger-request-screen-template">
         <div class="p-5">
             <h2 class="text-lg font-bold mb-4">Ваша заявка</h2>
             <form id="passenger-request-form" class="space-y-4">
@@ -307,7 +310,8 @@
         </div>
     </template>
 
-    <template id="parcel-request-form-template">
+    <!-- FIX: Corrected template ID -->
+    <template id="parcel-request-screen-template">
         <div class="p-5">
             <h2 class="text-lg font-bold mb-4">Отправить посылку</h2>
             <form id="parcel-request-form" class="space-y-4">
@@ -359,10 +363,6 @@
         
         const App = {
             
-            /**
-             * Инициализация приложения: настройка Telegram, получение данных пользователя,
-             * привязка обработчиков и рендеринг начального экрана.
-             */
             async init() {
                 try {
                     Telegram.WebApp.ready();
@@ -385,33 +385,12 @@
                 this.render.updateAvatar();
             },
 
-            /**
-             * Проверяет наличие профиля пользователя в БД и создает его при отсутствии.
-             */
             async ensureUserProfile() {
                 if (!state.currentUser) return;
-
-                let { data: profile, error } = await supabaseClient
-                    .from('profiles')
-                    .select('*')
-                    .eq('id', state.currentUser.id)
-                    .single();
-
-                if (error && error.code === 'PGRST116') { // 'PGRST116' - No rows found
-                    const { data: newProfile, error: insertError } = await supabaseClient
-                        .from('profiles')
-                        .insert({
-                            id: state.currentUser.id,
-                            username: state.currentUser.username,
-                            full_name: state.currentUser.first_name || 'Пользователь'
-                        })
-                        .select()
-                        .single();
-
-                    if (insertError) {
-                        console.error('Ошибка создания профиля:', insertError);
-                        return;
-                    }
+                let { data: profile, error } = await supabaseClient.from('profiles').select('*').eq('id', state.currentUser.id).single();
+                if (error && error.code === 'PGRST116') {
+                    const { data: newProfile, error: insertError } = await supabaseClient.from('profiles').insert({ id: state.currentUser.id, username: state.currentUser.username, full_name: state.currentUser.first_name || 'Пользователь' }).select().single();
+                    if (insertError) { console.error('Ошибка создания профиля:', insertError); return; }
                     profile = newProfile;
                 } else if (error) {
                     console.error('Ошибка получения профиля:', error);
@@ -420,9 +399,6 @@
                 state.userProfile = profile;
             },
 
-            /**
-             * Централизованная привязка всех DOM-событий к их обработчикам.
-             */
             bindEvents() {
                 document.body.addEventListener('click', (e) => {
                     const button = e.target.closest('button, #role-switcher, #booking-modal-overlay');
@@ -449,10 +425,7 @@
                          'filter-toggle-btn': this.handlers.onToggleFilter,
                     };
 
-                    if (clickHandlers[button.id]) {
-                        clickHandlers[button.id]();
-                        return;
-                    }
+                    if (clickHandlers[button.id]) { clickHandlers[button.id](); return; }
                     
                     if (button.classList.contains('offer-ride-btn')) this.handlers.onOfferRideToRequest(button.dataset.requestId);
                     if (button.classList.contains('request-booking-btn')) this.handlers.onRequestBooking(button.dataset.offerId);
@@ -478,12 +451,8 @@
                 });
                 
                 document.body.addEventListener('change', (e) => {
-                    if (e.target.id === 'via-ferry-toggle' || e.target.id === 'via-cheboksary-detour-toggle') {
-                        this.handlers.onRouteOptionChange(e.target);
-                    }
-                    if (e.target.name === 'from-select' || e.target.name === 'to-select') {
-                        this.handlers.onRouteDropdownChange(e.target);
-                    }
+                    if (e.target.id === 'via-ferry-toggle' || e.target.id === 'via-cheboksary-detour-toggle') this.handlers.onRouteOptionChange(e.target);
+                    if (e.target.name === 'from-select' || e.target.name === 'to-select') this.handlers.onRouteDropdownChange(e.target);
                 });
             },
         }; 
@@ -513,19 +482,14 @@
                 const toSelect = form.querySelector('select[name="to-select"]');
                 const fromValue = fromSelect.value;
                 const toValue = toSelect.value;
-
                 form.querySelector('input[name="from"]').value = fromValue;
                 form.querySelector('input[name="to"]').value = toValue;
-
                 Array.from(toSelect.options).forEach(opt => { opt.disabled = opt.value === fromValue; });
                 Array.from(fromSelect.options).forEach(opt => { opt.disabled = opt.value === toValue; });
-
                 const isKozYoRoute = (fromValue === 'Козьмодемьянск' && toValue === 'Йошкар-Ола') || (fromValue === 'Йошкар-Ола' && toValue === 'Козьмодемьянск');
-                
                 const ferryContainer = form.querySelector('#ferry-toggle-container');
                 const detourContainer = form.querySelector('#cheboksary-detour-container');
                 const ferryToggle = form.querySelector('#via-ferry-toggle');
-
                 if (ferryContainer) {
                     ferryContainer.classList.toggle('hidden', !isKozYoRoute);
                     if (!isKozYoRoute) ferryToggle.checked = false;
@@ -535,7 +499,6 @@
                     detourContainer.classList.toggle('hidden', !showDetour);
                     if (!showDetour) detourContainer.querySelector('input').checked = false;
                 }
-                
                 App.render.updateOfferOptionsUI(form);
             },
             onTimeSelect(button) {
@@ -555,41 +518,25 @@
             async onViewDriverOffers() {
                 App.navigation.to('list-screen');
                 document.getElementById('filter-section-container').classList.add('hidden');
-                App.render.list([], 'driverOffer', true); // Show loader
-
-                const { data: offers, error } = await supabaseClient.from('ride_offers_with_seats')
-                    .select('*')
-                    .gte('ride_date', new Date().toISOString().split('T')[0])
-                    .gt('seats_left', 0)
-                    .order('ride_date', { ascending: true })
-                    .order('ride_time', { ascending: true });
-
+                App.render.list([], 'driverOffer', true);
+                const { data: offers, error } = await supabaseClient.from('ride_offers_with_seats').select('*').gte('ride_date', new Date().toISOString().split('T')[0]).gt('seats_left', 0).order('ride_date', { ascending: true }).order('ride_time', { ascending: true });
                 if (error) { console.error(error); App.render.list([], 'driverOffer'); return; }
-
                 const { data: userBookings } = await supabaseClient.from('bookings').select('id, offer_id').eq('passenger_id', state.currentUser.id);
                 const userBookingsMap = new Map(userBookings?.map(b => [b.offer_id, b.id]) || []);
                 const augmentedOffers = offers.map(offer => ({ ...offer, currentUserBookingId: userBookingsMap.get(offer.id) || null }));
-
                 App.render.list(augmentedOffers, 'driverOffer');
             },
             async onViewPassengerRequests() {
                 App.navigation.to('list-screen');
                 document.getElementById('filter-section-container').classList.remove('hidden');
                 document.getElementById('filter-type-container').classList.toggle('hidden', state.userRole !== 'driver');
-                App.render.list([], 'passengerRequest', true); // Show loader
-
+                App.render.list([], 'passengerRequest', true);
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('filter-date').setAttribute('min', today);
-
                 const { data: rides, error: ridesError } = await supabaseClient.from('ride_requests').select('*').gte('ride_date', today).eq('status', 'open').order('ride_date', { ascending: true });
                 const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests').select('*').gte('ride_date', today).order('ride_date', { ascending: true });
-
                 if (ridesError || parcelsError) { console.error(ridesError || parcelsError); App.render.list([], 'passengerRequest'); return; }
-
-                const allRequests = [
-                    ...(rides || []).map(r => ({ ...r, type: 'ride' })),
-                    ...(parcels || []).map(p => ({ ...p, type: 'parcel' }))
-                ];
+                const allRequests = [ ...(rides || []).map(r => ({ ...r, type: 'ride' })), ...(parcels || []).map(p => ({ ...p, type: 'parcel' }))];
                 allRequests.sort((a, b) => new Date(a.ride_date) - new Date(b.ride_date));
                 state.allRequests = allRequests;
                 this.onResetFilters();
@@ -599,12 +546,7 @@
                 button.classList.add('active');
             },
             onApplyFilters() {
-                state.currentFilters = {
-                    from: document.getElementById('filter-from').value,
-                    to: document.getElementById('filter-to').value,
-                    date: document.getElementById('filter-date').value,
-                    type: document.querySelector('#filter-type-buttons .active').dataset.type
-                };
+                state.currentFilters = { from: document.getElementById('filter-from').value, to: document.getElementById('filter-to').value, date: document.getElementById('filter-date').value, type: document.querySelector('#filter-type-buttons .active').dataset.type };
                 App.render.renderFilteredList();
             },
             onResetFilters() {
@@ -612,27 +554,34 @@
                 document.getElementById('filter-from').value = '';
                 document.getElementById('filter-to').value = '';
                 document.getElementById('filter-date').value = '';
-                document.querySelectorAll('#filter-type-buttons .filter-type-btn').forEach(btn => {
-                    btn.classList.toggle('active', btn.dataset.type === 'all');
-                });
+                document.querySelectorAll('#filter-type-buttons .filter-type-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.type === 'all'));
                 App.render.renderFilteredList();
             },
             async onMyTripsClick() {
                 App.navigation.to('my-trips-screen');
-                document.getElementById('my-trips-container').innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
+                const container = document.getElementById('my-trips-container');
+                container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
                 const today = new Date().toISOString().split('T')[0];
 
                 if (state.userRole === 'driver') {
                     const { data, error } = await supabaseClient.from('ride_offers').select(`*, bookings(*, profiles(full_name, username))`).eq('driver_id', state.currentUser.id).gte('ride_date', today).order('ride_date', { ascending: true });
-                    if (error) { console.error(error); return; }
+                    if (error) {
+                        console.error(error);
+                        container.innerHTML = `<div class="text-center text-red-500 py-10"><h3 class="text-base font-semibold">Ошибка загрузки</h3><p class="text-xs">Не удалось загрузить ваши поездки. Попробуйте обновить страницу.</p></div>`;
+                        return;
+                    }
                     App.render.myTrips(data, 'driver');
-                } else {
+                } else { // Passenger
                     const [bookingsRes, requestsRes, parcelsRes] = await Promise.all([
                         supabaseClient.from('bookings').select(`*, ride_offers(*)`).eq('passenger_id', state.currentUser.id).gte('ride_offers.ride_date', today).order('created_at', { ascending: false }),
                         supabaseClient.from('ride_requests').select(`*`).eq('passenger_id', state.currentUser.id).in('status', ['open', 'pending_confirmation']).gte('ride_date', today).order('created_at', { ascending: false }),
                         supabaseClient.from('parcel_requests').select(`*`).eq('sender_id', state.currentUser.id).gte('ride_date', today).order('created_at', { ascending: false })
                     ]);
-                    if (bookingsRes.error || requestsRes.error || parcelsRes.error) { console.error(bookingsRes.error || requestsRes.error || parcelsRes.error); return; }
+                    if (bookingsRes.error || requestsRes.error || parcelsRes.error) {
+                        console.error(bookingsRes.error || requestsRes.error || parcelsRes.error);
+                        container.innerHTML = `<div class="text-center text-red-500 py-10"><h3 class="text-base font-semibold">Ошибка загрузки</h3><p class="text-xs">Не удалось загрузить ваши данные. Попробуйте обновить страницу.</p></div>`;
+                        return;
+                    }
                     App.render.myTrips({ bookings: bookingsRes.data, requests: requestsRes.data, parcels: parcelsRes.data }, 'passenger');
                 }
             },
@@ -646,15 +595,7 @@
                 const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
                 let finalPrice = isCheboksaryRoute ? config.prices.cheboksary : (viaFerry ? config.prices.base + config.prices.ferrySurcharge : config.prices.base);
 
-                const { error } = await supabaseClient.from('ride_offers').insert({
-                    driver_id: state.currentUser.id, driver_username: state.currentUser.username,
-                    from, to, ride_date: formData.get('date'), ride_time: formData.get('time'),
-                    seats: parseInt(formData.get('seats')), price: finalPrice,
-                    driver_name: state.userProfile.full_name, driver_car: state.userProfile.driver_car,
-                    via_cheboksary: isCheboksaryRoute, via_ferry: !isCheboksaryRoute && viaFerry,
-                    via_cheboksary_detour: !isCheboksaryRoute && !viaFerry && form.querySelector('#via-cheboksary-detour-toggle').checked
-                });
-
+                const { error } = await supabaseClient.from('ride_offers').insert({ driver_id: state.currentUser.id, driver_username: state.currentUser.username, from, to, ride_date: formData.get('date'), ride_time: formData.get('time'), seats: parseInt(formData.get('seats')), price: finalPrice, driver_name: state.userProfile.full_name, driver_car: state.userProfile.driver_car, via_cheboksary: isCheboksaryRoute, via_ferry: !isCheboksaryRoute && viaFerry, via_cheboksary_detour: !isCheboksaryRoute && !viaFerry && form.querySelector('#via-cheboksary-detour-toggle').checked });
                 if (error) { console.error(error); return; }
                 App.render.resetForm(form);
                 App.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет');
@@ -664,21 +605,13 @@
                 const from = formData.get('from');
                 const to = formData.get('to');
                 const timeInterval = formData.get('timeInterval');
-                
                 let isValid = true;
                 if (!from || !to) { form.querySelector('.form-error-direction').classList.remove('hidden'); isValid = false; }
                 if (!timeInterval) { form.querySelector('.form-error-time').classList.remove('hidden'); isValid = false; }
                 if (!isValid) return;
-
                 const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
                 const price = isCheboksaryRoute ? config.prices.cheboksary : config.prices.base;
-
-                const { error } = await supabaseClient.from('ride_requests').insert({
-                    passenger_id: state.currentUser.id, passenger_username: state.currentUser.username,
-                    from, to, ride_date: formData.get('date'), time_interval: timeInterval,
-                    passenger_name: state.userProfile.full_name, price, status: 'open'
-                });
-
+                const { error } = await supabaseClient.from('ride_requests').insert({ passenger_id: state.currentUser.id, passenger_username: state.currentUser.username, from, to, ride_date: formData.get('date'), time_interval: timeInterval, passenger_name: state.userProfile.full_name, price, status: 'open' });
                 if (error) { console.error(error); return; }
                 App.render.resetForm(form);
                 App.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично');
@@ -688,13 +621,7 @@
                 const from = formData.get('from');
                 const to = formData.get('to');
                 if (!from || !to) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; }
-                
-                const { error } = await supabaseClient.from('parcel_requests').insert({
-                    sender_id: state.currentUser.id, sender_username: state.currentUser.username,
-                    from, to, ride_date: formData.get('date'),
-                    sender_name: state.userProfile.full_name, price: config.prices.parcel
-                });
-                
+                const { error } = await supabaseClient.from('parcel_requests').insert({ sender_id: state.currentUser.id, sender_username: state.currentUser.username, from, to, ride_date: formData.get('date'), sender_name: state.userProfile.full_name, price: config.prices.parcel });
                 if (error) { console.error(error); return; }
                 App.render.resetForm(form);
                 App.render.success('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично');
@@ -703,11 +630,7 @@
                 const formData = new FormData(form);
                 const fullName = formData.get('fullName').trim();
                 if (!fullName) { return; }
-
-                const { data, error } = await supabaseClient.from('profiles')
-                    .update({ full_name: fullName, driver_car: formData.get('driverCar').trim() })
-                    .eq('id', state.currentUser.id).select().single();
-
+                const { data, error } = await supabaseClient.from('profiles').update({ full_name: fullName, driver_car: formData.get('driverCar').trim() }).eq('id', state.currentUser.id).select().single();
                 if (error) { console.error('Ошибка сохранения профиля:', error); return; }
                 state.userProfile = data;
                 App.navigation.back();
@@ -715,25 +638,13 @@
              async onRequestBooking(offerId, bookingDetails = null) {
                 const { data: existingBooking } = await supabaseClient.from('bookings').select('id').eq('offer_id', offerId).eq('passenger_id', state.currentUser.id).limit(1);
                 if (existingBooking?.length > 0) { console.warn('Бронь уже существует'); return; }
-
                 const { data: offer, error: offerError } = await supabaseClient.from('ride_offers').select('*').eq('id', offerId).single();
                 if(offerError || !offer) { console.error("Предложение не найдено"); return; }
-                
-                const bookingData = {
-                    offer_id: offerId,
-                    passenger_id: state.currentUser.id, status: 'pending',
-                    booking_segment: bookingDetails ? bookingDetails.segment : 'full',
-                    price: bookingDetails ? bookingDetails.price : offer.price,
-                    from_city: bookingDetails ? bookingDetails.from : offer.from,
-                    to_city: bookingDetails ? bookingDetails.to : offer.to,
-                };
-                
+                const bookingData = { offer_id: offerId, passenger_id: state.currentUser.id, status: 'pending', booking_segment: bookingDetails?.segment || 'full', price: bookingDetails?.price || offer.price, from_city: bookingDetails?.from || offer.from, to_city: bookingDetails?.to || offer.to, };
                 const { error: insertError } = await supabaseClient.from('bookings').insert(bookingData);
                 if (insertError) { console.error('Ошибка бронирования:', insertError); return; }
-                
                 const message = `*Новое бронирование!* 🚗\n\nПассажир *${state.userProfile.full_name || 'Новый пассажир'}* хочет забронировать место:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${App.utils.formatDate(offer.ride_date)}\n\nЗайдите в "Мои поездки", чтобы *принять* или *отклонить* заявку.`;
                 App.utils.sendTelegramNotification(offer.driver_id, message);
-
                 App.render.success('Заявка отправлена', 'Водитель рассмотрит вашу заявку. Статус можно отслеживать в "Моих поездках".', 'Отлично');
             },
              onDetourBookingClick(offerData) {
@@ -742,10 +653,7 @@
             },
             onConfirmBookingSegment(dataset) {
                 this.onBookingModalCancel();
-                const bookingDetails = {
-                    segment: dataset.segment, price: parseInt(dataset.price),
-                    from: dataset.from, to: dataset.to,
-                };
+                const bookingDetails = { segment: dataset.segment, price: parseInt(dataset.price), from: dataset.from, to: dataset.to, };
                 this.onRequestBooking(dataset.offerId, bookingDetails);
             },
             onBookingModalCancel() {
@@ -758,34 +666,22 @@
             async onUpdateBookingStatus(bookingId, status) {
                 const { data: booking, error: bookingFetchError } = await supabaseClient.from('bookings').select('*, ride_offers(*)').eq('id', bookingId).single();
                 if (bookingFetchError || !booking) { console.error('Бронь не найдена:', bookingFetchError); return; }
-
                 const offer = booking.ride_offers;
                 const isPassengerAction = state.currentUser.id === booking.passenger_id;
                 const isLinkedToRequest = offer && offer.linked_request_id;
-
-                if (isPassengerAction && isLinkedToRequest) { // Пассажир отвечает на предложение водителя
+                if (isPassengerAction && isLinkedToRequest) {
                     if (status === 'rejected') {
-                        await Promise.all([
-                            supabaseClient.from('ride_requests').update({ status: 'open' }).eq('id', offer.linked_request_id),
-                            supabaseClient.from('bookings').delete().eq('id', bookingId),
-                            supabaseClient.from('ride_offers').delete().eq('id', offer.id)
-                        ]);
+                        await Promise.all([ supabaseClient.from('ride_requests').update({ status: 'open' }).eq('id', offer.linked_request_id), supabaseClient.from('bookings').delete().eq('id', bookingId), supabaseClient.from('ride_offers').delete().eq('id', offer.id) ]);
                         App.utils.sendTelegramNotification(offer.driver_id, `Пассажир отклонил ваше предложение (${offer.from} → ${offer.to}).`);
                     } else if (status === 'confirmed') {
-                        await Promise.all([
-                            supabaseClient.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId),
-                            supabaseClient.from('ride_requests').update({ status: 'closed' }).eq('id', offer.linked_request_id)
-                        ]);
+                        await Promise.all([ supabaseClient.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId), supabaseClient.from('ride_requests').update({ status: 'closed' }).eq('id', offer.linked_request_id) ]);
                         App.utils.sendTelegramNotification(offer.driver_id, `Пассажир принял ваше предложение (${offer.from} → ${offer.to})!`);
                     }
-                } else { // Стандартное действие водителя
+                } else {
                     await supabaseClient.from('bookings').update({ status }).eq('id', bookingId);
                     let message = '';
-                    if (status === 'confirmed') {
-                        message = `*Бронь подтверждена!* ✅\n\nВодитель *${offer.driver_name}* подтвердил вашу поездку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${App.utils.formatDate(offer.ride_date)} в *${offer.ride_time}*`;
-                    } else if (status === 'rejected') {
-                        message = `*Бронь отклонена* ❌\n\nВодитель отклонил вашу заявку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${App.utils.formatDate(offer.ride_date)}`;
-                    }
+                    if (status === 'confirmed') message = `*Бронь подтверждена!* ✅\n\nВодитель *${offer.driver_name}* подтвердил вашу поездку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${App.utils.formatDate(offer.ride_date)} в *${offer.ride_time}*`;
+                    else if (status === 'rejected') message = `*Бронь отклонена* ❌\n\nВодитель отклонил вашу заявку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${App.utils.formatDate(offer.ride_date)}`;
                     if (message) App.utils.sendTelegramNotification(booking.passenger_id, message);
                 }
                 this.onMyTripsClick();
@@ -793,29 +689,21 @@
              async onCancelBooking(bookingId) {
                 const { data: booking, error: bookingError } = await supabaseClient.from('bookings').select('*, ride_offers(driver_id, from, to, ride_date)').eq('id', bookingId).single();
                 if (bookingError || !booking) { console.error('Ошибка при отмене брони:', bookingError); return; }
-                
                 const { error } = await supabaseClient.from('bookings').delete().eq('id', bookingId);
                 if (error) { console.error('Не удалось отменить бронь'); return; }
-                
                 const offer = booking.ride_offers;
                 const message = `*Пассажир отменил бронь* 🧍‍♂️\n\n*${state.userProfile.full_name || 'Пассажир'}* отменил бронь на поездку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${App.utils.formatDate(offer.ride_date)}`;
                 App.utils.sendTelegramNotification(offer.driver_id, message);
-                
-                if (state.navigationHistory.at(-1) === 'list-screen') {
-                    this.onViewDriverOffers();
-                } else {
-                    this.onMyTripsClick();
-                }
+                if (state.navigationHistory.at(-1) === 'list-screen') this.onViewDriverOffers();
+                else this.onMyTripsClick();
             },
             async onDeleteOffer(offerId) {
                 const { data: bookings } = await supabaseClient.from('bookings').select('passenger_id, ride_offers(from, to, ride_date)').eq('offer_id', offerId);
                 if (bookings?.length > 0) {
                     const offerDetails = bookings[0].ride_offers;
                     const message = `*Поездка отменена водителем* ❌\n\nВодитель отменил поездку:\n*Маршрут:* ${offerDetails.from} → ${offerDetails.to}\n*Дата:* ${App.utils.formatDate(offerDetails.ride_date)}`;
-                    const notificationPromises = bookings.map(b => App.utils.sendTelegramNotification(b.passenger_id, message));
-                    await Promise.all(notificationPromises);
+                    await Promise.all(bookings.map(b => App.utils.sendTelegramNotification(b.passenger_id, message)));
                 }
-
                 await supabaseClient.from('ride_offers').delete().eq('id', offerId);
                 this.onMyTripsClick();
             },
@@ -833,36 +721,16 @@
                 App.navigation.to(screen);
             },
             async onOfferRideToRequest(requestId) {
-                if (!state.userProfile?.driver_car?.trim()) {
-                    App.navigation.to('profile-screen');
-                    return;
-                }
-
+                if (!state.userProfile?.driver_car?.trim()) { App.navigation.to('profile-screen'); return; }
                 const { data: request, error: requestError } = await supabaseClient.from('ride_requests').select('*').eq('id', requestId).single();
                 if (requestError || !request) { console.error("Заявка не найдена:", requestError); return; }
-                
                 const timeForOffer = request.time_interval.split('-')[0] + ':00';
-
-                const { data: newOffer, error: offerError } = await supabaseClient.from('ride_offers').insert({
-                    driver_id: state.currentUser.id, driver_username: state.currentUser.username,
-                    driver_name: state.userProfile.full_name, driver_car: state.userProfile.driver_car,
-                    from: request.from, to: request.to, ride_date: request.ride_date,
-                    ride_time: timeForOffer, seats: 1, price: request.price,
-                    linked_request_id: requestId
-                }).select().single();
+                const { data: newOffer, error: offerError } = await supabaseClient.from('ride_offers').insert({ driver_id: state.currentUser.id, driver_username: state.currentUser.username, driver_name: state.userProfile.full_name, driver_car: state.userProfile.driver_car, from: request.from, to: request.to, ride_date: request.ride_date, ride_time: timeForOffer, seats: 1, price: request.price, linked_request_id: requestId }).select().single();
                 if (offerError) { console.error("Не удалось создать предложение:", offerError); return; }
-
-                await supabaseClient.from('bookings').insert({
-                    offer_id: newOffer.id, passenger_id: request.passenger_id,
-                    status: 'pending', price: newOffer.price,
-                    from_city: newOffer.from, to_city: newOffer.to
-                });
-
+                await supabaseClient.from('bookings').insert({ offer_id: newOffer.id, passenger_id: request.passenger_id, status: 'pending', price: newOffer.price, from_city: newOffer.from, to_city: newOffer.to });
                 await supabaseClient.from('ride_requests').update({ status: 'pending_confirmation' }).eq('id', requestId);
-                
                 const message = `*Вам предложили поездку!* 🚗\n\nВодитель *${newOffer.driver_name}* (*${newOffer.driver_car}*) откликнулся на вашу заявку:\n*Маршрут:* ${newOffer.from} → ${newOffer.to}\n*Дата:* ${App.utils.formatDate(newOffer.ride_date)}\n\nПодтвердите или отклоните предложение в "Моих поездках".`;
                 App.utils.sendTelegramNotification(request.passenger_id, message);
-
                 const button = document.querySelector(`.offer-ride-btn[data-request-id="${requestId}"]`);
                 if (button) {
                     button.textContent = 'Предложение отправлено';
@@ -881,10 +749,8 @@
                     state.navigationHistory.push(screenId);
                 }
                 document.getElementById('backButton').classList.toggle('invisible', state.navigationHistory.length <= 1);
-                
                 if (screenId === 'offer-screen') App.render.populateOfferForm();
                 if (screenId === 'profile-screen') App.render.populateProfileForm();
-                
                 document.getElementById('main-content').scrollTop = 0;
             },
             back() {
@@ -907,7 +773,6 @@
                 });
                 this.setDefaultDates();
                 this.populateSelects();
-
                 const offerPriceSpan = document.querySelector('#offer-form #publish-price');
                 if (offerPriceSpan) offerPriceSpan.textContent = config.prices.base;
                 const parcelPriceSpan = document.querySelector('#parcel-request-form #parcel-price-info span');
@@ -932,53 +797,37 @@
                 const container = document.getElementById('list-container');
                 const noResults = document.getElementById('no-results');
                 container.innerHTML = '';
-
                 if (isLoading) {
                     container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
-                    noResults.classList.add('hidden');
-                    return;
+                    noResults.classList.add('hidden'); return;
                 }
-                
                 if (!items || items.length === 0) {
                     noResults.classList.remove('hidden');
                     document.getElementById('no-results-title').textContent = type === 'driverOffer' ? 'Поездок не найдено' : 'Заявок не найдено';
                     document.getElementById('no-results-text').textContent = type === 'driverOffer' ? 'Попробуйте зайти позже или оставьте свою заявку.' : 'По вашим фильтрам ничего не найдено.';
                     return;
                 }
-
                 noResults.classList.add('hidden');
-                const cardHtml = items.map(item => {
-                    const cardContent = type === 'driverOffer' ? this.getDriverOfferCard(item) : this.getPassengerRequestCard(item);
-                    return `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${cardContent}</div>`;
-                }).join('');
-                container.innerHTML = cardHtml;
+                container.innerHTML = items.map(item => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${type === 'driverOffer' ? this.getDriverOfferCard(item) : this.getPassengerRequestCard(item)}</div>`).join('');
             },
             myTrips(data, role) {
                 const container = document.getElementById('my-trips-container');
-                container.innerHTML = '';
-                
                 if (role === 'driver') {
                     if (!data || data.length === 0) {
                         container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активных поездок</h3><p class="text-xs">Опубликуйте поездку, чтобы она здесь появилась.</p></div>`;
                         return;
                     }
                     container.innerHTML = data.map(offer => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyDriverOfferCard(offer)}</div>`).join('');
-                } else { // Passenger
+                } else {
                     const { bookings, requests, parcels } = data;
                     if (!bookings?.length && !requests?.length && !parcels?.length) {
                         container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активностей</h3><p class="text-xs">Забронируйте поездку или оставьте заявку.</p></div>`;
                         return;
                     }
                     let content = '';
-                    if (bookings?.length) {
-                        content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-2">Мои бронирования</h3>` + bookings.map(b => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyBookingCard(b)}</div>`).join('');
-                    }
-                    if (requests?.length) {
-                        content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои заявки на поездки</h3>` + requests.map(r => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyRequestCard(r)}</div>`).join('');
-                    }
-                    if (parcels?.length) {
-                         content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои посылки</h3>` + parcels.map(p => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyParcelRequestCard(p)}</div>`).join('');
-                    }
+                    if (bookings?.length) content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-2">Мои бронирования</h3>` + bookings.map(b => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyBookingCard(b)}</div>`).join('');
+                    if (requests?.length) content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои заявки на поездки</h3>` + requests.map(r => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyRequestCard(r)}</div>`).join('');
+                    if (parcels?.length) content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои посылки</h3>` + parcels.map(p => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyParcelRequestCard(p)}</div>`).join('');
                     container.innerHTML = content;
                 }
             },
@@ -1007,9 +856,7 @@
                 const to = form.querySelector('input[name="to"]').value;
                 const isFerryChecked = form.querySelector('#via-ferry-toggle')?.checked;
                 const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
-                
                 let price = isCheboksaryRoute ? config.prices.cheboksary : (isFerryChecked ? config.prices.base + config.prices.ferrySurcharge : config.prices.base);
-                
                 const priceIncreaseSpan = form.querySelector('#ferry-price-increase');
                 if(priceIncreaseSpan) {
                     priceIncreaseSpan.textContent = `(+${config.prices.ferrySurcharge} ₽)`;
@@ -1021,20 +868,7 @@
                 const container = document.getElementById('booking-options-container');
                 const priceFull = config.prices.base;
                 const pricePart = config.prices.cheboksary;
-
-                container.innerHTML = `
-                    <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="full" data-price="${priceFull}" data-from="${offer.from}" data-to="${offer.to}">
-                        <span>${offer.from} → ${offer.to}</span><span class="font-semibold">${priceFull} ₽</span>
-                    </button>
-                    <div class="h-px bg-slate-200"></div>
-                    <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="start_to_cheb" data-price="${pricePart}" data-from="${offer.from}" data-to="Чебоксары">
-                        <span>${offer.from} → Чебоксары</span><span class="font-semibold">${pricePart} ₽</span>
-                    </button>
-                    <div class="h-px bg-slate-200"></div>
-                    <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="cheb_to_end" data-price="${pricePart}" data-from="Чебоксары" data-to="${offer.to}">
-                        <span>Чебоксары → ${offer.to}</span><span class="font-semibold">${pricePart} ₽</span>
-                    </button>`;
-
+                container.innerHTML = `<button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="full" data-price="${priceFull}" data-from="${offer.from}" data-to="${offer.to}"><span>${offer.from} → ${offer.to}</span><span class="font-semibold">${priceFull} ₽</span></button><div class="h-px bg-slate-200"></div><button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="start_to_cheb" data-price="${pricePart}" data-from="${offer.from}" data-to="Чебоксары"><span>${offer.from} → Чебоксары</span><span class="font-semibold">${pricePart} ₽</span></button><div class="h-px bg-slate-200"></div><button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="cheb_to_end" data-price="${pricePart}" data-from="Чебоксары" data-to="${offer.to}"><span>Чебоксары → ${offer.to}</span><span class="font-semibold">${pricePart} ₽</span></button>`;
                 const overlay = document.getElementById('booking-modal-overlay');
                 const modal = document.getElementById('booking-modal');
                 overlay.classList.remove('hidden');
@@ -1046,7 +880,6 @@
             getDriverOfferCard(item) {
                 const seatsLeft = item.seats_left;
                 const seatsText = seatsLeft === 1 ? '1 место' : (seatsLeft > 1 && seatsLeft < 5 ? `${seatsLeft} места` : `${seatsLeft} мест`);
-                
                 let buttonHtml = '';
                 if (item.currentUserBookingId) {
                     buttonHtml = `<button class="cancel-booking-btn btn w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 text-sm" data-booking-id="${item.currentUserBookingId}">Отменить бронь</button>`;
@@ -1055,186 +888,57 @@
                     const buttonClass = seatsLeft <= 0 ? 'bg-slate-300' : 'bg-blue-500 hover:bg-blue-600';
                     const buttonText = seatsLeft <= 0 ? 'Мест нет' : 'Забронировать';
                     if (item.via_cheboksary_detour) {
-                        const offerData = encodeURIComponent(JSON.stringify(item));
-                        buttonHtml = `<button class="detour-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg text-sm ${buttonClass}" data-offer='${offerData}' ${buttonDisabled}>${buttonText}</button>`;
+                        buttonHtml = `<button class="detour-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg text-sm ${buttonClass}" data-offer='${encodeURIComponent(JSON.stringify(item))}' ${buttonDisabled}>${buttonText}</button>`;
                     } else {
                         buttonHtml = `<button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg text-sm ${buttonClass}" data-offer-id="${item.id}" ${buttonDisabled}>${buttonText}</button>`;
                     }
                 }
-                
-                return `
-                    <div class="flex justify-between items-center">
-                        <div class="font-bold text-base">${item.from} → ${item.to}</div>
-                        <div class="text-base font-semibold">${item.price} ₽</div>
-                    </div>
-                    <div class="text-slate-600 text-sm">
-                        <p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)} в <strong>${item.ride_time}</strong></p>
-                        <p><strong>Водитель:</strong> ${item.driver_name} на ${item.driver_car}</p>
-                        <p><strong>Свободно:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsText}</span></p>
-                    </div>
-                    ${item.via_ferry ? `<div class="text-xs font-semibold text-blue-800 bg-blue-100 rounded-full px-3 py-1 text-center">⛴️ Через паром</div>` : ''}
-                    ${item.via_cheboksary_detour ? `<div class="text-xs font-semibold text-orange-800 bg-orange-100 rounded-full px-3 py-1 text-center">Через Чебоксары</div>` : ''}
-                    ${item.via_cheboksary ? `<div class="text-xs font-semibold text-green-800 bg-green-100 rounded-full px-3 py-1 text-center">До/Из Чебоксар</div>` : ''}
-                    ${buttonHtml}`;
+                return `<div class="flex justify-between items-center"><div class="font-bold text-base">${item.from} → ${item.to}</div><div class="text-base font-semibold">${item.price} ₽</div></div><div class="text-slate-600 text-sm"><p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)} в <strong>${item.ride_time}</strong></p><p><strong>Водитель:</strong> ${item.driver_name} на ${item.driver_car}</p><p><strong>Свободно:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsText}</span></p></div> ${item.via_ferry ? `<div class="text-xs font-semibold text-blue-800 bg-blue-100 rounded-full px-3 py-1 text-center">⛴️ Через паром</div>` : ''}${item.via_cheboksary_detour ? `<div class="text-xs font-semibold text-orange-800 bg-orange-100 rounded-full px-3 py-1 text-center">Через Чебоксары</div>` : ''}${item.via_cheboksary ? `<div class="text-xs font-semibold text-green-800 bg-green-100 rounded-full px-3 py-1 text-center">До/Из Чебоксар</div>` : ''}${buttonHtml}`;
             },
             getPassengerRequestCard(item) {
                 const isParcel = item.type === 'parcel';
-                const buttonHtml = state.userRole !== 'driver' ? '' : (isParcel 
-                    ? `<a href="https://t.me/${item.sender_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm">Связаться</a>`
-                    : `<button class="offer-ride-btn btn w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm" data-request-id="${item.id}">Предложить поездку</button>`);
-
-                return `
-                    <div class="flex justify-between items-center">
-                        <div class="font-bold text-base">${item.from} → ${item.to}</div>
-                        <div class="text-base font-semibold">${item.price} ₽</div>
-                    </div>
-                    <div class="text-slate-600 text-sm">
-                        <p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)}</p>
-                        <p><strong>${isParcel ? 'Отправитель' : 'Пассажир'}:</strong> ${isParcel ? item.sender_name : item.passenger_name}</p>
-                        ${!isParcel ? `<p><strong>Время:</strong> ${item.time_interval}</p>` : ''}
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="${isParcel ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} text-xs font-semibold px-2.5 py-0.5 rounded-full">${isParcel ? 'Посылка' : 'Пассажир'}</div>
-                    </div>
-                    ${buttonHtml}`;
+                const buttonHtml = state.userRole !== 'driver' ? '' : (isParcel ? `<a href="https://t.me/${item.sender_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm">Связаться</a>` : `<button class="offer-ride-btn btn w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm" data-request-id="${item.id}">Предложить поездку</button>`);
+                return `<div class="flex justify-between items-center"><div class="font-bold text-base">${item.from} → ${item.to}</div><div class="text-base font-semibold">${item.price} ₽</div></div><div class="text-slate-600 text-sm"><p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)}</p><p><strong>${isParcel ? 'Отправитель' : 'Пассажир'}:</strong> ${isParcel ? item.sender_name : item.passenger_name}</p>${!isParcel ? `<p><strong>Время:</strong> ${item.time_interval}</p>` : ''}</div><div class="flex items-center gap-2"><div class="${isParcel ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} text-xs font-semibold px-2.5 py-0.5 rounded-full">${isParcel ? 'Посылка' : 'Пассажир'}</div></div>${buttonHtml}`;
             },
             getMyDriverOfferCard(offer) {
-                 const confirmedBookings = offer.bookings.filter(b => b.status === 'confirmed');
-                 const pendingBookings = offer.bookings.filter(b => b.status === 'pending');
-                 const seatsLeft = offer.seats - confirmedBookings.length;
-
+                 const confirmed = offer.bookings.filter(b => b.status === 'confirmed');
+                 const pending = offer.bookings.filter(b => b.status === 'pending');
+                 const seatsLeft = offer.seats - confirmed.length;
                  let bookingsHtml = '<div class="text-xs text-slate-500">Пока нет пассажиров.</div>';
                  if (offer.bookings.length > 0) {
-                     bookingsHtml = `
-                        ${pendingBookings.length > 0 ? `
-                            <h4 class="font-semibold mt-2 text-sm">Заявки на бронирование:</h4>
-                            <div class="space-y-2">${pendingBookings.map(b => `
-                                <div class="flex justify-between items-center bg-amber-50 p-2 rounded-lg">
-                                    <span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span>
-                                    <div class="flex gap-2">
-                                        <button class="accept-booking-btn bg-green-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Принять</button>
-                                        <button class="reject-booking-btn bg-red-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Отклонить</button>
-                                    </div>
-                                </div>`).join('')}
-                            </div>` : ''}
-                        ${confirmedBookings.length > 0 ? `
-                            <h4 class="font-semibold mt-2 text-sm">Подтвержденные пассажиры:</h4>
-                            <div class="space-y-2">${confirmedBookings.map(b => `
-                                <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
-                                    <span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span>
-                                    ${b.profiles?.username ? `<a href="https://t.me/${b.profiles.username}" target="_blank" class="text-xs bg-blue-500 text-white font-semibold py-1 px-2 rounded-md hover:bg-blue-600">Написать</a>` : ''}
-                                </div>`).join('')}
-                            </div>` : ''}`;
+                     bookingsHtml = `${pending.length > 0 ? `<h4 class="font-semibold mt-2 text-sm">Заявки на бронирование:</h4><div class="space-y-2">${pending.map(b => `<div class="flex justify-between items-center bg-amber-50 p-2 rounded-lg"><span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span><div class="flex gap-2"><button class="accept-booking-btn bg-green-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Принять</button><button class="reject-booking-btn bg-red-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Отклонить</button></div></div>`).join('')}</div>` : ''} ${confirmed.length > 0 ? `<h4 class="font-semibold mt-2 text-sm">Подтвержденные пассажиры:</h4><div class="space-y-2">${confirmed.map(b => `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg"><span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span>${b.profiles?.username ? `<a href="https://t.me/${b.profiles.username}" target="_blank" class="text-xs bg-blue-500 text-white font-semibold py-1 px-2 rounded-md hover:bg-blue-600">Написать</a>` : ''}</div>`).join('')}</div>` : ''}`;
                  }
-
-                 return `
-                    <div class="flex justify-between items-center">
-                        <div>
-                            <div class="font-bold text-base">${offer.from} → ${offer.to}</div>
-                            <div class="text-xs text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
-                        </div>
-                        <div class="text-base font-semibold">${offer.price} ₽</div>
-                    </div>
-                    <div class="text-slate-600 text-sm">
-                        <p><strong>Свободно мест:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsLeft} из ${offer.seats}</span></p>
-                    </div>
-                    <div class="border-t border-slate-100 pt-2 mt-2">${bookingsHtml}</div>
-                    <button class="delete-offer-btn btn w-full bg-red-50 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 mt-2 text-sm" data-offer-id="${offer.id}">Удалить поездку</button>`;
+                 return `<div class="flex justify-between items-center"><div><div class="font-bold text-base">${offer.from} → ${offer.to}</div><div class="text-xs text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div></div><div class="text-base font-semibold">${offer.price} ₽</div></div><div class="text-slate-600 text-sm"><p><strong>Свободно мест:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsLeft} из ${offer.seats}</span></p></div><div class="border-t border-slate-100 pt-2 mt-2">${bookingsHtml}</div><button class="delete-offer-btn btn w-full bg-red-50 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 mt-2 text-sm" data-offer-id="${offer.id}">Удалить поездку</button>`;
             },
             getMyBookingCard(booking) {
                 const offer = booking.ride_offers;
                 if (!offer) return `<div class="text-red-500 text-sm">Ошибка: данные о поездке удалены водителем.</div>`;
-
-                const statuses = {
-                    pending: { text: 'Ожидает подтверждения', class: 'bg-amber-100 text-amber-800' },
-                    confirmed: { text: 'Водитель подтвердил', class: 'bg-green-100 text-green-800' },
-                    rejected: { text: 'Водитель отклонил', class: 'bg-red-100 text-red-800' },
-                };
+                const statuses = { pending: { text: 'Ожидает подтверждения', class: 'bg-amber-100 text-amber-800' }, confirmed: { text: 'Водитель подтвердил', class: 'bg-green-100 text-green-800' }, rejected: { text: 'Водитель отклонил', class: 'bg-red-100 text-red-800' } };
                 let statusInfo = statuses[booking.status];
-                
                 let actionButtons = '';
                 if (booking.status === 'pending' && offer.linked_request_id) {
                     statusInfo.text = 'Ожидает вашего решения';
-                    actionButtons = `<div class="flex items-center gap-3">
-                        <button class="reject-booking-btn text-xs bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Отклонить</button>
-                        <button class="accept-booking-btn text-xs bg-green-100 text-green-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Принять</button>
-                    </div>`;
+                    actionButtons = `<div class="flex items-center gap-3"><button class="reject-booking-btn text-xs bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Отклонить</button><button class="accept-booking-btn text-xs bg-green-100 text-green-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Принять</button></div>`;
                 } else {
-                    actionButtons = `<div class="flex items-center gap-3">
-                        ${booking.status === 'confirmed' && offer.driver_username ? `<a href="https://t.me/${offer.driver_username}" target="_blank" class="text-xs text-blue-600 hover:underline font-semibold">Написать водителю</a>` : ''}
-                        ${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-xs text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}
-                    </div>`;
+                    actionButtons = `<div class="flex items-center gap-3">${booking.status === 'confirmed' && offer.driver_username ? `<a href="https://t.me/${offer.driver_username}" target="_blank" class="text-xs text-blue-600 hover:underline font-semibold">Написать водителю</a>` : ''}${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-xs text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}</div>`;
                 }
-
-                return `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="font-bold text-base">${booking.from_city} → ${booking.to_city}</div>
-                            <div class="text-xs text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
-                            <div class="text-xs text-slate-500">Водитель: ${offer.driver_name} (${offer.driver_car})</div>
-                        </div>
-                        <div class="text-base font-semibold">${booking.price} ₽</div>
-                    </div>
-                    <div class="flex justify-between items-center mt-2">
-                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusInfo.class}">${statusInfo.text}</span>
-                        ${actionButtons}
-                    </div>`;
+                return `<div class="flex justify-between items-start"><div><div class="font-bold text-base">${booking.from_city} → ${booking.to_city}</div><div class="text-xs text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div><div class="text-xs text-slate-500">Водитель: ${offer.driver_name} (${offer.driver_car})</div></div><div class="text-base font-semibold">${booking.price} ₽</div></div><div class="flex justify-between items-center mt-2"><span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusInfo.class}">${statusInfo.text}</span>${actionButtons}</div>`;
             },
             getMyRequestCard(request) {
-                if (request.status === 'pending_confirmation') {
-                    return `
-                        <div class="flex justify-between items-start opacity-60">
-                            <div>
-                                <div class="font-bold text-base">${request.from} → ${request.to}</div>
-                                <div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div>
-                            </div>
-                            <div class="text-base font-semibold">${request.price} ₽</div>
-                        </div>
-                        <div class="text-center text-sm text-amber-700 font-semibold bg-amber-50 p-2 rounded-lg mt-2">Ожидает вашего подтверждения в "Моих бронированиях"</div>`;
-                }
-                return `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="font-bold text-base">${request.from} → ${request.to}</div>
-                            <div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div>
-                        </div>
-                        <div class="text-base font-semibold">${request.price} ₽</div>
-                    </div>
-                    <div class="flex justify-end items-center mt-2">
-                        <button class="cancel-request-btn text-xs text-red-600 hover:underline" data-request-id="${request.id}">Отменить заявку</button>
-                    </div>`;
+                if (request.status === 'pending_confirmation') return `<div class="flex justify-between items-start opacity-60"><div><div class="font-bold text-base">${request.from} → ${request.to}</div><div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div></div><div class="text-base font-semibold">${request.price} ₽</div></div><div class="text-center text-sm text-amber-700 font-semibold bg-amber-50 p-2 rounded-lg mt-2">Ожидает вашего подтверждения в "Моих бронированиях"</div>`;
+                return `<div class="flex justify-between items-start"><div><div class="font-bold text-base">${request.from} → ${request.to}</div><div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div></div><div class="text-base font-semibold">${request.price} ₽</div></div><div class="flex justify-end items-center mt-2"><button class="cancel-request-btn text-xs text-red-600 hover:underline" data-request-id="${request.id}">Отменить заявку</button></div>`;
             },
             getMyParcelRequestCard(parcel) {
-                return `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <div class="font-bold text-base">${parcel.from} → ${parcel.to}</div>
-                            <div class="text-xs text-slate-500">${App.utils.formatDate(parcel.ride_date)}</div>
-                        </div>
-                        <div class="text-base font-semibold">${parcel.price} ₽</div>
-                    </div>
-                    <div class="flex justify-between items-center mt-2">
-                        <div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div>
-                        <button class="cancel-parcel-request-btn text-xs text-red-600 hover:underline" data-request-id="${parcel.id}">Отменить заявку</button>
-                    </div>`;
+                return `<div class="flex justify-between items-start"><div><div class="font-bold text-base">${parcel.from} → ${parcel.to}</div><div class="text-xs text-slate-500">${App.utils.formatDate(parcel.ride_date)}</div></div><div class="text-base font-semibold">${parcel.price} ₽</div></div><div class="flex justify-between items-center mt-2"><div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div><button class="cancel-parcel-request-btn text-xs text-red-600 hover:underline" data-request-id="${parcel.id}">Отменить заявку</button></div>`;
             },
             setDefaultDates() {
                 const today = new Date().toISOString().split('T')[0];
-                document.querySelectorAll('input[type="date"]').forEach(input => {
-                    input.setAttribute('min', today);
-                    input.value = today;
-                });
+                document.querySelectorAll('input[type="date"]').forEach(input => { input.setAttribute('min', today); input.value = today; });
             },
             populateSelects() {
-                const optionsHtml = `<option value="">Любой</option>` + config.cities.map(city => `<option value="${city}">${city}</option>`).join('');
-                document.querySelectorAll('select[name="from"], select[name="to"]').forEach(select => {
-                    select.innerHTML = optionsHtml;
-                });
-                
-                const formOptionsHtml = `<option value="" disabled selected>Выберите город</option>` + config.cities.map(city => `<option value="${city}">${city}</option>`).join('');
-                 document.querySelectorAll('select[name="from-select"], select[name="to-select"]').forEach(select => {
-                    select.innerHTML = formOptionsHtml;
-                });
+                const optionsHtml = config.cities.map(city => `<option value="${city}">${city}</option>`).join('');
+                document.querySelectorAll('select[name="from"], select[name="to"]').forEach(select => select.innerHTML = `<option value="">Любой</option>${optionsHtml}`);
+                document.querySelectorAll('select[name="from-select"], select[name="to-select"]').forEach(select => select.innerHTML = `<option value="" disabled selected>Выберите город</option>${optionsHtml}`);
             },
             resetForm(form) {
                 form.reset();
@@ -1245,13 +949,12 @@
             },
             renderFilteredList() {
                 const { from, to, date, type } = state.currentFilters;
-                let filtered = [...state.allRequests];
-                if (from) filtered = filtered.filter(item => item.from === from);
-                if (to) filtered = filtered.filter(item => item.to === to);
-                if (date) filtered = filtered.filter(item => item.ride_date === date);
-                if (type !== 'all' && state.userRole === 'driver') {
-                    filtered = filtered.filter(item => item.type === type);
-                }
+                let filtered = state.allRequests.filter(item => 
+                    (!from || item.from === from) && 
+                    (!to || item.to === to) && 
+                    (!date || item.ride_date === date) && 
+                    (type === 'all' || state.userRole !== 'driver' || item.type === type)
+                );
                 this.list(filtered, 'passengerRequest');
             },
         };
@@ -1268,12 +971,7 @@
             async sendTelegramNotification(chatId, text) {
                 if (!config.botToken) { console.warn('Bot Token не настроен.'); return; }
                 const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
-                const payload = {
-                    chat_id: chatId, text, parse_mode: 'Markdown',
-                    reply_markup: {
-                        inline_keyboard: [[{ text: 'Открыть приложение', url: 'https://t.me/poputka12_bot?startapp=' }]]
-                    }
-                };
+                const payload = { chat_id: chatId, text, parse_mode: 'Markdown', reply_markup: { inline_keyboard: [[{ text: 'Открыть приложение', url: 'https://t.me/poputka12_bot?startapp=' }]] } };
                 try {
                     const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                     if (!response.ok) console.error("Telegram API error:", await response.json());
@@ -1283,10 +981,9 @@
             }
         };
 
-        // Запускаем приложение
         App.init();
     });
     </script>
 </body>
 </html>
-```
+
