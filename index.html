@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="ru">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -9,204 +8,93 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-
         body {
             font-family: 'Inter', sans-serif;
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: contain;
         }
-
-        .screen {
-            display: none;
-            animation: fadeIn 0.3s ease-in-out;
-        }
-
-        .screen.active {
-            display: block;
-        }
-
-        #chat-screen.active,
-        #my-trips-screen.active {
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
+        .screen { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .screen.active { display: block; }
+        #chat-screen.active, #my-trips-screen.active { display: flex; flex-direction: column; height: 100%; }
 
         @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(5px);
-            }
-
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
         }
-
-        .role-btn.active,
-        .direction-buttons button.active,
-        #time-interval-buttons button.active {
-            background-color: #1e293b;
-            /* slate-800 */
+        .role-btn.active, .direction-buttons button.active, #time-interval-buttons button.active {
+            background-color: #1e293b; /* slate-800 */
             color: white;
         }
-
-        .message {
-            max-width: 75%;
-            word-wrap: break-word;
-        }
-
-        .message.sent {
-            align-self: flex-end;
-            background-color: #3b82f6;
-            color: white;
-        }
-
-        /* blue-500 */
-        .message.received {
-            align-self: flex-start;
-            background-color: #e5e7eb;
-            color: #1f2937;
-        }
-
-        /* gray-200 */
-
+        .message { max-width: 75%; word-wrap: break-word; }
+        .message.sent { align-self: flex-end; background-color: #3b82f6; color: white; } /* blue-500 */
+        .message.received { align-self: flex-start; background-color: #e5e7eb; color: #1f2937; } /* gray-200 */
+        
         /* Role Switcher Styles */
-        #role-switcher {
-            position: relative;
-        }
-
+        #role-switcher { position: relative; }
         #role-bg {
-            position: absolute;
-            width: 36px;
-            height: 36px;
-            top: 2px;
-            left: 2px;
-            background-color: white;
+            position: absolute; width: 36px; height: 36px;
+            top: 2px; left: 2px; background-color: white;
             border-radius: 9999px;
             box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
             transform: translateX(0px);
             transition: transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55);
         }
-
-        #role-switcher.driver #role-bg {
-            transform: translateX(36px);
-        }
-
-        #role-passenger-icon,
-        #role-driver-icon {
-            transition: opacity 0.3s ease-in-out;
-        }
-
-        #role-passenger-icon span,
-        #role-driver-icon span {
+        #role-switcher.driver #role-bg { transform: translateX(36px); }
+        #role-passenger-icon, #role-driver-icon { transition: opacity 0.3s ease-in-out; }
+        #role-passenger-icon span, #role-driver-icon span {
             display: inline-block;
             transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
-
         #role-switcher.passenger #role-passenger-icon span,
-        #role-switcher.driver #role-driver-icon span {
-            transform: scale(1.15) rotate(-8deg);
-        }
-
+        #role-switcher.driver #role-driver-icon span { transform: scale(1.15) rotate(-8deg); }
         #role-switcher.passenger #role-driver-icon,
-        #role-switcher.driver #role-passenger-icon {
-            opacity: 0.5;
-        }
-
-        #profile-avatar-btn img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
+        #role-switcher.driver #role-passenger-icon { opacity: 0.5; }
+        #profile-avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
 
         /* Modal Styles */
-        .modal-overlay {
-            opacity: 0;
-            transition: opacity 0.3s ease-in-out;
-        }
-
-        .modal-overlay.show {
-            opacity: 1;
-        }
-
-        .modal.show {
-            transform: translateY(0);
-        }
+        .modal-overlay { opacity: 0; transition: opacity 0.3s ease-in-out; }
+        .modal-overlay.show { opacity: 1; }
+        .modal.show { transform: translateY(0); }
 
         /* Filter Button Styles */
-        .filter-type-btn.active {
-            background-color: white;
-            color: #1e293b;
-            box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-        }
+        .filter-type-btn.active { background-color: white; color: #1e293b; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
 
         /* Collapsible Filter Styles */
-        #filter-toggle-icon {
-            transition: transform 0.3s ease-in-out;
-        }
-
+        #filter-toggle-icon { transition: transform 0.3s ease-in-out; }
         #filter-content {
-            max-height: 500px;
-            overflow: hidden;
-            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
-            opacity: 1;
+            max-height: 500px; overflow: hidden;
+            transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out; opacity: 1;
         }
+        #filter-content.collapsed { max-height: 0; opacity: 0; }
+        #filter-toggle-btn.collapsed #filter-toggle-icon { transform: rotate(-180deg); }
 
-        #filter-content.collapsed {
-            max-height: 0;
-            opacity: 0;
-        }
-
-        #filter-toggle-btn.collapsed #filter-toggle-icon {
-            transform: rotate(-180deg);
-        }
-
-        /* Custom scrollbar for better look */
-        #main-content::-webkit-scrollbar {
-            width: 4px;
-        }
-
-        #main-content::-webkit-scrollbar-thumb {
-            background-color: #cbd5e1;
-            border-radius: 20px;
-        }
-
-        #main-content::-webkit-scrollbar-track {
-            background: transparent;
-        }
+        /* Custom scrollbar */
+        #main-content::-webkit-scrollbar { width: 4px; }
+        #main-content::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        #main-content::-webkit-scrollbar-track { background: transparent; }
     </style>
 </head>
-
 <body class="bg-slate-50 text-slate-800 overflow-hidden">
 
     <div id="app-container" class="h-screen w-screen max-w-md mx-auto bg-white flex flex-col">
+        <!-- ======================= HEADER ======================= -->
         <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
-            <div class="w-10 h-10 flex items-center justify-center">
+            <div class="w-10 h-10 flex items-center justify-start">
                 <button id="backButton" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m15 18-6-6 6-6" />
-                    </svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
             </div>
-            <h1 id="headerTitle" class="text-base font-semibold text-slate-800 text-center flex-grow hidden">Пассажир</h1>
-            <div class="flex items-center gap-3">
-                <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
-                    <div id="role-bg"></div>
-                    <div id="role-passenger-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
-                        <span>🧍</span>
-                    </div>
-                    <div id="role-driver-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl">
-                        <span>🚗</span>
-                    </div>
-                </div>
-                <button id="profile-avatar-btn" class="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center overflow-hidden shrink-0">
-                    <!-- Avatar will be rendered here by JS -->
-                </button>
+            <div id="role-switcher" class="flex items-center p-1 bg-slate-100 rounded-full cursor-pointer">
+                <div id="role-bg"></div>
+                <div id="role-passenger-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl"><span>🧍</span></div>
+                <div id="role-driver-icon" class="relative z-10 w-9 h-9 flex items-center justify-center text-xl"><span>🚗</span></div>
+            </div>
+            <div class="w-10 h-10 flex items-center justify-end">
+                <button id="profile-avatar-btn" class="w-10 h-10 rounded-full bg-slate-200 text-slate-600 font-semibold flex items-center justify-center overflow-hidden shrink-0"></button>
             </div>
         </header>
 
+        <!-- ======================= MAIN CONTENT ======================= -->
         <main id="main-content" class="flex-grow overflow-y-auto relative">
             <div id="passenger-home-screen" class="screen active"></div>
             <div id="driver-dashboard-screen" class="screen"></div>
@@ -219,13 +107,11 @@
             <div id="my-trips-screen" class="screen"></div>
             <div id="profile-screen" class="screen"></div>
         </main>
-
+        
+        <!-- ======================= FOOTER ======================= -->
         <footer id="app-footer" class="p-5 border-t border-slate-200 bg-white flex-shrink-0">
             <a href="https://t.me/poputka12rus" target="_blank" class="text-sm btn w-full bg-sky-100 text-sky-800 font-bold py-3 px-4 rounded-xl hover:bg-sky-200 flex items-center justify-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m22 2-7 20-4-9-9-4Z" />
-                    <path d="M22 2 11 13" />
-                </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
                 <span>Наша группа в Telegram</span>
             </a>
             <a href="https://devtol.ru" target="_blank" class="block text-center text-xs text-slate-400 mt-2 hover:underline">
@@ -234,193 +120,350 @@
         </footer>
     </div>
 
+    <!-- ======================= MODALS ======================= -->
     <div id="booking-modal-overlay" class="modal-overlay fixed inset-0 bg-black bg-opacity-40 z-40 hidden"></div>
     <div id="booking-modal" class="modal fixed bottom-0 left-0 right-0 w-full max-w-md mx-auto bg-transparent z-50 transform translate-y-full transition-transform duration-300">
         <div class="p-4">
-            <div id="booking-options-container" class="space-y-2 bg-slate-100 rounded-xl">
-            </div>
+            <div id="booking-options-container" class="space-y-2 bg-slate-100 rounded-xl"></div>
             <button id="booking-modal-cancel-btn" class="w-full p-3 mt-2 bg-white rounded-xl text-blue-500 text-lg font-semibold">Отмена</button>
         </div>
     </div>
 
+    <!-- ======================= HTML TEMPLATES FOR SCREENS ======================= -->
+    <template id="passenger-home-screen-template">
+        <div class="p-5">
+            <div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2></div>
+            <div class="space-y-3">
+                <button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button>
+                <button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button>
+                <button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button>
+                <button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button>
+            </div>
+        </div>
+    </template>
+
+    <template id="driver-dashboard-screen-template">
+        <div class="p-5">
+            <div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Кабинет водителя</h2></div>
+            <div class="space-y-3">
+                <button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button>
+                <button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button>
+                <button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button>
+            </div>
+        </div>
+    </template>
+    
+    <template id="list-screen-template">
+         <div class="p-4 space-y-4">
+            <div id="filter-section-container" class="hidden">
+                <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <button id="filter-toggle-btn" class="flex justify-between items-center w-full mb-3">
+                        <h3 class="text-base font-semibold text-slate-800">Фильтры</h3>
+                        <svg id="filter-toggle-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><path d="m18 15-6-6-6 6"/></svg>
+                    </button>
+                    <div id="filter-content" class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label for="filter-from" class="block text-xs font-medium text-slate-600 mb-1">Откуда</label>
+                                <select id="filter-from" name="from" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                            </div>
+                            <div>
+                                <label for="filter-to" class="block text-xs font-medium text-slate-600 mb-1">Куда</label>
+                                <select id="filter-to" name="to" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="filter-date" class="block text-xs font-medium text-slate-600 mb-1">Дата</label>
+                            <input type="date" id="filter-date" name="date" class="w-full p-2 border border-slate-200 rounded-lg text-sm">
+                        </div>
+                        <div id="filter-type-container">
+                            <label class="block text-xs font-medium text-slate-600 mb-1">Тип заявки</label>
+                            <div id="filter-type-buttons" class="flex p-1 bg-slate-200 rounded-lg">
+                                <button data-type="all" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600 active">Все</button>
+                                <button data-type="ride" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Пассажиры</button>
+                                <button data-type="parcel" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Посылки</button>
+                            </div>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button id="reset-filters-btn" class="flex-1 text-sm btn border border-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-100">Сбросить</button>
+                            <button id="apply-filters-btn" class="flex-1 text-sm btn bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700">Применить</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div id="list-container" class="space-y-3"></div>
+            <div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-base font-semibold"></h3><p id="no-results-text" class="text-xs"></p></div>
+        </div>
+    </template>
+
+    <template id="success-screen-template">
+        <div class="p-5 flex flex-col items-center justify-center h-full text-center">
+            <div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
+            <h2 id="success-title" class="text-xl font-bold mt-4 mb-1"></h2>
+            <p id="success-text" class="text-slate-600 mb-8 text-sm"></p>
+            <button id="back-to-hub-btn" class="text-sm btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button>
+        </div>
+    </template>
+    
+    <template id="my-trips-screen-template">
+         <div class="flex-1 flex flex-col">
+            <div id="my-trips-container" class="p-5 space-y-4 flex-1"></div>
+        </div>
+    </template>
+    
+    <template id="profile-screen-template">
+         <div class="p-5">
+            <h2 class="text-lg font-bold mb-4">Мой профиль</h2>
+            <p class="text-xs text-slate-600 mb-4">Здесь вы можете изменить ваше имя. Если вы планируете быть водителем, пожалуйста, укажите данные вашего автомобиля.</p>
+            <form id="profile-form" class="space-y-4">
+                <div>
+                    <label for="profile-name" class="block text-xs font-medium text-slate-600 mb-2">Ваше имя</label>
+                    <input type="text" name="fullName" id="profile-name" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Алексей" required>
+                </div>
+                <div>
+                    <label for="profile-car" class="block text-xs font-medium text-slate-600 mb-2">Марка и модель машины (для водителей)</label>
+                    <input type="text" name="driverCar" id="profile-car" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Kia Rio">
+                </div>
+                <button type="submit" class="text-sm btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button>
+            </form>
+        </div>
+    </template>
+    
+    <template id="offer-form-template">
+        <div class="p-5">
+            <h2 class="text-lg font-bold mb-4">Данные о поездке</h2>
+            <form id="offer-form" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Откуда</label>
+                        <select name="from-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Куда</label>
+                        <select name="to-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                </div>
+                <input type="hidden" name="from" required><input type="hidden" name="to" required>
+                <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
+                <div id="ferry-toggle-container" class="hidden p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
+                    <label for="via-ferry-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label>
+                    <div class="flex items-center space-x-3">
+                        <span id="ferry-price-increase" class="text-sm text-slate-800 font-semibold hidden"></span>
+                        <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-ferry-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label>
+                    </div>
+                </div>
+                <div id="cheboksary-detour-container" class="hidden p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
+                    <label for="via-cheboksary-detour-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Заезжаю в Чебоксары</label>
+                    <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-cheboksary-detour-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div></label>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-medium text-slate-600 mb-2">Дата</label><input type="date" name="date" id="date-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div>
+                    <div><label class="block text-xs font-medium text-slate-600 mb-2">Время</label><input type="time" name="time" id="time-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div>
+                </div>
+                <input type="hidden" name="driverName" id="driver-name"><input type="hidden" name="driverCar" id="driver-car">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-2">Количество мест</label>
+                    <input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Например: 3" required>
+                </div>
+                <button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Опубликовать (<span id="publish-price"></span> ₽)</button>
+            </form>
+        </div>
+    </template>
+    
+    <template id="passenger-request-form-template">
+        <div class="p-5">
+            <h2 class="text-lg font-bold mb-4">Ваша заявка</h2>
+            <form id="passenger-request-form" class="space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Откуда</label>
+                        <select name="from-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Куда</label>
+                        <select name="to-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                </div>
+                <input type="hidden" name="from" required><input type="hidden" name="to" required>
+                <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
+                <input type="date" name="date" id="date-request" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-2">Желаемое время выезда</label>
+                    <div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">04-06</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">06-08</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">08-10</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">10-12</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">12-14</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">14-16</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">16-18</button>
+                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">18-20</button>
+                    </div>
+                    <input type="hidden" name="timeInterval" id="timeIntervalInput" required>
+                    <div class="form-error-time text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите время</div>
+                </div>
+                <button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button>
+            </form>
+        </div>
+    </template>
+
+    <template id="parcel-request-form-template">
+        <div class="p-5">
+            <h2 class="text-lg font-bold mb-4">Отправить посылку</h2>
+            <form id="parcel-request-form" class="space-y-4">
+                 <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Откуда</label>
+                        <select name="from-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-600 mb-2">Куда</label>
+                        <select name="to-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option></select>
+                    </div>
+                </div>
+                <input type="hidden" name="from" required><input type="hidden" name="to" required>
+                <div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>
+                <div><label for="date-parcel" class="block text-xs font-medium text-slate-600 mb-2">Дата отправки</label><input type="date" name="date" id="date-parcel" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div>
+                <div id="parcel-price-info" class="bg-slate-100 p-3 rounded-lg text-center text-slate-600 text-sm">Стоимость отправки: <span class="font-bold"></span> ₽</div>
+                <button type="submit" class="text-sm btn w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">Создать заявку на посылку</button>
+            </form>
+        </div>
+    </template>
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // --- SUPABASE CLIENT INITIALIZATION ---
-        const SUPABASE_URL = 'https://scqkpvmmoaolahpxinja.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw';
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        // ======================= ГЛОБАЛЬНАЯ КОНФИГУРАЦИЯ И СОСТОЯНИЕ =======================
+        
+        const config = {
+            supabaseUrl: 'https://scqkpvmmoaolahpxinja.supabase.co',
+            supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw',
+            botToken: '8202443902:AAEMonQpK3FmOAh5Up4GPBmI89q1mHz8LpY',
+            prices: { base: 600, parcel: 300, cheboksary: 400, ferrySurcharge: 100 },
+            cities: ['Йошкар-Ола', 'Чебоксары', 'Козьмодемьянск'],
+        };
 
-        // --- APPLICATION LOGIC ---
+        const state = {
+            currentUser: null,
+            userProfile: null,
+            userRole: 'passenger', // 'passenger' | 'driver'
+            navigationHistory: ['passenger-home-screen'],
+            allRequests: [],
+            currentFilters: { from: '', to: '', date: '', type: 'all' },
+        };
+        
+        const supabaseClient = supabase.createClient(config.supabaseUrl, config.supabaseAnonKey);
+        
+        // ======================= ОСНОВНОЙ ОБЪЕКТ ПРИЛОЖЕНИЯ =======================
+        
         const App = {
-            state: {
-                currentUser: null,
-                userProfile: null,
-                userRole: 'passenger',
-                selectedRoute: null,
-                navigationHistory: ['passenger-home-screen'],
-                allRequests: [],
-                currentFilters: {
-                    from: '',
-                    to: '',
-                    date: '',
-                    type: 'all'
-                },
-                currentConversation: {
-                    id: null,
-                    subscription: null
-                }
-            },
-
-            config: {
-                botToken: '8202443902:AAEMonQpK3FmOAh5Up4GPBmI89q1mHz8LpY',
-                prices: {
-                    base: 600,
-                    parcel: 300,
-                    cheboksary: 400,
-                    ferrySurcharge: 100
-                },
-                routes: {
-                    koz_yo: {
-                        from: 'Козьмодемьянск',
-                        to: 'Йошкар-Ола'
-                    }
-                },
-                cities: ['Йошкар-Ола', 'Чебоксары', 'Козьмодемьянск'],
-            },
-
+            
+            /**
+             * Инициализация приложения: настройка Telegram, получение данных пользователя,
+             * привязка обработчиков и рендеринг начального экрана.
+             */
             async init() {
                 try {
                     Telegram.WebApp.ready();
                     Telegram.WebApp.expand();
                     Telegram.WebApp.setHeaderColor('#ffffff');
                     Telegram.WebApp.setBackgroundColor('#f8fafc');
-                    this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
+                    state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
                 } catch (e) {
-                    console.warn("Telegram WebApp script not found or running in browser.");
-                    this.state.currentUser = {
-                        id: 12345678,
-                        first_name: 'Тест',
-                        username: 'testuser'
-                    };
+                    console.warn("Не удалось инициализировать Telegram WebApp. Используются тестовые данные.");
+                    state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
                 }
-
-                if (this.state.currentUser) {
+                
+                if (state.currentUser) {
                     await this.ensureUserProfile();
                 }
-
-                this.bindHandlers();
-                this.render.allScreens();
-                this.render.updateRoleSwitcherUI();
+                
                 this.bindEvents();
-                this.setDefaultDates();
+                this.render.allScreens(); 
+                this.render.updateRoleSwitcherUI();
                 this.render.updateAvatar();
             },
 
+            /**
+             * Проверяет наличие профиля пользователя в БД и создает его при отсутствии.
+             */
             async ensureUserProfile() {
-                if (!this.state.currentUser) return;
+                if (!state.currentUser) return;
 
-                let {
-                    data: profile,
-                    error: fetchError
-                } = await supabaseClient
+                let { data: profile, error } = await supabaseClient
                     .from('profiles')
                     .select('*')
-                    .eq('id', this.state.currentUser.id)
+                    .eq('id', state.currentUser.id)
                     .single();
 
-                if (fetchError && fetchError.code === 'PGRST116') {
-                    const {
-                        data: newProfile,
-                        error: insertError
-                    } = await supabaseClient
+                if (error && error.code === 'PGRST116') { // 'PGRST116' - No rows found
+                    const { data: newProfile, error: insertError } = await supabaseClient
                         .from('profiles')
                         .insert({
-                            id: this.state.currentUser.id,
-                            username: this.state.currentUser.username,
-                            full_name: this.state.currentUser.first_name || 'Пользователь'
+                            id: state.currentUser.id,
+                            username: state.currentUser.username,
+                            full_name: state.currentUser.first_name || 'Пользователь'
                         })
                         .select()
                         .single();
 
                     if (insertError) {
-                        console.error('Error creating user profile:', insertError);
+                        console.error('Ошибка создания профиля:', insertError);
                         return;
                     }
                     profile = newProfile;
-                } else if (fetchError) {
-                    console.error('Error fetching user profile:', fetchError);
+                } else if (error) {
+                    console.error('Ошибка получения профиля:', error);
                     return;
                 }
-
-                this.state.userProfile = profile;
+                state.userProfile = profile;
             },
 
-            bindHandlers() {
-                for (const key in this.handlers) {
-                    if (typeof this.handlers[key] === 'function') {
-                        this.handlers[key] = this.handlers[key].bind(this);
-                    }
-                }
-            },
-
+            /**
+             * Централизованная привязка всех DOM-событий к их обработчикам.
+             */
             bindEvents() {
                 document.body.addEventListener('click', (e) => {
                     const button = e.target.closest('button, #role-switcher, #booking-modal-overlay');
                     if (!button) return;
-
-                    const {
-                        id,
-                        classList,
-                        dataset
-                    } = button;
-
-                    if (id === 'role-switcher') {
-                        this.handlers.onRoleSwitch();
-                        return;
-                    }
-
-                    if (button.closest('#time-interval-buttons')) {
-                        this.handlers.onTimeSelect(button);
-                        return;
-                    }
-
-                    if (button.classList.contains('filter-type-btn')) {
-                        this.handlers.onFilterTypeSelect(button);
-                        return;
-                    }
+                    
+                    if(button.id === 'role-switcher') { this.handlers.onRoleSwitch(); return; }
+                    if(button.closest('#time-interval-buttons')) { this.handlers.onTimeSelect(button); return; }
+                    if(button.classList.contains('filter-type-btn')) { this.handlers.onFilterTypeSelect(button); return; }
 
                     const clickHandlers = {
-                        'backButton': () => this.navigation.back(),
-                        'view-driver-offers-btn': this.handlers.onViewDriverOffers,
-                        'create-passenger-request-btn': () => this.navigation.to('passenger-request-screen', 'Заявка на поездку'),
-                        'send-parcel-btn': () => this.navigation.to('parcel-request-screen', 'Отправить посылку'),
-                        'view-passenger-requests-btn': this.handlers.onViewPassengerRequests,
-                        'publish-ride-btn': this.handlers.onPublishRideClick,
-                        'my-trips-btn': this.handlers.onMyTripsClick,
-                        'back-to-hub-btn': this.handlers.onBackToHub,
-                        'profile-avatar-btn': () => this.navigation.to('profile-screen', 'Мой профиль'),
-                        'booking-modal-cancel-btn': this.handlers.onBookingModalCancel,
-                        'booking-modal-overlay': this.handlers.onBookingModalCancel,
-                        'apply-filters-btn': this.handlers.onApplyFilters,
-                        'reset-filters-btn': this.handlers.onResetFilters,
-                        'filter-toggle-btn': this.handlers.onToggleFilter,
+                         'backButton': () => this.navigation.back(),
+                         'view-driver-offers-btn': this.handlers.onViewDriverOffers,
+                         'create-passenger-request-btn': () => this.navigation.to('passenger-request-screen'),
+                         'send-parcel-btn': () => this.navigation.to('parcel-request-screen'),
+                         'view-passenger-requests-btn': this.handlers.onViewPassengerRequests,
+                         'publish-ride-btn': this.handlers.onPublishRideClick,
+                         'my-trips-btn': this.handlers.onMyTripsClick,
+                         'back-to-hub-btn': this.handlers.onBackToHub,
+                         'profile-avatar-btn': () => this.navigation.to('profile-screen'),
+                         'booking-modal-cancel-btn': this.handlers.onBookingModalCancel,
+                         'booking-modal-overlay': this.handlers.onBookingModalCancel,
+                         'apply-filters-btn': this.handlers.onApplyFilters,
+                         'reset-filters-btn': this.handlers.onResetFilters,
+                         'filter-toggle-btn': this.handlers.onToggleFilter,
                     };
 
-                    if (clickHandlers[id]) {
-                        clickHandlers[id]();
+                    if (clickHandlers[button.id]) {
+                        clickHandlers[button.id]();
                         return;
                     }
-
-                    if (classList.contains('offer-ride-btn')) this.handlers.onOfferRideToRequest(dataset.requestId);
-                    if (classList.contains('request-booking-btn')) this.handlers.onRequestBooking(dataset.offerId);
-                    if (classList.contains('detour-booking-btn')) this.handlers.onDetourBookingClick(dataset.offer);
-                    if (classList.contains('confirm-booking-segment-btn')) this.handlers.onConfirmBookingSegment(dataset);
-                    if (classList.contains('cancel-booking-btn')) this.handlers.onCancelBooking(dataset.bookingId);
-                    if (classList.contains('accept-booking-btn')) this.handlers.onUpdateBookingStatus(dataset.bookingId, 'confirmed');
-                    if (classList.contains('reject-booking-btn')) this.handlers.onUpdateBookingStatus(dataset.bookingId, 'rejected');
-                    if (classList.contains('delete-offer-btn')) this.handlers.onDeleteOffer(dataset.offerId);
-                    if (classList.contains('cancel-request-btn')) this.handlers.onCancelRequest(dataset.requestId);
-                    if (classList.contains('cancel-parcel-request-btn')) this.handlers.onCancelParcelRequest(dataset.requestId);
+                    
+                    if (button.classList.contains('offer-ride-btn')) this.handlers.onOfferRideToRequest(button.dataset.requestId);
+                    if (button.classList.contains('request-booking-btn')) this.handlers.onRequestBooking(button.dataset.offerId);
+                    if (button.classList.contains('detour-booking-btn')) this.handlers.onDetourBookingClick(button.dataset.offer);
+                    if (button.classList.contains('confirm-booking-segment-btn')) this.handlers.onConfirmBookingSegment(button.dataset);
+                    if (button.classList.contains('cancel-booking-btn')) this.handlers.onCancelBooking(button.dataset.bookingId);
+                    if (button.classList.contains('accept-booking-btn')) this.handlers.onUpdateBookingStatus(button.dataset.bookingId, 'confirmed');
+                    if (button.classList.contains('reject-booking-btn')) this.handlers.onUpdateBookingStatus(button.dataset.bookingId, 'rejected');
+                    if (button.classList.contains('delete-offer-btn')) this.handlers.onDeleteOffer(button.dataset.offerId);
+                    if (button.classList.contains('cancel-request-btn')) this.handlers.onCancelRequest(button.dataset.requestId);
+                    if (button.classList.contains('cancel-parcel-request-btn')) this.handlers.onCancelParcelRequest(button.dataset.requestId);
                 });
 
                 document.body.addEventListener('submit', (e) => {
@@ -429,12 +472,11 @@
                         'passenger-request-form': () => this.handlers.onPassengerRequestSubmit(e.target),
                         'parcel-request-form': () => this.handlers.onParcelRequestSubmit(e.target),
                         'offer-form': () => this.handlers.onOfferSubmit(e.target),
-                        'chat-form': () => this.handlers.onSendMessage(e.target),
                         'profile-form': () => this.handlers.onProfileSubmit(e.target),
                     };
                     if (formHandlers[e.target.id]) formHandlers[e.target.id]();
                 });
-
+                
                 document.body.addEventListener('change', (e) => {
                     if (e.target.id === 'via-ferry-toggle' || e.target.id === 'via-cheboksary-detour-toggle') {
                         this.handlers.onRouteOptionChange(e.target);
@@ -444,1077 +486,756 @@
                     }
                 });
             },
-
-            handlers: {
-                onRoleSwitch() {
-                    this.state.userRole = this.state.userRole === 'passenger' ? 'driver' : 'passenger';
-                    this.render.updateRoleSwitcherUI();
-                    const newScreen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
-                    const newTitle = this.state.userRole === 'passenger' ? 'Пассажир' : 'Кабинет водителя';
-                    this.state.navigationHistory = [newScreen];
-                    this.navigation.to(newScreen, newTitle);
-                },
-
-                onToggleFilter() {
-                    const content = document.getElementById('filter-content');
-                    const btn = document.getElementById('filter-toggle-btn');
-                    content.classList.toggle('collapsed');
-                    btn.classList.toggle('collapsed');
-                },
-
-                onRouteOptionChange(checkbox) {
-                    const form = checkbox.closest('form');
-                    const detourToggle = form.querySelector('#via-cheboksary-detour-toggle');
-                    if (checkbox.id === 'via-ferry-toggle' && checkbox.checked) {
-                        detourToggle.checked = false;
-                        form.querySelector('#cheboksary-detour-container').classList.add('hidden');
-                    }
-                    this.handlers.onRouteDropdownChange(form.querySelector('select'));
-                },
-
-                onRouteDropdownChange(selectElement) {
-                    const form = selectElement.closest('form');
-                    const fromSelect = form.querySelector('select[name="from-select"]');
-                    const toSelect = form.querySelector('select[name="to-select"]');
-                    const fromValue = fromSelect.value;
-                    const toValue = toSelect.value;
-
-                    form.querySelector('input[name="from"]').value = fromValue;
-                    form.querySelector('input[name="to"]').value = toValue;
-
-                    Array.from(toSelect.options).forEach(opt => {
-                        opt.disabled = opt.value === fromValue;
-                    });
-                    Array.from(fromSelect.options).forEach(opt => {
-                        opt.disabled = opt.value === toValue;
-                    });
-
-                    const isKozYoRoute = (fromValue === 'Козьмодемьянск' && toValue === 'Йошкар-Ола') || (fromValue === 'Йошкар-Ола' && toValue === 'Козьмодемьянск');
-                    const ferryContainer = form.querySelector('#ferry-toggle-container');
-                    const detourContainer = form.querySelector('#cheboksary-detour-container');
-                    const ferryToggle = form.querySelector('#via-ferry-toggle');
-
-                    if (isKozYoRoute) {
-                        ferryContainer.classList.remove('hidden');
-                        detourContainer.classList.toggle('hidden', ferryToggle.checked);
-                    } else {
-                        ferryContainer.classList.add('hidden');
-                        ferryToggle.checked = false;
-                        detourContainer.classList.add('hidden');
-                        form.querySelector('#via-cheboksary-detour-toggle').checked = false;
-                    }
-
-                    this.render.updateOfferOptionsUI(form);
-
-                    if (fromValue && toValue) {
-                        form.querySelector('.form-error-direction').classList.add('hidden');
-                    }
-                },
-
-                onTimeSelect(button) {
-                    const form = button.closest('form');
-                    button.parentElement.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
-                    button.classList.add('active');
-                    form.querySelector('#timeIntervalInput').value = button.textContent;
-                    form.querySelector('.form-error-time').classList.add('hidden');
-                },
-
-                onPublishRideClick() {
-                    if (!this.state.userProfile?.driver_car?.trim()) {
-                        this.navigation.to('profile-screen', 'Мой профиль');
-                    } else {
-                        this.navigation.to('offer-screen', 'Новая поездка');
-                    }
-                },
-
-                async onViewDriverOffers() {
-                    this.navigation.to('list-screen', 'Поездки водителей');
-                    document.getElementById('filter-section-container').classList.add('hidden');
-
-                    // FIX: Replaced query to 'ride_offers_with_seats' view with manual calculation to avoid permission errors.
-                    const today = new Date().toISOString().split('T')[0];
-
-                    // 1. Fetch upcoming offers
-                    const {
-                        data: offers,
-                        error: offersError
-                    } = await supabaseClient
-                        .from('ride_offers')
-                        .select('*')
-                        .gte('ride_date', today)
-                        .order('ride_date', {
-                            ascending: true
-                        })
-                        .order('ride_time', {
-                            ascending: true
-                        });
-
-                    if (offersError) {
-                        console.error("Error fetching offers:", offersError);
-                        this.render.list([], 'driverOffer'); // Render empty list on error
-                        return;
-                    }
-
-                    if (!offers || offers.length === 0) {
-                        this.render.list([], 'driverOffer');
-                        return;
-                    }
-
-                    const offerIds = offers.map(o => o.id);
-
-                    // 2. Fetch confirmed bookings for these offers
-                    const {
-                        data: bookings,
-                        error: bookingsError
-                    } = await supabaseClient
-                        .from('bookings')
-                        .select('offer_id')
-                        .in('offer_id', offerIds)
-                        .eq('status', 'confirmed');
-
-                    if (bookingsError) {
-                        console.error("Error fetching bookings:", bookingsError);
-                        // Proceeding without accurate seat count, but it's better than crashing.
-                    }
-
-                    // 3. Calculate remaining seats and filter out full rides
-                    const bookingCounts = bookings ? bookings.reduce((acc, booking) => {
-                        acc[booking.offer_id] = (acc[booking.offer_id] || 0) + 1;
-                        return acc;
-                    }, {}) : {};
-
-                    const offersWithSeats = offers
-                        .map(offer => ({
-                            ...offer,
-                            seats_left: offer.seats - (bookingCounts[offer.id] || 0)
-                        }))
-                        .filter(offer => offer.seats_left > 0);
-
-                    // 4. Check current user's bookings to show correct button state
-                    if (!this.state.currentUser) {
-                        // Render without checking user's booking status if user is not loaded yet
-                        this.render.list(offersWithSeats, 'driverOffer');
-                        return;
-                    }
-
-                    const {
-                        data: userBookings,
-                        error: userBookingsError
-                    } = await supabaseClient
-                        .from('bookings')
-                        .select('id, offer_id')
-                        .eq('passenger_id', this.state.currentUser.id)
-                        .in('offer_id', offersWithSeats.map(o => o.id));
-
-                    if (userBookingsError) {
-                        console.error("Error fetching user bookings:", userBookingsError);
-                    }
-
-                    const userBookingsMap = new Map(userBookings?.map(b => [b.offer_id, b.id]) || []);
-
-                    const augmentedOffers = offersWithSeats.map(offer => ({
-                        ...offer,
-                        currentUserBookingId: userBookingsMap.get(offer.id) || null
-                    }));
-
-                    this.render.list(augmentedOffers, 'driverOffer');
-                },
-
-
-                async onViewPassengerRequests() {
-                    this.navigation.to('list-screen', 'Заявки от пассажиров');
-                    document.getElementById('filter-section-container').classList.remove('hidden');
-                    document.getElementById('filter-type-container').classList.toggle('hidden', this.state.userRole !== 'driver');
-                    document.getElementById('list-container').innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
-
-                    const today = new Date().toISOString().split('T')[0];
-                    document.getElementById('filter-date')?.setAttribute('min', today);
-
-                    const {
-                        data: rides,
-                        error: ridesError
-                    } = await supabaseClient.from('ride_requests')
-                        .select('*')
-                        .gte('ride_date', today)
-                        .eq('status', 'open')
-                        .order('ride_date', {
-                            ascending: true
-                        });
-
-                    const {
-                        data: parcels,
-                        error: parcelsError
-                    } = await supabaseClient.from('parcel_requests')
-                        .select('*').gte('ride_date', today).order('ride_date', {
-                            ascending: true
-                        });
-
-                    if (ridesError || parcelsError) {
-                        console.error(ridesError || parcelsError);
-                        return;
-                    }
-
-                    const allRequests = [
-                        ...rides.map(r => ({ ...r,
-                            type: 'ride'
-                        })),
-                        ...parcels.map(p => ({ ...p,
-                            type: 'parcel'
-                        }))
-                    ].sort((a, b) => new Date(a.ride_date) - new Date(b.ride_date));
-
-                    this.state.allRequests = allRequests;
-                    this.handlers.onResetFilters();
-                },
-
-                onFilterTypeSelect(button) {
-                    button.parentElement.querySelectorAll('.filter-type-btn').forEach(btn => btn.classList.remove('active'));
-                    button.classList.add('active');
-                },
-
-                onApplyFilters() {
-                    this.state.currentFilters = {
-                        from: document.getElementById('filter-from').value,
-                        to: document.getElementById('filter-to').value,
-                        date: document.getElementById('filter-date').value,
-                        type: document.querySelector('#filter-type-buttons .active').dataset.type
-                    };
-                    this.renderFilteredList();
-                },
-
-                onResetFilters() {
-                    this.state.currentFilters = {
-                        from: '',
-                        to: '',
-                        date: '',
-                        type: 'all'
-                    };
-                    document.getElementById('filter-from').value = '';
-                    document.getElementById('filter-to').value = '';
-                    document.getElementById('filter-date').value = '';
-                    document.querySelectorAll('#filter-type-buttons .filter-type-btn').forEach(btn => {
-                        btn.classList.toggle('active', btn.dataset.type === 'all');
-                    });
-                    this.renderFilteredList();
-                },
-
-                async onMyTripsClick() {
-                    // FIX: Add a guard clause to prevent error if currentUser is not yet available.
-                    if (!this.state.currentUser) {
-                        console.error("User not initialized, cannot fetch trips.");
-                        return;
-                    }
-                    this.navigation.to('my-trips-screen', 'Мои поездки');
-                    const container = document.getElementById('my-trips-container');
-                    container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
-
-                    const today = new Date().toISOString().split('T')[0];
-
-                    if (this.state.userRole === 'driver') {
-                        const {
-                            data,
-                            error
-                        } = await supabaseClient.from('ride_offers')
-                            .select(`*, bookings(*, profiles(full_name, username))`)
-                            .eq('driver_id', this.state.currentUser.id)
-                            .gte('ride_date', today)
-                            .order('ride_date', {
-                                ascending: true
-                            });
-                        if (error) {
-                            console.error(error);
-                            return;
-                        }
-                        this.render.myTrips(data, 'driver');
-                    } else {
-                        const [bookingsRes, requestsRes, parcelsRes] = await Promise.all([
-                            supabaseClient.from('bookings').select(`*, ride_offers(*)`).eq('passenger_id', this.state.currentUser.id).gte('ride_offers.ride_date', today).order('created_at', {
-                                ascending: false
-                            }),
-                            supabaseClient.from('ride_requests').select(`*`).eq('passenger_id', this.state.currentUser.id).in('status', ['open', 'pending_confirmation']).gte('ride_date', today).order('created_at', {
-                                ascending: false
-                            }),
-                            supabaseClient.from('parcel_requests').select(`*`).eq('sender_id', this.state.currentUser.id).gte('ride_date', today).order('created_at', {
-                                ascending: false
-                            })
-                        ]);
-
-                        if (bookingsRes.error || requestsRes.error || parcelsRes.error) {
-                            console.error(bookingsRes.error || requestsRes.error || parcelsRes.error);
-                            return;
-                        }
-                        this.render.myTrips({
-                            bookings: bookingsRes.data,
-                            requests: requestsRes.data,
-                            parcels: parcelsRes.data
-                        }, 'passenger');
-                    }
-                },
-
-                async onOfferSubmit(form) {
-                    const formData = new FormData(form);
-                    const from = formData.get('from');
-                    const to = formData.get('to');
-
-                    if (!from || !to) {
-                        form.querySelector('.form-error-direction').classList.remove('hidden');
-                        return;
-                    }
-                    if (!this.state.userProfile.full_name || !this.state.userProfile.driver_car) {
-                        console.error('Profile info missing');
-                        return;
-                    }
-
-                    const viaFerry = form.querySelector('#via-ferry-toggle').checked;
-                    const viaCheboksaryDetour = form.querySelector('#via-cheboksary-detour-toggle').checked;
-                    const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
-
-                    let finalPrice = isCheboksaryRoute ? this.config.prices.cheboksary : this.config.prices.base;
-                    if (!isCheboksaryRoute && viaFerry) {
-                        finalPrice += this.config.prices.ferrySurcharge;
-                    }
-
-                    const {
-                        error
-                    } = await supabaseClient.from('ride_offers').insert({
-                        driver_id: this.state.currentUser.id,
-                        driver_username: this.state.currentUser.username,
-                        "from": from,
-                        "to": to,
-                        ride_date: formData.get('date'),
-                        ride_time: formData.get('time'),
-                        seats: parseInt(formData.get('seats')),
-                        price: finalPrice,
-                        driver_name: this.state.userProfile.full_name,
-                        driver_car: this.state.userProfile.driver_car,
-                        via_cheboksary: isCheboksaryRoute,
-                        via_ferry: !isCheboksaryRoute && viaFerry,
-                        via_cheboksary_detour: !isCheboksaryRoute && !viaFerry && viaCheboksaryDetour
-                    });
-
-                    if (error) {
-                        console.error(error);
-                        return;
-                    }
-                    this.resetForm(form);
-                    this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет');
-                },
-
-                async onPassengerRequestSubmit(form) {
-                    const formData = new FormData(form);
-                    const from = formData.get('from');
-                    const to = formData.get('to');
-                    const timeInterval = formData.get('timeInterval');
-
-                    let valid = true;
-                    if (!from || !to) {
-                        form.querySelector('.form-error-direction').classList.remove('hidden');
-                        valid = false;
-                    }
-                    if (!timeInterval) {
-                        form.querySelector('.form-error-time').classList.remove('hidden');
-                        valid = false;
-                    }
-                    if (!valid) return;
-
-                    const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
-                    const price = isCheboksaryRoute ? this.config.prices.cheboksary : this.config.prices.base;
-
-                    const {
-                        error
-                    } = await supabaseClient.from('ride_requests').insert({
-                        passenger_id: this.state.currentUser.id,
-                        passenger_username: this.state.currentUser.username,
-                        "from": from,
-                        "to": to,
-                        ride_date: formData.get('date'),
-                        time_interval: timeInterval,
-                        passenger_name: this.state.userProfile.full_name,
-                        price: price,
-                        status: 'open'
-                    });
-
-                    if (error) {
-                        console.error(error);
-                        return;
-                    }
-                    this.resetForm(form);
-                    this.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично');
-                },
-
-                async onParcelRequestSubmit(form) {
-                    const formData = new FormData(form);
-                    const from = formData.get('from');
-                    const to = formData.get('to');
-                    if (!from || !to) {
-                        form.querySelector('.form-error-direction').classList.remove('hidden');
-                        return;
-                    }
-
-                    const {
-                        error
-                    } = await supabaseClient.from('parcel_requests').insert({
-                        sender_id: this.state.currentUser.id,
-                        sender_username: this.state.currentUser.username,
-                        "from": from,
-                        "to": to,
-                        ride_date: formData.get('date'),
-                        sender_name: this.state.userProfile.full_name,
-                        price: this.config.prices.parcel
-                    });
-
-                    if (error) {
-                        console.error(error);
-                        return;
-                    }
-                    this.resetForm(form);
-                    this.render.success('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично');
-                },
-
-                async onProfileSubmit(form) {
-                    const formData = new FormData(form);
-                    const fullName = formData.get('fullName').trim();
-                    if (!fullName) {
-                        console.error('Full name is required');
-                        return;
-                    }
-
-                    const {
-                        data,
-                        error
-                    } = await supabaseClient.from('profiles')
-                        .update({
-                            full_name: fullName,
-                            driver_car: formData.get('driverCar').trim()
-                        })
-                        .eq('id', this.state.currentUser.id)
-                        .select()
-                        .single();
-
-                    if (error) {
-                        console.error('Profile save error:', error);
-                        return;
-                    }
-                    this.state.userProfile = data;
-                    this.navigation.back();
-                },
-
-                async onRequestBooking(offerId, bookingDetails = null) {
-                    if (!this.state.userProfile) {
-                        console.error('Profile not loaded');
-                        return;
-                    }
-
-                    const {
-                        data: existingBooking
-                    } = await supabaseClient.from('bookings').select('id').eq('offer_id', offerId).eq('passenger_id', this.state.currentUser.id).limit(1);
-                    if (existingBooking && existingBooking.length > 0) {
-                        console.warn('Booking already exists');
-                        return;
-                    }
-
-                    const {
-                        data: offer,
-                        error: offerError
-                    } = await supabaseClient.from('ride_offers').select('*').eq('id', offerId).single();
-                    if (offerError || !offer) {
-                        console.error("Offer not found");
-                        return;
-                    }
-
-                    const bookingData = {
-                        offer_id: offerId,
-                        passenger_id: this.state.currentUser.id,
-                        status: 'pending',
-                        booking_segment: bookingDetails?.segment || 'full',
-                        price: bookingDetails?.price || offer.price,
-                        from_city: bookingDetails?.from || offer.from,
-                        to_city: bookingDetails?.to || offer.to,
-                    };
-
-                    const {
-                        error: insertError
-                    } = await supabaseClient.from('bookings').insert(bookingData);
-                    if (insertError) {
-                        console.error('Booking insert error:', insertError);
-                        return;
-                    }
-
-                    const passengerName = this.state.userProfile.full_name || 'Новый пассажир';
-                    const message = `*Новое бронирование!*\n\nПассажир *${passengerName}* хочет забронировать место на поездку: ${offer.from} → ${offer.to} (${this.utils.formatDate(offer.ride_date)}).\n\nПодтвердите в приложении.`;
-                    this.utils.sendTelegramNotification(offer.driver_id, message);
-
-                    this.render.success('Заявка отправлена', 'Водитель рассмотрит вашу заявку. Вы можете отслеживать ее статус в разделе "Мои поездки".', 'Отлично');
-                },
-
-                onDetourBookingClick(offerData) {
-                    this.render.bookingOptionsModal(JSON.parse(decodeURIComponent(offerData)));
-                },
-
-                onConfirmBookingSegment(dataset) {
-                    this.handlers.onBookingModalCancel();
-                    this.handlers.onRequestBooking(dataset.offerId, {
-                        segment: dataset.segment,
-                        price: parseInt(dataset.price),
-                        from: dataset.from,
-                        to: dataset.to,
-                    });
-                },
-
-                onBookingModalCancel() {
-                    const overlay = document.getElementById('booking-modal-overlay');
-                    const modal = document.getElementById('booking-modal');
-                    overlay.classList.remove('show');
-                    modal.classList.remove('show');
-                    setTimeout(() => {
-                        overlay.classList.add('hidden');
-                    }, 300);
-                },
-
-                async onUpdateBookingStatus(bookingId, status) {
-                    const {
-                        data: booking,
-                        error
-                    } = await supabaseClient.from('bookings').select('*, ride_offers(*)').eq('id', bookingId).single();
-                    if (error || !booking) {
-                        console.error('Booking not found:', error);
-                        return;
-                    }
-
-                    const offer = booking.ride_offers;
-                    const isPassengerAction = this.state.currentUser.id === booking.passenger_id;
-                    const isLinkedToRequest = offer?.linked_request_id;
-
-                    if (isPassengerAction && isLinkedToRequest) { // Passenger accepts/rejects a direct offer from driver
-                        if (status === 'rejected') {
-                            await Promise.all([
-                                supabaseClient.from('ride_requests').update({
-                                    status: 'open'
-                                }).eq('id', offer.linked_request_id),
-                                supabaseClient.from('bookings').delete().eq('id', bookingId),
-                                supabaseClient.from('ride_offers').delete().eq('id', offer.id)
-                            ]);
-                            this.utils.sendTelegramNotification(offer.driver_id, `Пассажир отклонил ваше предложение (${offer.from} → ${offer.to}).`);
-                        } else if (status === 'confirmed') {
-                            await Promise.all([
-                                supabaseClient.from('bookings').update({
-                                    status: 'confirmed'
-                                }).eq('id', bookingId),
-                                supabaseClient.from('ride_requests').update({
-                                    status: 'closed'
-                                }).eq('id', offer.linked_request_id)
-                            ]);
-                            this.utils.sendTelegramNotification(offer.driver_id, `Пассажир принял ваше предложение (${offer.from} → ${offer.to})!`);
-                        }
-                    } else { // Standard driver action
-                        await supabaseClient.from('bookings').update({
-                            status
-                        }).eq('id', bookingId);
-                        let message = '';
-                        if (status === 'confirmed') {
-                            message = `*Бронь подтверждена!* ✅\nВодитель *${offer.driver_name}* подтвердил вашу поездку: ${offer.from} → ${offer.to} на ${this.utils.formatDate(offer.ride_date)}.`;
-                        } else if (status === 'rejected') {
-                            message = `*Бронь отклонена* ❌\nК сожалению, водитель отклонил вашу заявку на поездку: ${offer.from} → ${offer.to}.`;
-                        }
-                        if (message) this.utils.sendTelegramNotification(booking.passenger_id, message);
-                    }
-                    this.handlers.onMyTripsClick();
-                },
-
-                async onCancelBooking(bookingId) {
-                    const {
-                        data: booking,
-                        error
-                    } = await supabaseClient.from('bookings').select('*, ride_offers(*)').eq('id', bookingId).single();
-                    if (error || !booking) {
-                        console.error('Error fetching booking to cancel:', error);
-                        return;
-                    }
-
-                    const offer = booking.ride_offers;
-                    const passengerName = this.state.userProfile.full_name || 'Пассажир';
-                    const message = `*Пассажир отменил бронь* 🧍‍♂️\n${passengerName} отменил(а) бронь на вашу поездку: ${offer.from} → ${offer.to} на ${this.utils.formatDate(offer.ride_date)}.`;
-                    this.utils.sendTelegramNotification(offer.driver_id, message);
-
-                    await supabaseClient.from('bookings').delete().eq('id', bookingId);
-
-                    const currentScreen = this.state.navigationHistory.at(-1);
-                    (currentScreen === 'list-screen') ? this.handlers.onViewDriverOffers(): this.handlers.onMyTripsClick();
-                },
-
-                async onDeleteOffer(offerId) {
-                    const {
-                        data: bookings,
-                        error
-                    } = await supabaseClient.from('bookings').select('passenger_id, ride_offers(from, to, ride_date)').eq('offer_id', offerId);
-                    if (error) {
-                        console.error('Failed to fetch bookings for notification:', error);
-                    }
-
-                    if (bookings?.length > 0) {
-                        const offerDetails = bookings[0].ride_offers;
-                        const message = `*Поездка отменена* ❌\nВодитель отменил поездку ${offerDetails.from} → ${offerDetails.to} на ${this.utils.formatDate(offerDetails.ride_date)}. Ваше бронирование отменено.`;
-                        await Promise.all(bookings.map(b => this.utils.sendTelegramNotification(b.passenger_id, message)));
-                    }
-
-                    await supabaseClient.from('ride_offers').delete().eq('id', offerId);
-                    this.handlers.onMyTripsClick();
-                },
-
-                async onCancelRequest(requestId) {
-                    await supabaseClient.from('ride_requests').delete().eq('id', requestId);
-                    this.handlers.onMyTripsClick();
-                },
-
-                async onCancelParcelRequest(requestId) {
-                    await supabaseClient.from('parcel_requests').delete().eq('id', requestId);
-                    this.handlers.onMyTripsClick();
-                },
-
-                onBackToHub() {
-                    const screen = this.state.userRole === 'driver' ? 'driver-dashboard-screen' : 'passenger-home-screen';
-                    const title = this.state.userRole === 'driver' ? 'Кабинет водителя' : 'Пассажир';
-                    this.state.navigationHistory = [screen];
-                    this.navigation.to(screen, title);
-                },
-
-                async onOfferRideToRequest(requestId) {
-                    if (!this.state.userProfile?.driver_car?.trim()) {
-                        this.navigation.to('profile-screen', 'Мой профиль');
-                        return;
-                    }
-
-                    const {
-                        data: request,
-                        error: requestError
-                    } = await supabaseClient.from('ride_requests').select('*').eq('id', requestId).single();
-                    if (requestError || !request) {
-                        console.error("Request not found:", requestError);
-                        return;
-                    }
-
-                    const timeForOffer = request.time_interval.split('-')[0] + ':00';
-                    const {
-                        data: newOffer,
-                        error: offerError
-                    } = await supabaseClient
-                        .from('ride_offers')
-                        .insert({
-                            driver_id: this.state.currentUser.id,
-                            driver_username: this.state.currentUser.username,
-                            driver_name: this.state.userProfile.full_name,
-                            driver_car: this.state.userProfile.driver_car,
-                            from: request.from,
-                            to: request.to,
-                            ride_date: request.ride_date,
-                            ride_time: timeForOffer,
-                            seats: 1,
-                            price: request.price,
-                            linked_request_id: requestId
-                        })
-                        .select()
-                        .single();
-
-                    if (offerError) {
-                        console.error("Failed to create offer:", offerError);
-                        return;
-                    }
-
-                    const {
-                        error: bookingError
-                    } = await supabaseClient.from('bookings').insert({
-                        offer_id: newOffer.id,
-                        passenger_id: request.passenger_id,
-                        status: 'pending',
-                        price: newOffer.price,
-                        from_city: newOffer.from,
-                        to_city: newOffer.to
-                    });
-
-                    if (bookingError) {
-                        console.error("Failed to create booking:", bookingError);
-                        return;
-                    }
-
-                    await supabaseClient.from('ride_requests').update({
-                        status: 'pending_confirmation'
-                    }).eq('id', requestId);
-
-                    const message = `*Вам предложили поездку!* 🚗\nВодитель *${newOffer.driver_name}* (${newOffer.driver_car}) откликнулся на вашу заявку ${newOffer.from} → ${newOffer.to}.\n\nПодтвердите в разделе "Мои поездки".`;
-                    await this.utils.sendTelegramNotification(request.passenger_id, message);
-
-                    const button = document.querySelector(`.offer-ride-btn[data-request-id="${requestId}"]`);
-                    if (button) {
-                        button.textContent = 'Предложение отправлено';
-                        button.disabled = true;
-                        button.classList.remove('bg-green-500', 'hover:bg-green-600');
-                        button.classList.add('bg-slate-400', 'cursor-not-allowed');
-                    }
+        }; 
+
+        App.handlers = {
+            onRoleSwitch() {
+                state.userRole = state.userRole === 'passenger' ? 'driver' : 'passenger';
+                App.render.updateRoleSwitcherUI();
+                const newScreen = state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
+                state.navigationHistory = [newScreen];
+                App.navigation.to(newScreen);
+            },
+            onToggleFilter() {
+                document.getElementById('filter-content').classList.toggle('collapsed');
+                document.getElementById('filter-toggle-btn').classList.toggle('collapsed');
+            },
+            onRouteOptionChange(checkbox) {
+                const form = checkbox.closest('form');
+                if (checkbox.id === 'via-ferry-toggle' && checkbox.checked) {
+                    form.querySelector('#via-cheboksary-detour-toggle').checked = false;
+                }
+                this.onRouteDropdownChange(form.querySelector('select[name="from-select"]'));
+            },
+            onRouteDropdownChange(selectElement) {
+                const form = selectElement.closest('form');
+                const fromSelect = form.querySelector('select[name="from-select"]');
+                const toSelect = form.querySelector('select[name="to-select"]');
+                const fromValue = fromSelect.value;
+                const toValue = toSelect.value;
+
+                form.querySelector('input[name="from"]').value = fromValue;
+                form.querySelector('input[name="to"]').value = toValue;
+
+                Array.from(toSelect.options).forEach(opt => { opt.disabled = opt.value === fromValue; });
+                Array.from(fromSelect.options).forEach(opt => { opt.disabled = opt.value === toValue; });
+
+                const isKozYoRoute = (fromValue === 'Козьмодемьянск' && toValue === 'Йошкар-Ола') || (fromValue === 'Йошкар-Ола' && toValue === 'Козьмодемьянск');
+                
+                const ferryContainer = form.querySelector('#ferry-toggle-container');
+                const detourContainer = form.querySelector('#cheboksary-detour-container');
+                const ferryToggle = form.querySelector('#via-ferry-toggle');
+
+                if (ferryContainer) {
+                    ferryContainer.classList.toggle('hidden', !isKozYoRoute);
+                    if (!isKozYoRoute) ferryToggle.checked = false;
+                }
+                if (detourContainer) {
+                    const showDetour = isKozYoRoute && !ferryToggle.checked;
+                    detourContainer.classList.toggle('hidden', !showDetour);
+                    if (!showDetour) detourContainer.querySelector('input').checked = false;
+                }
+                
+                App.render.updateOfferOptionsUI(form);
+            },
+            onTimeSelect(button) {
+                const form = button.closest('form');
+                button.parentElement.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                form.querySelector('#timeIntervalInput').value = button.textContent;
+                form.querySelector('.form-error-time').classList.add('hidden');
+            },
+            onPublishRideClick() {
+                if (!state.userProfile?.driver_car || !state.userProfile.driver_car.trim()) {
+                    App.navigation.to('profile-screen');
+                } else {
+                    App.navigation.to('offer-screen');
                 }
             },
+            async onViewDriverOffers() {
+                App.navigation.to('list-screen');
+                document.getElementById('filter-section-container').classList.add('hidden');
+                App.render.list([], 'driverOffer', true); // Show loader
 
-            navigation: {
-                to(screenId, title) {
-                    if (App.state.currentConversation.subscription) {
-                        supabaseClient.removeChannel(App.state.currentConversation.subscription);
-                        App.state.currentConversation.subscription = null;
-                    }
+                const { data: offers, error } = await supabaseClient.from('ride_offers_with_seats')
+                    .select('*')
+                    .gte('ride_date', new Date().toISOString().split('T')[0])
+                    .gt('seats_left', 0)
+                    .order('ride_date', { ascending: true })
+                    .order('ride_time', { ascending: true });
 
-                    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                    document.getElementById(screenId)?.classList.add('active');
-                    document.getElementById('headerTitle').textContent = title;
+                if (error) { console.error(error); App.render.list([], 'driverOffer'); return; }
 
-                    if (App.state.navigationHistory.at(-1) !== screenId) {
-                        App.state.navigationHistory.push(screenId);
-                    }
+                const { data: userBookings } = await supabaseClient.from('bookings').select('id, offer_id').eq('passenger_id', state.currentUser.id);
+                const userBookingsMap = new Map(userBookings?.map(b => [b.offer_id, b.id]) || []);
+                const augmentedOffers = offers.map(offer => ({ ...offer, currentUserBookingId: userBookingsMap.get(offer.id) || null }));
 
-                    document.getElementById('backButton').classList.toggle('invisible', App.state.navigationHistory.length <= 1);
-
-                    if (screenId === 'offer-screen') App.render.populateOfferForm();
-                    if (screenId === 'profile-screen') App.render.populateProfileForm();
-
-                    document.getElementById('main-content').scrollTop = 0;
-                },
-                back() {
-                    if (App.state.navigationHistory.length <= 1) return;
-
-                    App.state.navigationHistory.pop();
-                    const lastScreen = App.state.navigationHistory.at(-1);
-
-                    const titles = {
-                        'passenger-home-screen': 'Пассажир',
-                        'driver-dashboard-screen': 'Кабинет водителя',
-                        'list-screen': document.getElementById('headerTitle').textContent,
-                        'my-trips-screen': 'Мои поездки',
-                        'profile-screen': 'Мой профиль'
-                    };
-
-                    this.to(lastScreen, titles[lastScreen] || 'Попутка 12');
-                    App.state.navigationHistory.pop(); // Remove the screen again because `to` adds it
-                }
+                App.render.list(augmentedOffers, 'driverOffer');
             },
+            async onViewPassengerRequests() {
+                App.navigation.to('list-screen');
+                document.getElementById('filter-section-container').classList.remove('hidden');
+                document.getElementById('filter-type-container').classList.toggle('hidden', state.userRole !== 'driver');
+                App.render.list([], 'passengerRequest', true); // Show loader
 
-            render: {
-                allScreens() {
-                    const screenTemplates = {
-                        'passenger-home-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2></div><div class="space-y-3"><button id="view-driver-offers-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button><button id="create-passenger-request-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button><button id="send-parcel-btn" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button></div></div>`,
-                        'driver-dashboard-screen': `<div class="p-5"><div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Кабинет водителя</h2></div><div class="space-y-3"><button id="view-passenger-requests-btn" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button><button id="publish-ride-btn" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button><button id="my-trips-btn" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button></div></div>`,
-                        'offer-screen': this.getOfferFormTemplate(),
-                        'passenger-request-screen': this.getPassengerRequestFormTemplate(),
-                        'parcel-request-screen': this.getParcelRequestFormTemplate(),
-                        'list-screen': `<div class="p-4 space-y-4"><div id="filter-section-container" class="hidden"><div class="p-4 bg-slate-50 rounded-xl border border-slate-200"><button id="filter-toggle-btn" class="flex justify-between items-center w-full mb-3"><h3 class="text-base font-semibold text-slate-800">Фильтры</h3><svg id="filter-toggle-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-500"><path d="m18 15-6-6-6 6"/></svg></button><div id="filter-content" class="space-y-3"><div class="grid grid-cols-2 gap-3"><div><label for="filter-from" class="block text-xs font-medium text-slate-600 mb-1">Откуда</label><select id="filter-from" name="from" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"><option value="">Любой</option>${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div><div><label for="filter-to" class="block text-xs font-medium text-slate-600 mb-1">Куда</label><select id="filter-to" name="to" class="w-full p-2 border border-slate-200 rounded-lg text-sm bg-white"><option value="">Любой</option>${App.config.cities.map(c => `<option value="${c}">${c}</option>`).join('')}</select></div></div><div><label for="filter-date" class="block text-xs font-medium text-slate-600 mb-1">Дата</label><input type="date" id="filter-date" name="date" class="w-full p-2 border border-slate-200 rounded-lg text-sm"></div><div id="filter-type-container"><label class="block text-xs font-medium text-slate-600 mb-1">Тип заявки</label><div id="filter-type-buttons" class="flex p-1 bg-slate-200 rounded-lg"><button data-type="all" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600 active">Все</button><button data-type="ride" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Пассажиры</button><button data-type="parcel" class="filter-type-btn flex-1 py-1 px-2 rounded-md text-xs font-semibold text-slate-600">Посылки</button></div></div><div class="flex gap-3 pt-2"><button id="reset-filters-btn" class="flex-1 text-sm btn border border-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-100">Сбросить</button><button id="apply-filters-btn" class="flex-1 text-sm btn bg-slate-800 text-white font-bold py-2 px-4 rounded-lg hover:bg-slate-700">Применить</button></div></div></div></div><div id="list-container" class="space-y-3"></div><div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-base font-semibold"></h3><p id="no-results-text" class="text-xs"></p></div></div>`,
-                        'success-screen': `<div class="p-5 flex flex-col items-center justify-center h-full text-center"><div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div><h2 id="success-title" class="text-xl font-bold mt-4 mb-1"></h2><p id="success-text" class="text-slate-600 mb-8 text-sm"></p><button id="back-to-hub-btn" class="text-sm btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button></div>`,
-                        'chat-screen': `<div class="flex-1 flex flex-col h-full"><div id="chat-messages" class="flex-1 p-4 space-y-4 overflow-y-auto flex flex-col"></div><div id="chat-footer" class="p-3 border-t border-slate-200 flex-shrink-0"><form id="chat-form" class="flex items-center space-x-2"><input id="chat-message-input" type="text" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Сообщение..." required><button type="submit" class="p-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button></form></div></div>`,
-                        'my-trips-screen': `<div class="flex-1 flex flex-col"><div id="my-trips-container" class="p-5 space-y-4 flex-1"></div></div>`,
-                        'profile-screen': this.getProfileFormTemplate(),
-                    };
-                    for (const [id, html] of Object.entries(screenTemplates)) {
-                        document.getElementById(id).innerHTML = html;
-                    }
-                },
-
-                updateRoleSwitcherUI() {
-                    const switcher = document.getElementById('role-switcher');
-                    switcher.classList.toggle('driver', App.state.userRole === 'driver');
-                    switcher.classList.toggle('passenger', App.state.userRole !== 'driver');
-                },
-
-                updateAvatar() {
-                    const avatarBtn = document.getElementById('profile-avatar-btn');
-                    const user = App.state.currentUser;
-                    if (user?.photo_url) {
-                        avatarBtn.innerHTML = `<img src="${user.photo_url}" alt="Avatar">`;
-                    } else {
-                        avatarBtn.innerHTML = `<span>${user?.first_name?.charAt(0).toUpperCase() || '?'}</span>`;
-                    }
-                },
-
-                list(items, type) {
-                    const container = document.getElementById('list-container');
-                    const noResults = document.getElementById('no-results');
-                    container.innerHTML = '';
-                    noResults.classList.toggle('hidden', items?.length > 0);
-                    if (items?.length === 0) {
-                        document.getElementById('no-results-title').textContent = type === 'driverOffer' ? 'Поездок не найдено' : 'Заявок не найдено';
-                        document.getElementById('no-results-text').textContent = type === 'driverOffer' ? 'Попробуйте зайти позже или оставьте свою заявку.' : 'По вашим фильтрам ничего не найдено.';
-                        return;
-                    }
-                    container.innerHTML = items.map(item => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${ type === 'driverOffer' ? this.getDriverOfferCard(item) : this.getPassengerRequestCard(item) }</div>`).join('');
-                },
-
-                myTrips(data, role) {
-                    const container = document.getElementById('my-trips-container');
-                    container.innerHTML = '';
-
-                    if (role === 'driver') {
-                        if (!data || data.length === 0) {
-                            container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активных поездок</h3><p class="text-xs">Опубликуйте поездку, чтобы она здесь появилась.</p></div>`;
-                            return;
-                        }
-                        container.innerHTML = data.map(offer => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyDriverOfferCard(offer)}</div>`).join('');
-                    } else {
-                        const {
-                            bookings,
-                            requests,
-                            parcels
-                        } = data;
-                        if (!bookings?.length && !requests?.length && !parcels?.length) {
-                            container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активностей</h3><p class="text-xs">Забронируйте поездку или оставьте заявку.</p></div>`;
-                            return;
-                        }
-                        let content = '';
-                        if (bookings?.length) {
-                            content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-2">Мои бронирования</h3>` + bookings.map(b => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyBookingCard(b)}</div>`).join('');
-                        }
-                        if (requests?.length) {
-                            content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои заявки на поездки</h3>` + requests.map(r => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyRequestCard(r)}</div>`).join('');
-                        }
-                        if (parcels?.length) {
-                            content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои посылки</h3>` + parcels.map(p => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyParcelRequestCard(p)}</div>`).join('');
-                        }
-                        container.innerHTML = content;
-                    }
-                },
-
-                success(title, text, buttonText) {
-                    document.getElementById('success-title').textContent = title;
-                    document.getElementById('success-text').textContent = text;
-                    document.getElementById('back-to-hub-btn').textContent = buttonText;
-                    App.navigation.to('success-screen', 'Успех');
-                },
-
-                populateOfferForm() {
-                    const profile = App.state.userProfile;
-                    if (!profile) return;
-                    const form = document.getElementById('offer-form');
-                    form.querySelector('#driver-name').value = profile.full_name || '';
-                    form.querySelector('#driver-car').value = profile.driver_car || '';
-                },
-
-                populateProfileForm() {
-                    const profile = App.state.userProfile;
-                    const form = document.getElementById('profile-form');
-                    form.querySelector('#profile-name').value = profile?.full_name || App.state.currentUser?.first_name || '';
-                    form.querySelector('#profile-car').value = profile?.driver_car || '';
-                },
-
-                updateOfferOptionsUI(form) {
-                    const from = form.querySelector('input[name="from"]').value;
-                    const to = form.querySelector('input[name="to"]').value;
-                    const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
-                    let price = isCheboksaryRoute ? App.config.prices.cheboksary : App.config.prices.base;
-
-                    if (!isCheboksaryRoute && form.querySelector('#via-ferry-toggle')?.checked) {
-                        price += App.config.prices.ferrySurcharge;
-                    }
-
-                    form.querySelector('#ferry-price-increase').classList.toggle('hidden', isCheboksaryRoute || !form.querySelector('#via-ferry-toggle')?.checked);
-                    form.querySelector('#publish-price').textContent = price;
-                },
-
-                bookingOptionsModal(offer) {
-                    const container = document.getElementById('booking-options-container');
-                    const priceFull = App.config.prices.base;
-                    const pricePart = App.config.prices.cheboksary;
-
-                    container.innerHTML = `
-                    <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="full" data-price="${priceFull}" data-from="${offer.from}" data-to="${offer.to}"><span>${offer.from} → ${offer.to}</span><span class="font-semibold">${priceFull} ₽</span></button>
-                    <div class="h-px bg-slate-200"></div>
-                    <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="start_to_cheb" data-price="${pricePart}" data-from="${offer.from}" data-to="Чебоксары"><span>${offer.from} → Чебоксары</span><span class="font-semibold">${pricePart} ₽</span></button>
-                    <div class="h-px bg-slate-200"></div>
-                    <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="cheb_to_end" data-price="${pricePart}" data-from="Чебоксары" data-to="${offer.to}"><span>Чебоксары → ${offer.to}</span><span class="font-semibold">${pricePart} ₽</span></button>
-                `;
-
-                    const overlay = document.getElementById('booking-modal-overlay');
-                    const modal = document.getElementById('booking-modal');
-                    overlay.classList.remove('hidden');
-                    requestAnimationFrame(() => {
-                        overlay.classList.add('show');
-                        modal.classList.add('show');
-                    });
-                },
-
-                getDriverOfferCard(item) {
-                    const seatsLeft = item.seats_left;
-                    const seatsText = seatsLeft === 1 ? '1 место' : (seatsLeft > 1 && seatsLeft < 5 ? `${seatsLeft} места` : `${seatsLeft} мест`);
-
-                    let buttonHtml;
-                    if (item.currentUserBookingId) {
-                        buttonHtml = `<button class="cancel-booking-btn btn w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition-colors text-sm" data-booking-id="${item.currentUserBookingId}">Отменить бронь</button>`;
-                    } else {
-                        const buttonClass = seatsLeft <= 0 ? 'bg-slate-300' : 'bg-blue-500 hover:bg-blue-600';
-                        const buttonText = seatsLeft <= 0 ? 'Мест нет' : 'Забронировать';
-                        if (item.via_cheboksary_detour) {
-                            const offerData = encodeURIComponent(JSON.stringify(item));
-                            buttonHtml = `<button class="detour-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm ${buttonClass}" data-offer='${offerData}' ${seatsLeft <= 0 ? 'disabled' : ''}>${buttonText}</button>`;
-                        } else {
-                            buttonHtml = `<button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg transition-colors text-sm ${buttonClass}" data-offer-id="${item.id}" ${seatsLeft <= 0 ? 'disabled' : ''}>${buttonText}</button>`;
-                        }
-                    }
-
-                    const routeInfo = [
-                        item.via_ferry ? `<div class="text-xs font-semibold text-blue-800 bg-blue-100 rounded-full px-3 py-1 text-center">⛴️ Через паром</div>` : '',
-                        item.via_cheboksary_detour ? `<div class="text-xs font-semibold text-orange-800 bg-orange-100 rounded-full px-3 py-1 text-center"> detour via Cheboksary</div>` : '',
-                        item.via_cheboksary ? `<div class="text-xs font-semibold text-green-800 bg-green-100 rounded-full px-3 py-1 text-center">До/Из Чебоксар</div>` : ''
-                    ].filter(Boolean).join('');
-
-                    return `<div class="flex justify-between items-center"><div class="font-bold text-base">${item.from} → ${item.to}</div><div class="text-base font-semibold">${item.price} ₽</div></div><div class="text-slate-600 text-sm"><p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)} в <strong>${item.ride_time}</strong></p><p><strong>Водитель:</strong> ${item.driver_name} на ${item.driver_car}</p><p><strong>Свободно:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsText}</span></p></div>${routeInfo}${buttonHtml}`;
-                },
-
-                getPassengerRequestCard(item) {
-                    const isParcel = item.type === 'parcel';
-                    const buttonHtml = isParcel ? `<a href="https://t.me/${item.sender_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors text-sm">Связаться</a>` : `<button class="offer-ride-btn btn w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors text-sm" data-request-id="${item.id}">Предложить поездку</button>`;
-
-                    return `<div class="flex justify-between items-center"><div class="font-bold text-base">${item.from} → ${item.to}</div><div class="text-base font-semibold">${item.price} ₽</div></div><div class="text-slate-600 text-sm"><p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)}</p><p><strong>${isParcel ? 'Отправитель' : 'Пассажир'}:</strong> ${isParcel ? item.sender_name : item.passenger_name}</p>${!isParcel ? `<p><strong>Время:</strong> ${item.time_interval}</p>` : ''}</div><div class="flex items-center gap-2">${isParcel ? `<div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div>` : `<div class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Пассажир</div>`}</div>${App.state.userRole === 'driver' ? buttonHtml : ''}`;
-                },
-
-                getMyDriverOfferCard(offer) {
-                    const confirmedBookings = offer.bookings.filter(b => b.status === 'confirmed');
-                    const pendingBookings = offer.bookings.filter(b => b.status === 'pending');
-                    const seatsLeft = offer.seats - confirmedBookings.length;
-
-                    let bookingsHtml = '<div class="text-xs text-slate-500">Пока нет пассажиров.</div>';
-                    if (offer.bookings.length > 0) {
-                        bookingsHtml = `
-                        ${pendingBookings.length ? `<h4 class="font-semibold mt-2 text-sm">Заявки на бронирование:</h4><div class="space-y-2">${pendingBookings.map(b => `<div class="flex justify-between items-center bg-amber-50 p-2 rounded-lg"><span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span><div class="flex gap-2"><button class="accept-booking-btn bg-green-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Принять</button><button class="reject-booking-btn bg-red-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Отклонить</button></div></div>`).join('')}</div>` : ''}
-                        ${confirmedBookings.length ? `<h4 class="font-semibold mt-2 text-sm">Подтвержденные пассажиры:</h4><div class="space-y-2">${confirmedBookings.map(b => `<div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg"><span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span>${b.profiles?.username ? `<a href="https://t.me/${b.profiles.username}" target="_blank" class="text-xs bg-blue-500 text-white font-semibold py-1 px-2 rounded-md hover:bg-blue-600">Написать</a>` : ''}</div>`).join('')}</div>` : ''}
-                    `;
-                    }
-
-                    return `<div class="flex justify-between items-center"><div><div class="font-bold text-base">${offer.from} → ${offer.to}</div><div class="text-xs text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div></div><div class="text-base font-semibold">${offer.price} ₽</div></div><div class="text-slate-600 text-sm"><p><strong>Свободно мест:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsLeft} из ${offer.seats}</span></p></div><div class="border-t border-slate-100 pt-2 mt-2">${bookingsHtml}</div><button class="delete-offer-btn btn w-full bg-red-50 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 transition-colors mt-2 text-sm" data-offer-id="${offer.id}">Удалить поездку</button>`;
-                },
-
-                getMyBookingCard(booking) {
-                    const offer = booking.ride_offers;
-                    if (!offer) return `<div class="text-red-500 text-sm">Ошибка: данные о поездке не найдены.</div>`;
-
-                    const statusInfo = {
-                        pending: {
-                            class: 'bg-amber-100 text-amber-800',
-                            text: 'Ожидает подтверждения'
-                        },
-                        confirmed: {
-                            class: 'bg-green-100 text-green-800',
-                            text: 'Водитель подтвердил'
-                        },
-                        rejected: {
-                            class: 'bg-red-100 text-red-800',
-                            text: 'Водитель отклонил'
-                        }
-                    };
-
-                    let currentStatus = statusInfo[booking.status];
-                    let actionButtons = `<div class="flex items-center gap-3">${booking.status === 'confirmed' && offer.driver_username ? `<a href="https://t.me/${offer.driver_username}" target="_blank" class="text-xs text-blue-600 hover:underline font-semibold">Написать водителю</a>` : ''}${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-xs text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}</div>`;
-
-                    if (booking.status === 'pending' && offer.linked_request_id) {
-                        currentStatus.text = 'Ожидает вашего решения';
-                        actionButtons = `<div class="flex items-center gap-3"><button class="reject-booking-btn text-xs bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Отклонить</button><button class="accept-booking-btn text-xs bg-green-100 text-green-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Принять</button></div>`;
-                    }
-
-                    return `<div class="flex justify-between items-start"><div><div class="font-bold text-base">${booking.from_city} → ${booking.to_city}</div><div class="text-xs text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div><div class="text-xs text-slate-500">Водитель: ${offer.driver_name} (${offer.driver_car})</div></div><div class="text-base font-semibold">${booking.price} ₽</div></div><div class="flex justify-between items-center mt-2"><span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${currentStatus.class}">${currentStatus.text}</span>${actionButtons}</div>`;
-                },
-
-                getMyRequestCard(request) {
-                    if (request.status === 'pending_confirmation') {
-                        return `<div class="flex justify-between items-start opacity-60"><div><div class="font-bold text-base">${request.from} → ${request.to}</div><div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div></div><div class="text-base font-semibold">${request.price} ₽</div></div><div class="text-center text-sm text-amber-700 font-semibold bg-amber-50 p-2 rounded-lg mt-2">Ожидает вашего подтверждения в "Моих бронированиях"</div>`;
-                    }
-                    return `<div class="flex justify-between items-start"><div><div class="font-bold text-base">${request.from} → ${request.to}</div><div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div></div><div class="text-base font-semibold">${request.price} ₽</div></div><div class="flex justify-end items-center mt-2"><button class="cancel-request-btn text-xs text-red-600 hover:underline" data-request-id="${request.id}">Отменить заявку</button></div>`;
-                },
-
-                getMyParcelRequestCard(parcel) {
-                    return `<div class="flex justify-between items-start"><div><div class="font-bold text-base">${parcel.from} → ${parcel.to}</div><div class="text-xs text-slate-500">${App.utils.formatDate(parcel.ride_date)}</div></div><div class="text-base font-semibold">${parcel.price} ₽</div></div><div class="flex justify-between items-center mt-2"><div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div><button class="cancel-parcel-request-btn text-xs text-red-600 hover:underline" data-request-id="${parcel.id}">Отменить заявку</button></div>`;
-                },
-
-                getFormTemplate(title, formId, fieldsHtml, buttonHtml) {
-                    const optionsHtml = App.config.cities.map(city => `<option value="${city}">${city}</option>`).join('');
-                    const directionHtml = `<div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Откуда</label><select name="from-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option>${optionsHtml}</select></div><div><label class="block text-xs font-medium text-slate-600 mb-2">Куда</label><select name="to-select" class="w-full p-3 border border-slate-200 rounded-lg text-sm bg-white" required><option value="" disabled selected>Выберите город</option>${optionsHtml}</select></div></div><input type="hidden" name="from" required><input type="hidden" name="to" required><div class="form-error-direction text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите маршрут</div>`;
-                    return `<div class="p-5"><h2 class="text-lg font-bold mb-4">${title}</h2><form id="${formId}" class="space-y-4">${directionHtml}${fieldsHtml}${buttonHtml}</form></div>`;
-                },
-
-                getOfferFormTemplate() {
-                    const fields = `<div id="ferry-toggle-container" class="hidden p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-ferry-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Через паром</label><div class="flex items-center space-x-3"><span id="ferry-price-increase" class="text-sm text-slate-800 font-semibold hidden">(+${App.config.prices.ferrySurcharge} ₽)</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-ferry-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div></label></div></div><div id="cheboksary-detour-container" class="hidden p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between"><label for="via-cheboksary-detour-toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Заезжаю в Чебоксары</label><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="via-cheboksary-detour-toggle" class="sr-only peer"><div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div></label></div><div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-medium text-slate-600 mb-2">Дата</label><input type="date" name="date" id="date-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div><div><label class="block text-xs font-medium text-slate-600 mb-2">Время</label><input type="time" name="time" id="time-offer" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div></div><input type="hidden" name="driverName" id="driver-name"><input type="hidden" name="driverCar" id="driver-car"><div><label class="block text-xs font-medium text-slate-600 mb-2">Количество мест</label><input type="number" name="seats" min="1" max="8" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Например: 3" required></div>`;
-                    const button = `<button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Опубликовать (<span id="publish-price">${App.config.prices.base}</span> ₽)</button>`;
-                    return this.getFormTemplate('Данные о поездке', 'offer-form', fields, button);
-                },
-
-                getPassengerRequestFormTemplate() {
-                    const timeButtons = ['04-06', '06-08', '08-10', '10-12', '12-14', '14-16', '16-18', '18-20'].map(t => `<button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">${t}</button>`).join('');
-                    const fields = `<input type="date" name="date" id="date-request" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required><div><label class="block text-xs font-medium text-slate-600 mb-2">Желаемое время выезда</label><div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2">${timeButtons}</div><input type="hidden" name="timeInterval" id="timeIntervalInput" required><div class="form-error-time text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите время</div></div>`;
-                    const button = `<button type="submit" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700">Оставить заявку</button>`;
-                    return this.getFormTemplate('Ваша заявка', 'passenger-request-form', fields, button);
-                },
-
-                getParcelRequestFormTemplate() {
-                    const fields = `<div><label for="date-parcel" class="block text-xs font-medium text-slate-600 mb-2">Дата отправки</label><input type="date" name="date" id="date-parcel" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></div><div class="bg-slate-100 p-3 rounded-lg text-center text-slate-600 text-sm">Стоимость отправки: <span class="font-bold">${App.config.prices.parcel} ₽</span></div>`;
-                    const button = `<button type="submit" class="text-sm btn w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">Создать заявку на посылку</button>`;
-                    return this.getFormTemplate('Отправить посылку', 'parcel-request-form', fields, button);
-                },
-
-                getProfileFormTemplate() {
-                    return `<div class="p-5"><h2 class="text-lg font-bold mb-4">Мой профиль</h2><p class="text-xs text-slate-600 mb-4">Здесь вы можете изменить ваше имя. Если вы планируете быть водителем, пожалуйста, укажите данные вашего автомобиля.</p><form id="profile-form" class="space-y-4"><div><label for="profile-name" class="block text-xs font-medium text-slate-600 mb-2">Ваше имя</label><input type="text" name="fullName" id="profile-name" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Алексей" required></div><div><label for="profile-car" class="block text-xs font-medium text-slate-600 mb-2">Марка и модель машины (для водителей)</label><input type="text" name="driverCar" id="profile-car" class="w-full p-3 border border-slate-200 rounded-lg text-sm" placeholder="Kia Rio"></div><button type="submit" class="text-sm btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button></form></div>`;
-                },
-            },
-
-            utils: {
-                formatDate(dateString) {
-                    const date = new Date(dateString + 'T00:00:00');
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    const tomorrow = new Date(today);
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-
-                    if (date.getTime() === today.getTime()) return 'Сегодня';
-                    if (date.getTime() === tomorrow.getTime()) return 'Завтра';
-                    return date.toLocaleDateString('ru-RU', {
-                        day: 'numeric',
-                        month: 'long'
-                    });
-                },
-
-                async sendTelegramNotification(chatId, text) {
-                    if (!App.config.botToken) return console.warn('Telegram Bot Token not configured.');
-
-                    const url = `https://api.telegram.org/bot${App.config.botToken}/sendMessage`;
-                    const payload = {
-                        chat_id: chatId,
-                        text: text,
-                        parse_mode: 'Markdown',
-                        reply_markup: {
-                            inline_keyboard: [
-                                [{
-                                    text: 'Открыть приложение',
-                                    url: 'https://t.me/poputka12_bot?startapp='
-                                }]
-                            ]
-                        }
-                    };
-
-                    try {
-                        const response = await fetch(url, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(payload),
-                        });
-                        if (!response.ok) console.error("Telegram API error:", await response.json());
-                    } catch (error) {
-                        console.error("Failed to send Telegram message:", error);
-                    }
-                }
-            },
-
-            setDefaultDates() {
                 const today = new Date().toISOString().split('T')[0];
-                ['date-offer', 'date-request', 'date-parcel'].forEach(id => {
-                    const input = document.getElementById(id);
-                    if (input) {
-                        input.min = today;
-                        input.value = today;
+                document.getElementById('filter-date').setAttribute('min', today);
+
+                const { data: rides, error: ridesError } = await supabaseClient.from('ride_requests').select('*').gte('ride_date', today).eq('status', 'open').order('ride_date', { ascending: true });
+                const { data: parcels, error: parcelsError } = await supabaseClient.from('parcel_requests').select('*').gte('ride_date', today).order('ride_date', { ascending: true });
+
+                if (ridesError || parcelsError) { console.error(ridesError || parcelsError); App.render.list([], 'passengerRequest'); return; }
+
+                const allRequests = [
+                    ...(rides || []).map(r => ({ ...r, type: 'ride' })),
+                    ...(parcels || []).map(p => ({ ...p, type: 'parcel' }))
+                ];
+                allRequests.sort((a, b) => new Date(a.ride_date) - new Date(b.ride_date));
+                state.allRequests = allRequests;
+                this.onResetFilters();
+            },
+            onFilterTypeSelect(button) {
+                button.parentElement.querySelectorAll('.filter-type-btn').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+            },
+            onApplyFilters() {
+                state.currentFilters = {
+                    from: document.getElementById('filter-from').value,
+                    to: document.getElementById('filter-to').value,
+                    date: document.getElementById('filter-date').value,
+                    type: document.querySelector('#filter-type-buttons .active').dataset.type
+                };
+                App.render.renderFilteredList();
+            },
+            onResetFilters() {
+                state.currentFilters = { from: '', to: '', date: '', type: 'all' };
+                document.getElementById('filter-from').value = '';
+                document.getElementById('filter-to').value = '';
+                document.getElementById('filter-date').value = '';
+                document.querySelectorAll('#filter-type-buttons .filter-type-btn').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.type === 'all');
+                });
+                App.render.renderFilteredList();
+            },
+            async onMyTripsClick() {
+                App.navigation.to('my-trips-screen');
+                document.getElementById('my-trips-container').innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
+                const today = new Date().toISOString().split('T')[0];
+
+                if (state.userRole === 'driver') {
+                    const { data, error } = await supabaseClient.from('ride_offers').select(`*, bookings(*, profiles(full_name, username))`).eq('driver_id', state.currentUser.id).gte('ride_date', today).order('ride_date', { ascending: true });
+                    if (error) { console.error(error); return; }
+                    App.render.myTrips(data, 'driver');
+                } else {
+                    const [bookingsRes, requestsRes, parcelsRes] = await Promise.all([
+                        supabaseClient.from('bookings').select(`*, ride_offers(*)`).eq('passenger_id', state.currentUser.id).gte('ride_offers.ride_date', today).order('created_at', { ascending: false }),
+                        supabaseClient.from('ride_requests').select(`*`).eq('passenger_id', state.currentUser.id).in('status', ['open', 'pending_confirmation']).gte('ride_date', today).order('created_at', { ascending: false }),
+                        supabaseClient.from('parcel_requests').select(`*`).eq('sender_id', state.currentUser.id).gte('ride_date', today).order('created_at', { ascending: false })
+                    ]);
+                    if (bookingsRes.error || requestsRes.error || parcelsRes.error) { console.error(bookingsRes.error || requestsRes.error || parcelsRes.error); return; }
+                    App.render.myTrips({ bookings: bookingsRes.data, requests: requestsRes.data, parcels: parcelsRes.data }, 'passenger');
+                }
+            },
+            async onOfferSubmit(form) {
+                const formData = new FormData(form);
+                const from = formData.get('from');
+                const to = formData.get('to');
+                if (!from || !to) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; }
+
+                const viaFerry = form.querySelector('#via-ferry-toggle').checked;
+                const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
+                let finalPrice = isCheboksaryRoute ? config.prices.cheboksary : (viaFerry ? config.prices.base + config.prices.ferrySurcharge : config.prices.base);
+
+                const { error } = await supabaseClient.from('ride_offers').insert({
+                    driver_id: state.currentUser.id, driver_username: state.currentUser.username,
+                    from, to, ride_date: formData.get('date'), ride_time: formData.get('time'),
+                    seats: parseInt(formData.get('seats')), price: finalPrice,
+                    driver_name: state.userProfile.full_name, driver_car: state.userProfile.driver_car,
+                    via_cheboksary: isCheboksaryRoute, via_ferry: !isCheboksaryRoute && viaFerry,
+                    via_cheboksary_detour: !isCheboksaryRoute && !viaFerry && form.querySelector('#via-cheboksary-detour-toggle').checked
+                });
+
+                if (error) { console.error(error); return; }
+                App.render.resetForm(form);
+                App.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет');
+            },
+            async onPassengerRequestSubmit(form) {
+                const formData = new FormData(form);
+                const from = formData.get('from');
+                const to = formData.get('to');
+                const timeInterval = formData.get('timeInterval');
+                
+                let isValid = true;
+                if (!from || !to) { form.querySelector('.form-error-direction').classList.remove('hidden'); isValid = false; }
+                if (!timeInterval) { form.querySelector('.form-error-time').classList.remove('hidden'); isValid = false; }
+                if (!isValid) return;
+
+                const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
+                const price = isCheboksaryRoute ? config.prices.cheboksary : config.prices.base;
+
+                const { error } = await supabaseClient.from('ride_requests').insert({
+                    passenger_id: state.currentUser.id, passenger_username: state.currentUser.username,
+                    from, to, ride_date: formData.get('date'), time_interval: timeInterval,
+                    passenger_name: state.userProfile.full_name, price, status: 'open'
+                });
+
+                if (error) { console.error(error); return; }
+                App.render.resetForm(form);
+                App.render.success('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично');
+            },
+             async onParcelRequestSubmit(form) {
+                const formData = new FormData(form);
+                const from = formData.get('from');
+                const to = formData.get('to');
+                if (!from || !to) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; }
+                
+                const { error } = await supabaseClient.from('parcel_requests').insert({
+                    sender_id: state.currentUser.id, sender_username: state.currentUser.username,
+                    from, to, ride_date: formData.get('date'),
+                    sender_name: state.userProfile.full_name, price: config.prices.parcel
+                });
+                
+                if (error) { console.error(error); return; }
+                App.render.resetForm(form);
+                App.render.success('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично');
+            },
+            async onProfileSubmit(form) {
+                const formData = new FormData(form);
+                const fullName = formData.get('fullName').trim();
+                if (!fullName) { return; }
+
+                const { data, error } = await supabaseClient.from('profiles')
+                    .update({ full_name: fullName, driver_car: formData.get('driverCar').trim() })
+                    .eq('id', state.currentUser.id).select().single();
+
+                if (error) { console.error('Ошибка сохранения профиля:', error); return; }
+                state.userProfile = data;
+                App.navigation.back();
+            },
+             async onRequestBooking(offerId, bookingDetails = null) {
+                const { data: existingBooking } = await supabaseClient.from('bookings').select('id').eq('offer_id', offerId).eq('passenger_id', state.currentUser.id).limit(1);
+                if (existingBooking?.length > 0) { console.warn('Бронь уже существует'); return; }
+
+                const { data: offer, error: offerError } = await supabaseClient.from('ride_offers').select('*').eq('id', offerId).single();
+                if(offerError || !offer) { console.error("Предложение не найдено"); return; }
+                
+                const bookingData = {
+                    offer_id: offerId,
+                    passenger_id: state.currentUser.id, status: 'pending',
+                    booking_segment: bookingDetails ? bookingDetails.segment : 'full',
+                    price: bookingDetails ? bookingDetails.price : offer.price,
+                    from_city: bookingDetails ? bookingDetails.from : offer.from,
+                    to_city: bookingDetails ? bookingDetails.to : offer.to,
+                };
+                
+                const { error: insertError } = await supabaseClient.from('bookings').insert(bookingData);
+                if (insertError) { console.error('Ошибка бронирования:', insertError); return; }
+                
+                const message = `*Новое бронирование!* 🚗\n\nПассажир *${state.userProfile.full_name || 'Новый пассажир'}* хочет забронировать место:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${App.utils.formatDate(offer.ride_date)}\n\nЗайдите в "Мои поездки", чтобы *принять* или *отклонить* заявку.`;
+                App.utils.sendTelegramNotification(offer.driver_id, message);
+
+                App.render.success('Заявка отправлена', 'Водитель рассмотрит вашу заявку. Статус можно отслеживать в "Моих поездках".', 'Отлично');
+            },
+             onDetourBookingClick(offerData) {
+                const offer = JSON.parse(decodeURIComponent(offerData));
+                App.render.bookingOptionsModal(offer);
+            },
+            onConfirmBookingSegment(dataset) {
+                this.onBookingModalCancel();
+                const bookingDetails = {
+                    segment: dataset.segment, price: parseInt(dataset.price),
+                    from: dataset.from, to: dataset.to,
+                };
+                this.onRequestBooking(dataset.offerId, bookingDetails);
+            },
+            onBookingModalCancel() {
+                const overlay = document.getElementById('booking-modal-overlay');
+                const modal = document.getElementById('booking-modal');
+                overlay.classList.remove('show');
+                modal.classList.remove('show');
+                setTimeout(() => { overlay.classList.add('hidden'); }, 300);
+            },
+            async onUpdateBookingStatus(bookingId, status) {
+                const { data: booking, error: bookingFetchError } = await supabaseClient.from('bookings').select('*, ride_offers(*)').eq('id', bookingId).single();
+                if (bookingFetchError || !booking) { console.error('Бронь не найдена:', bookingFetchError); return; }
+
+                const offer = booking.ride_offers;
+                const isPassengerAction = state.currentUser.id === booking.passenger_id;
+                const isLinkedToRequest = offer && offer.linked_request_id;
+
+                if (isPassengerAction && isLinkedToRequest) { // Пассажир отвечает на предложение водителя
+                    if (status === 'rejected') {
+                        await Promise.all([
+                            supabaseClient.from('ride_requests').update({ status: 'open' }).eq('id', offer.linked_request_id),
+                            supabaseClient.from('bookings').delete().eq('id', bookingId),
+                            supabaseClient.from('ride_offers').delete().eq('id', offer.id)
+                        ]);
+                        App.utils.sendTelegramNotification(offer.driver_id, `Пассажир отклонил ваше предложение (${offer.from} → ${offer.to}).`);
+                    } else if (status === 'confirmed') {
+                        await Promise.all([
+                            supabaseClient.from('bookings').update({ status: 'confirmed' }).eq('id', bookingId),
+                            supabaseClient.from('ride_requests').update({ status: 'closed' }).eq('id', offer.linked_request_id)
+                        ]);
+                        App.utils.sendTelegramNotification(offer.driver_id, `Пассажир принял ваше предложение (${offer.from} → ${offer.to})!`);
                     }
+                } else { // Стандартное действие водителя
+                    await supabaseClient.from('bookings').update({ status }).eq('id', bookingId);
+                    let message = '';
+                    if (status === 'confirmed') {
+                        message = `*Бронь подтверждена!* ✅\n\nВодитель *${offer.driver_name}* подтвердил вашу поездку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${App.utils.formatDate(offer.ride_date)} в *${offer.ride_time}*`;
+                    } else if (status === 'rejected') {
+                        message = `*Бронь отклонена* ❌\n\nВодитель отклонил вашу заявку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${App.utils.formatDate(offer.ride_date)}`;
+                    }
+                    if (message) App.utils.sendTelegramNotification(booking.passenger_id, message);
+                }
+                this.onMyTripsClick();
+            },
+             async onCancelBooking(bookingId) {
+                const { data: booking, error: bookingError } = await supabaseClient.from('bookings').select('*, ride_offers(driver_id, from, to, ride_date)').eq('id', bookingId).single();
+                if (bookingError || !booking) { console.error('Ошибка при отмене брони:', bookingError); return; }
+                
+                const { error } = await supabaseClient.from('bookings').delete().eq('id', bookingId);
+                if (error) { console.error('Не удалось отменить бронь'); return; }
+                
+                const offer = booking.ride_offers;
+                const message = `*Пассажир отменил бронь* 🧍‍♂️\n\n*${state.userProfile.full_name || 'Пассажир'}* отменил бронь на поездку:\n*Маршрут:* ${offer.from} → ${offer.to}\n*Дата:* ${App.utils.formatDate(offer.ride_date)}`;
+                App.utils.sendTelegramNotification(offer.driver_id, message);
+                
+                if (state.navigationHistory.at(-1) === 'list-screen') {
+                    this.onViewDriverOffers();
+                } else {
+                    this.onMyTripsClick();
+                }
+            },
+            async onDeleteOffer(offerId) {
+                const { data: bookings } = await supabaseClient.from('bookings').select('passenger_id, ride_offers(from, to, ride_date)').eq('offer_id', offerId);
+                if (bookings?.length > 0) {
+                    const offerDetails = bookings[0].ride_offers;
+                    const message = `*Поездка отменена водителем* ❌\n\nВодитель отменил поездку:\n*Маршрут:* ${offerDetails.from} → ${offerDetails.to}\n*Дата:* ${App.utils.formatDate(offerDetails.ride_date)}`;
+                    const notificationPromises = bookings.map(b => App.utils.sendTelegramNotification(b.passenger_id, message));
+                    await Promise.all(notificationPromises);
+                }
+
+                await supabaseClient.from('ride_offers').delete().eq('id', offerId);
+                this.onMyTripsClick();
+            },
+             async onCancelRequest(requestId) {
+                await supabaseClient.from('ride_requests').delete().eq('id', requestId);
+                this.onMyTripsClick();
+            },
+            async onCancelParcelRequest(requestId) {
+                await supabaseClient.from('parcel_requests').delete().eq('id', requestId);
+                this.onMyTripsClick();
+            },
+            onBackToHub() {
+                const screen = state.userRole === 'driver' ? 'driver-dashboard-screen' : 'passenger-home-screen';
+                state.navigationHistory = [screen];
+                App.navigation.to(screen);
+            },
+            async onOfferRideToRequest(requestId) {
+                if (!state.userProfile?.driver_car?.trim()) {
+                    App.navigation.to('profile-screen');
+                    return;
+                }
+
+                const { data: request, error: requestError } = await supabaseClient.from('ride_requests').select('*').eq('id', requestId).single();
+                if (requestError || !request) { console.error("Заявка не найдена:", requestError); return; }
+                
+                const timeForOffer = request.time_interval.split('-')[0] + ':00';
+
+                const { data: newOffer, error: offerError } = await supabaseClient.from('ride_offers').insert({
+                    driver_id: state.currentUser.id, driver_username: state.currentUser.username,
+                    driver_name: state.userProfile.full_name, driver_car: state.userProfile.driver_car,
+                    from: request.from, to: request.to, ride_date: request.ride_date,
+                    ride_time: timeForOffer, seats: 1, price: request.price,
+                    linked_request_id: requestId
+                }).select().single();
+                if (offerError) { console.error("Не удалось создать предложение:", offerError); return; }
+
+                await supabaseClient.from('bookings').insert({
+                    offer_id: newOffer.id, passenger_id: request.passenger_id,
+                    status: 'pending', price: newOffer.price,
+                    from_city: newOffer.from, to_city: newOffer.to
+                });
+
+                await supabaseClient.from('ride_requests').update({ status: 'pending_confirmation' }).eq('id', requestId);
+                
+                const message = `*Вам предложили поездку!* 🚗\n\nВодитель *${newOffer.driver_name}* (*${newOffer.driver_car}*) откликнулся на вашу заявку:\n*Маршрут:* ${newOffer.from} → ${newOffer.to}\n*Дата:* ${App.utils.formatDate(newOffer.ride_date)}\n\nПодтвердите или отклоните предложение в "Моих поездках".`;
+                App.utils.sendTelegramNotification(request.passenger_id, message);
+
+                const button = document.querySelector(`.offer-ride-btn[data-request-id="${requestId}"]`);
+                if (button) {
+                    button.textContent = 'Предложение отправлено';
+                    button.disabled = true;
+                    button.classList.remove('bg-green-500', 'hover:bg-green-600');
+                    button.classList.add('bg-slate-400', 'cursor-not-allowed');
+                }
+            }
+        };
+
+        App.navigation = {
+            to(screenId) {
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(screenId).classList.add('active');
+                if (state.navigationHistory.at(-1) !== screenId) {
+                    state.navigationHistory.push(screenId);
+                }
+                document.getElementById('backButton').classList.toggle('invisible', state.navigationHistory.length <= 1);
+                
+                if (screenId === 'offer-screen') App.render.populateOfferForm();
+                if (screenId === 'profile-screen') App.render.populateProfileForm();
+                
+                document.getElementById('main-content').scrollTop = 0;
+            },
+            back() {
+                if (state.navigationHistory.length <= 1) return;
+                state.navigationHistory.pop();
+                const lastScreen = state.navigationHistory.at(-1);
+                document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                document.getElementById(lastScreen).classList.add('active');
+                document.getElementById('backButton').classList.toggle('invisible', state.navigationHistory.length <= 1);
+            }
+        };
+
+        App.render = {
+            allScreens() {
+                const screenIds = ['passenger-home-screen', 'driver-dashboard-screen', 'list-screen', 'success-screen', 'my-trips-screen', 'profile-screen', 'offer-screen', 'passenger-request-screen', 'parcel-request-screen'];
+                screenIds.forEach(id => {
+                    const template = document.getElementById(`${id}-template`);
+                    const screen = document.getElementById(id);
+                    if (template && screen) screen.innerHTML = template.innerHTML;
+                });
+                this.setDefaultDates();
+                this.populateSelects();
+
+                const offerPriceSpan = document.querySelector('#offer-form #publish-price');
+                if (offerPriceSpan) offerPriceSpan.textContent = config.prices.base;
+                const parcelPriceSpan = document.querySelector('#parcel-request-form #parcel-price-info span');
+                if(parcelPriceSpan) parcelPriceSpan.textContent = config.prices.parcel;
+            },
+            updateRoleSwitcherUI() {
+                const switcher = document.getElementById('role-switcher');
+                switcher.classList.toggle('driver', state.userRole === 'driver');
+                switcher.classList.toggle('passenger', state.userRole === 'passenger');
+            },
+            updateAvatar() {
+                const avatarBtn = document.getElementById('profile-avatar-btn');
+                if (!avatarBtn || !state.currentUser) return;
+                if (state.currentUser.photo_url) {
+                    avatarBtn.innerHTML = `<img src="${state.currentUser.photo_url}" alt="Avatar">`;
+                } else {
+                    const initial = state.currentUser.first_name ? state.currentUser.first_name.charAt(0).toUpperCase() : '?';
+                    avatarBtn.innerHTML = `<span>${initial}</span>`;
+                }
+            },
+            list(items, type, isLoading = false) {
+                const container = document.getElementById('list-container');
+                const noResults = document.getElementById('no-results');
+                container.innerHTML = '';
+
+                if (isLoading) {
+                    container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
+                    noResults.classList.add('hidden');
+                    return;
+                }
+                
+                if (!items || items.length === 0) {
+                    noResults.classList.remove('hidden');
+                    document.getElementById('no-results-title').textContent = type === 'driverOffer' ? 'Поездок не найдено' : 'Заявок не найдено';
+                    document.getElementById('no-results-text').textContent = type === 'driverOffer' ? 'Попробуйте зайти позже или оставьте свою заявку.' : 'По вашим фильтрам ничего не найдено.';
+                    return;
+                }
+
+                noResults.classList.add('hidden');
+                const cardHtml = items.map(item => {
+                    const cardContent = type === 'driverOffer' ? this.getDriverOfferCard(item) : this.getPassengerRequestCard(item);
+                    return `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${cardContent}</div>`;
+                }).join('');
+                container.innerHTML = cardHtml;
+            },
+            myTrips(data, role) {
+                const container = document.getElementById('my-trips-container');
+                container.innerHTML = '';
+                
+                if (role === 'driver') {
+                    if (!data || data.length === 0) {
+                        container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активных поездок</h3><p class="text-xs">Опубликуйте поездку, чтобы она здесь появилась.</p></div>`;
+                        return;
+                    }
+                    container.innerHTML = data.map(offer => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyDriverOfferCard(offer)}</div>`).join('');
+                } else { // Passenger
+                    const { bookings, requests, parcels } = data;
+                    if (!bookings?.length && !requests?.length && !parcels?.length) {
+                        container.innerHTML = `<div class="text-center text-slate-500 py-10"><h3 class="text-base font-semibold">У вас нет активностей</h3><p class="text-xs">Забронируйте поездку или оставьте заявку.</p></div>`;
+                        return;
+                    }
+                    let content = '';
+                    if (bookings?.length) {
+                        content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-2">Мои бронирования</h3>` + bookings.map(b => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyBookingCard(b)}</div>`).join('');
+                    }
+                    if (requests?.length) {
+                        content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои заявки на поездки</h3>` + requests.map(r => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyRequestCard(r)}</div>`).join('');
+                    }
+                    if (parcels?.length) {
+                         content += `<h3 class="text-base font-bold text-slate-800 px-1 pt-4">Мои посылки</h3>` + parcels.map(p => `<div class="bg-white border border-slate-200 rounded-xl p-4 space-y-3">${this.getMyParcelRequestCard(p)}</div>`).join('');
+                    }
+                    container.innerHTML = content;
+                }
+            },
+            success(title, text, buttonText) {
+                document.getElementById('success-title').textContent = title;
+                document.getElementById('success-text').textContent = text;
+                document.getElementById('back-to-hub-btn').textContent = buttonText;
+                App.navigation.to('success-screen');
+            },
+            populateOfferForm() {
+                const form = document.getElementById('offer-form');
+                if(form && state.userProfile) {
+                    form.querySelector('#driver-name').value = state.userProfile.full_name || '';
+                    form.querySelector('#driver-car').value = state.userProfile.driver_car || '';
+                }
+            },
+            populateProfileForm() {
+                const form = document.getElementById('profile-form');
+                 if(form && state.userProfile) {
+                    form.querySelector('#profile-name').value = state.userProfile.full_name || state.currentUser.first_name || '';
+                    form.querySelector('#profile-car').value = state.userProfile.driver_car || '';
+                 }
+            },
+            updateOfferOptionsUI(form) {
+                const from = form.querySelector('input[name="from"]').value;
+                const to = form.querySelector('input[name="to"]').value;
+                const isFerryChecked = form.querySelector('#via-ferry-toggle')?.checked;
+                const isCheboksaryRoute = from === 'Чебоксары' || to === 'Чебоксары';
+                
+                let price = isCheboksaryRoute ? config.prices.cheboksary : (isFerryChecked ? config.prices.base + config.prices.ferrySurcharge : config.prices.base);
+                
+                const priceIncreaseSpan = form.querySelector('#ferry-price-increase');
+                if(priceIncreaseSpan) {
+                    priceIncreaseSpan.textContent = `(+${config.prices.ferrySurcharge} ₽)`;
+                    priceIncreaseSpan.classList.toggle('hidden', !isFerryChecked || isCheboksaryRoute);
+                }
+                form.querySelector('#publish-price').textContent = price;
+            },
+            bookingOptionsModal(offer) {
+                const container = document.getElementById('booking-options-container');
+                const priceFull = config.prices.base;
+                const pricePart = config.prices.cheboksary;
+
+                container.innerHTML = `
+                    <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="full" data-price="${priceFull}" data-from="${offer.from}" data-to="${offer.to}">
+                        <span>${offer.from} → ${offer.to}</span><span class="font-semibold">${priceFull} ₽</span>
+                    </button>
+                    <div class="h-px bg-slate-200"></div>
+                    <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="start_to_cheb" data-price="${pricePart}" data-from="${offer.from}" data-to="Чебоксары">
+                        <span>${offer.from} → Чебоксары</span><span class="font-semibold">${pricePart} ₽</span>
+                    </button>
+                    <div class="h-px bg-slate-200"></div>
+                    <button class="confirm-booking-segment-btn w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-offer-id="${offer.id}" data-segment="cheb_to_end" data-price="${pricePart}" data-from="Чебоксары" data-to="${offer.to}">
+                        <span>Чебоксары → ${offer.to}</span><span class="font-semibold">${pricePart} ₽</span>
+                    </button>`;
+
+                const overlay = document.getElementById('booking-modal-overlay');
+                const modal = document.getElementById('booking-modal');
+                overlay.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    overlay.classList.add('show');
+                    modal.classList.add('show');
                 });
             },
+            getDriverOfferCard(item) {
+                const seatsLeft = item.seats_left;
+                const seatsText = seatsLeft === 1 ? '1 место' : (seatsLeft > 1 && seatsLeft < 5 ? `${seatsLeft} места` : `${seatsLeft} мест`);
+                
+                let buttonHtml = '';
+                if (item.currentUserBookingId) {
+                    buttonHtml = `<button class="cancel-booking-btn btn w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 text-sm" data-booking-id="${item.currentUserBookingId}">Отменить бронь</button>`;
+                } else {
+                    const buttonDisabled = seatsLeft <= 0 ? 'disabled' : '';
+                    const buttonClass = seatsLeft <= 0 ? 'bg-slate-300' : 'bg-blue-500 hover:bg-blue-600';
+                    const buttonText = seatsLeft <= 0 ? 'Мест нет' : 'Забронировать';
+                    if (item.via_cheboksary_detour) {
+                        const offerData = encodeURIComponent(JSON.stringify(item));
+                        buttonHtml = `<button class="detour-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg text-sm ${buttonClass}" data-offer='${offerData}' ${buttonDisabled}>${buttonText}</button>`;
+                    } else {
+                        buttonHtml = `<button class="request-booking-btn btn w-full text-white font-bold py-2 px-4 rounded-lg text-sm ${buttonClass}" data-offer-id="${item.id}" ${buttonDisabled}>${buttonText}</button>`;
+                    }
+                }
+                
+                return `
+                    <div class="flex justify-between items-center">
+                        <div class="font-bold text-base">${item.from} → ${item.to}</div>
+                        <div class="text-base font-semibold">${item.price} ₽</div>
+                    </div>
+                    <div class="text-slate-600 text-sm">
+                        <p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)} в <strong>${item.ride_time}</strong></p>
+                        <p><strong>Водитель:</strong> ${item.driver_name} на ${item.driver_car}</p>
+                        <p><strong>Свободно:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsText}</span></p>
+                    </div>
+                    ${item.via_ferry ? `<div class="text-xs font-semibold text-blue-800 bg-blue-100 rounded-full px-3 py-1 text-center">⛴️ Через паром</div>` : ''}
+                    ${item.via_cheboksary_detour ? `<div class="text-xs font-semibold text-orange-800 bg-orange-100 rounded-full px-3 py-1 text-center">Через Чебоксары</div>` : ''}
+                    ${item.via_cheboksary ? `<div class="text-xs font-semibold text-green-800 bg-green-100 rounded-full px-3 py-1 text-center">До/Из Чебоксар</div>` : ''}
+                    ${buttonHtml}`;
+            },
+            getPassengerRequestCard(item) {
+                const isParcel = item.type === 'parcel';
+                const buttonHtml = state.userRole !== 'driver' ? '' : (isParcel 
+                    ? `<a href="https://t.me/${item.sender_username}" target="_blank" class="block w-full text-center bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm">Связаться</a>`
+                    : `<button class="offer-ride-btn btn w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm" data-request-id="${item.id}">Предложить поездку</button>`);
 
+                return `
+                    <div class="flex justify-between items-center">
+                        <div class="font-bold text-base">${item.from} → ${item.to}</div>
+                        <div class="text-base font-semibold">${item.price} ₽</div>
+                    </div>
+                    <div class="text-slate-600 text-sm">
+                        <p><strong>Дата:</strong> ${App.utils.formatDate(item.ride_date)}</p>
+                        <p><strong>${isParcel ? 'Отправитель' : 'Пассажир'}:</strong> ${isParcel ? item.sender_name : item.passenger_name}</p>
+                        ${!isParcel ? `<p><strong>Время:</strong> ${item.time_interval}</p>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="${isParcel ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'} text-xs font-semibold px-2.5 py-0.5 rounded-full">${isParcel ? 'Посылка' : 'Пассажир'}</div>
+                    </div>
+                    ${buttonHtml}`;
+            },
+            getMyDriverOfferCard(offer) {
+                 const confirmedBookings = offer.bookings.filter(b => b.status === 'confirmed');
+                 const pendingBookings = offer.bookings.filter(b => b.status === 'pending');
+                 const seatsLeft = offer.seats - confirmedBookings.length;
+
+                 let bookingsHtml = '<div class="text-xs text-slate-500">Пока нет пассажиров.</div>';
+                 if (offer.bookings.length > 0) {
+                     bookingsHtml = `
+                        ${pendingBookings.length > 0 ? `
+                            <h4 class="font-semibold mt-2 text-sm">Заявки на бронирование:</h4>
+                            <div class="space-y-2">${pendingBookings.map(b => `
+                                <div class="flex justify-between items-center bg-amber-50 p-2 rounded-lg">
+                                    <span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span>
+                                    <div class="flex gap-2">
+                                        <button class="accept-booking-btn bg-green-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Принять</button>
+                                        <button class="reject-booking-btn bg-red-500 text-white text-xs font-bold py-1 px-2 rounded" data-booking-id="${b.id}">Отклонить</button>
+                                    </div>
+                                </div>`).join('')}
+                            </div>` : ''}
+                        ${confirmedBookings.length > 0 ? `
+                            <h4 class="font-semibold mt-2 text-sm">Подтвержденные пассажиры:</h4>
+                            <div class="space-y-2">${confirmedBookings.map(b => `
+                                <div class="flex justify-between items-center bg-slate-50 p-2 rounded-lg">
+                                    <span class="text-sm">${b.profiles?.full_name || 'Пассажир'}</span>
+                                    ${b.profiles?.username ? `<a href="https://t.me/${b.profiles.username}" target="_blank" class="text-xs bg-blue-500 text-white font-semibold py-1 px-2 rounded-md hover:bg-blue-600">Написать</a>` : ''}
+                                </div>`).join('')}
+                            </div>` : ''}`;
+                 }
+
+                 return `
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <div class="font-bold text-base">${offer.from} → ${offer.to}</div>
+                            <div class="text-xs text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
+                        </div>
+                        <div class="text-base font-semibold">${offer.price} ₽</div>
+                    </div>
+                    <div class="text-slate-600 text-sm">
+                        <p><strong>Свободно мест:</strong> <span class="font-bold ${seatsLeft <= 1 ? 'text-red-500' : 'text-green-600'}">${seatsLeft} из ${offer.seats}</span></p>
+                    </div>
+                    <div class="border-t border-slate-100 pt-2 mt-2">${bookingsHtml}</div>
+                    <button class="delete-offer-btn btn w-full bg-red-50 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-100 mt-2 text-sm" data-offer-id="${offer.id}">Удалить поездку</button>`;
+            },
+            getMyBookingCard(booking) {
+                const offer = booking.ride_offers;
+                if (!offer) return `<div class="text-red-500 text-sm">Ошибка: данные о поездке удалены водителем.</div>`;
+
+                const statuses = {
+                    pending: { text: 'Ожидает подтверждения', class: 'bg-amber-100 text-amber-800' },
+                    confirmed: { text: 'Водитель подтвердил', class: 'bg-green-100 text-green-800' },
+                    rejected: { text: 'Водитель отклонил', class: 'bg-red-100 text-red-800' },
+                };
+                let statusInfo = statuses[booking.status];
+                
+                let actionButtons = '';
+                if (booking.status === 'pending' && offer.linked_request_id) {
+                    statusInfo.text = 'Ожидает вашего решения';
+                    actionButtons = `<div class="flex items-center gap-3">
+                        <button class="reject-booking-btn text-xs bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Отклонить</button>
+                        <button class="accept-booking-btn text-xs bg-green-100 text-green-700 font-semibold py-1 px-3 rounded-lg" data-booking-id="${booking.id}">Принять</button>
+                    </div>`;
+                } else {
+                    actionButtons = `<div class="flex items-center gap-3">
+                        ${booking.status === 'confirmed' && offer.driver_username ? `<a href="https://t.me/${offer.driver_username}" target="_blank" class="text-xs text-blue-600 hover:underline font-semibold">Написать водителю</a>` : ''}
+                        ${booking.status !== 'rejected' ? `<button class="cancel-booking-btn text-xs text-red-600 hover:underline" data-booking-id="${booking.id}">Отменить</button>` : ''}
+                    </div>`;
+                }
+
+                return `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-bold text-base">${booking.from_city} → ${booking.to_city}</div>
+                            <div class="text-xs text-slate-500">${App.utils.formatDate(offer.ride_date)} в ${offer.ride_time}</div>
+                            <div class="text-xs text-slate-500">Водитель: ${offer.driver_name} (${offer.driver_car})</div>
+                        </div>
+                        <div class="text-base font-semibold">${booking.price} ₽</div>
+                    </div>
+                    <div class="flex justify-between items-center mt-2">
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${statusInfo.class}">${statusInfo.text}</span>
+                        ${actionButtons}
+                    </div>`;
+            },
+            getMyRequestCard(request) {
+                if (request.status === 'pending_confirmation') {
+                    return `
+                        <div class="flex justify-between items-start opacity-60">
+                            <div>
+                                <div class="font-bold text-base">${request.from} → ${request.to}</div>
+                                <div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div>
+                            </div>
+                            <div class="text-base font-semibold">${request.price} ₽</div>
+                        </div>
+                        <div class="text-center text-sm text-amber-700 font-semibold bg-amber-50 p-2 rounded-lg mt-2">Ожидает вашего подтверждения в "Моих бронированиях"</div>`;
+                }
+                return `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-bold text-base">${request.from} → ${request.to}</div>
+                            <div class="text-xs text-slate-500">${App.utils.formatDate(request.ride_date)} (время: ${request.time_interval})</div>
+                        </div>
+                        <div class="text-base font-semibold">${request.price} ₽</div>
+                    </div>
+                    <div class="flex justify-end items-center mt-2">
+                        <button class="cancel-request-btn text-xs text-red-600 hover:underline" data-request-id="${request.id}">Отменить заявку</button>
+                    </div>`;
+            },
+            getMyParcelRequestCard(parcel) {
+                return `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-bold text-base">${parcel.from} → ${parcel.to}</div>
+                            <div class="text-xs text-slate-500">${App.utils.formatDate(parcel.ride_date)}</div>
+                        </div>
+                        <div class="text-base font-semibold">${parcel.price} ₽</div>
+                    </div>
+                    <div class="flex justify-between items-center mt-2">
+                        <div class="bg-purple-100 text-purple-800 text-xs font-semibold px-2.5 py-0.5 rounded-full">Посылка</div>
+                        <button class="cancel-parcel-request-btn text-xs text-red-600 hover:underline" data-request-id="${parcel.id}">Отменить заявку</button>
+                    </div>`;
+            },
+            setDefaultDates() {
+                const today = new Date().toISOString().split('T')[0];
+                document.querySelectorAll('input[type="date"]').forEach(input => {
+                    input.setAttribute('min', today);
+                    input.value = today;
+                });
+            },
+            populateSelects() {
+                const optionsHtml = `<option value="">Любой</option>` + config.cities.map(city => `<option value="${city}">${city}</option>`).join('');
+                document.querySelectorAll('select[name="from"], select[name="to"]').forEach(select => {
+                    select.innerHTML = optionsHtml;
+                });
+                
+                const formOptionsHtml = `<option value="" disabled selected>Выберите город</option>` + config.cities.map(city => `<option value="${city}">${city}</option>`).join('');
+                 document.querySelectorAll('select[name="from-select"], select[name="to-select"]').forEach(select => {
+                    select.innerHTML = formOptionsHtml;
+                });
+            },
             resetForm(form) {
                 form.reset();
                 this.setDefaultDates();
@@ -1522,27 +1243,50 @@
                 form.querySelector('#ferry-toggle-container')?.classList.add('hidden');
                 form.querySelector('#cheboksary-detour-container')?.classList.add('hidden');
             },
-
             renderFilteredList() {
-                const {
-                    from,
-                    to,
-                    date,
-                    type
-                } = this.state.currentFilters;
-                let filtered = this.state.allRequests.filter(item =>
-                    (!from || item.from === from) &&
-                    (!to || item.to === to) &&
-                    (!date || item.ride_date === date) &&
-                    (type === 'all' || this.state.userRole !== 'driver' || item.type === type)
-                );
-                this.render.list(filtered, 'passengerRequest');
+                const { from, to, date, type } = state.currentFilters;
+                let filtered = [...state.allRequests];
+                if (from) filtered = filtered.filter(item => item.from === from);
+                if (to) filtered = filtered.filter(item => item.to === to);
+                if (date) filtered = filtered.filter(item => item.ride_date === date);
+                if (type !== 'all' && state.userRole === 'driver') {
+                    filtered = filtered.filter(item => item.type === type);
+                }
+                this.list(filtered, 'passengerRequest');
             },
         };
 
-        document.addEventListener('DOMContentLoaded', () => App.init());
+        App.utils = {
+            formatDate(dateString) {
+                const date = new Date(dateString + 'T00:00:00');
+                const today = new Date(); today.setHours(0,0,0,0);
+                const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1); tomorrow.setHours(0,0,0,0);
+                if (date.getTime() === today.getTime()) return 'Сегодня';
+                if (date.getTime() === tomorrow.getTime()) return 'Завтра';
+                return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+            },
+            async sendTelegramNotification(chatId, text) {
+                if (!config.botToken) { console.warn('Bot Token не настроен.'); return; }
+                const url = `https://api.telegram.org/bot${config.botToken}/sendMessage`;
+                const payload = {
+                    chat_id: chatId, text, parse_mode: 'Markdown',
+                    reply_markup: {
+                        inline_keyboard: [[{ text: 'Открыть приложение', url: 'https://t.me/poputka12_bot?startapp=' }]]
+                    }
+                };
+                try {
+                    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!response.ok) console.error("Telegram API error:", await response.json());
+                } catch (error) {
+                    console.error("Не удалось отправить сообщение Telegram:", error);
+                }
+            }
+        };
+
+        // Запускаем приложение
+        App.init();
+    });
     </script>
 </body>
-
 </html>
-
+```
