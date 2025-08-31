@@ -531,13 +531,17 @@
                     this.navigation.to('list-screen', 'Поездки водителей');
                     document.getElementById('filter-section-container').classList.add('hidden');
 
+                    // FIX: Replaced query to 'ride_offers_with_seats' view with manual calculation to avoid permission errors.
+                    const today = new Date().toISOString().split('T')[0];
+
+                    // 1. Fetch upcoming offers
                     const {
                         data: offers,
-                        error
-                    } = await supabaseClient.from('ride_offers_with_seats')
+                        error: offersError
+                    } = await supabaseClient
+                        .from('ride_offers')
                         .select('*')
-                        .gte('ride_date', new Date().toISOString().split('T')[0])
-                        .gt('seats_left', 0)
+                        .gte('ride_date', today)
                         .order('ride_date', {
                             ascending: true
                         })
@@ -545,30 +549,77 @@
                             ascending: true
                         });
 
-                    if (error) {
-                        console.error(error);
+                    if (offersError) {
+                        console.error("Error fetching offers:", offersError);
+                        this.render.list([], 'driverOffer'); // Render empty list on error
+                        return;
+                    }
+
+                    if (!offers || offers.length === 0) {
+                        this.render.list([], 'driverOffer');
+                        return;
+                    }
+
+                    const offerIds = offers.map(o => o.id);
+
+                    // 2. Fetch confirmed bookings for these offers
+                    const {
+                        data: bookings,
+                        error: bookingsError
+                    } = await supabaseClient
+                        .from('bookings')
+                        .select('offer_id')
+                        .in('offer_id', offerIds)
+                        .eq('status', 'confirmed');
+
+                    if (bookingsError) {
+                        console.error("Error fetching bookings:", bookingsError);
+                        // Proceeding without accurate seat count, but it's better than crashing.
+                    }
+
+                    // 3. Calculate remaining seats and filter out full rides
+                    const bookingCounts = bookings ? bookings.reduce((acc, booking) => {
+                        acc[booking.offer_id] = (acc[booking.offer_id] || 0) + 1;
+                        return acc;
+                    }, {}) : {};
+
+                    const offersWithSeats = offers
+                        .map(offer => ({
+                            ...offer,
+                            seats_left: offer.seats - (bookingCounts[offer.id] || 0)
+                        }))
+                        .filter(offer => offer.seats_left > 0);
+
+                    // 4. Check current user's bookings to show correct button state
+                    if (!this.state.currentUser) {
+                        // Render without checking user's booking status if user is not loaded yet
+                        this.render.list(offersWithSeats, 'driverOffer');
                         return;
                     }
 
                     const {
                         data: userBookings,
-                        error: bookingsError
-                    } = await supabaseClient.from('bookings')
+                        error: userBookingsError
+                    } = await supabaseClient
+                        .from('bookings')
                         .select('id, offer_id')
-                        .eq('passenger_id', this.state.currentUser.id);
+                        .eq('passenger_id', this.state.currentUser.id)
+                        .in('offer_id', offersWithSeats.map(o => o.id));
 
-                    if (bookingsError) {
-                        console.error("Error fetching user bookings:", bookingsError);
+                    if (userBookingsError) {
+                        console.error("Error fetching user bookings:", userBookingsError);
                     }
 
                     const userBookingsMap = new Map(userBookings?.map(b => [b.offer_id, b.id]) || []);
-                    const augmentedOffers = offers.map(offer => ({
+
+                    const augmentedOffers = offersWithSeats.map(offer => ({
                         ...offer,
                         currentUserBookingId: userBookingsMap.get(offer.id) || null
                     }));
 
                     this.render.list(augmentedOffers, 'driverOffer');
                 },
+
 
                 async onViewPassengerRequests() {
                     this.navigation.to('list-screen', 'Заявки от пассажиров');
@@ -648,6 +699,11 @@
                 },
 
                 async onMyTripsClick() {
+                    // FIX: Add a guard clause to prevent error if currentUser is not yet available.
+                    if (!this.state.currentUser) {
+                        console.error("User not initialized, cannot fetch trips.");
+                        return;
+                    }
                     this.navigation.to('my-trips-screen', 'Мои поездки');
                     const container = document.getElementById('my-trips-container');
                     container.innerHTML = `<div class="text-center p-8"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto"></div></div>`;
@@ -1489,3 +1545,4 @@
 </body>
 
 </html>
+
