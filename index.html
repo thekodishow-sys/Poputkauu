@@ -291,13 +291,6 @@
                 console.warn("Telegram WebApp script not found or running in browser.");
                 this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser' };
             }
-
-            // **FIX: Authenticate with Supabase anonymously**
-            const { data: { session }, error } = await supabaseClient.auth.signInAnonymously();
-            if (error) {
-                console.error('Error signing in anonymously:', error);
-                return; // Stop initialization if auth fails
-            }
             
             if (this.state.currentUser) {
                 await this.ensureUserProfile();
@@ -1309,7 +1302,7 @@
                 
                 const isAtRoot = App.state.navigationHistory.length <= 1;
                 document.getElementById('backButton').classList.toggle('invisible', isAtRoot);
-                if (App.state.currentUser.id === App.config.adminId) {
+                if (App.state.currentUser && App.state.currentUser.id === App.config.adminId) {
                     document.getElementById('add-banner-btn').classList.toggle('hidden', !isAtRoot);
                 }
                 
@@ -1328,7 +1321,7 @@
                 
                 const isAtRoot = App.state.navigationHistory.length <= 1;
                 document.getElementById('backButton').classList.toggle('invisible', isAtRoot);
-                if (App.state.currentUser.id === App.config.adminId) {
+                if (App.state.currentUser && App.state.currentUser.id === App.config.adminId) {
                     document.getElementById('add-banner-btn').classList.toggle('hidden', !isAtRoot);
                 }
             }
@@ -2240,3 +2233,4 @@
     </script>
 </body>
 </html>
+
