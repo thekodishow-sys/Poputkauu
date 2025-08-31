@@ -120,7 +120,16 @@
     </div>
 
     <!-- HTML TEMPLATES FOR SCREENS -->
+    <!-- FIX: This template now shows a loading spinner by default -->
     <template id="passenger-home-screen-template">
+        <div class="p-5 text-center">
+            <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-800 mx-auto mt-10"></div>
+            <p class="text-slate-500 mt-4">Загрузка профиля...</p>
+        </div>
+    </template>
+    
+    <!-- FIX: New template for the actual home screen content -->
+    <template id="passenger-home-content-template">
         <div class="p-5">
             <div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2></div>
             <div class="space-y-3">
@@ -131,6 +140,7 @@
             </div>
         </div>
     </template>
+
     <template id="driver-dashboard-screen-template">
         <div class="p-5">
             <div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Кабинет водителя</h2></div>
@@ -334,6 +344,9 @@
             async init() {
                 this.supabaseClient = createClient(this.config.supabaseUrl, this.config.supabaseAnonKey);
                 
+                // Render loading screen first
+                this.render.allScreens.call(this); 
+                
                 try {
                     Telegram.WebApp.ready();
                     Telegram.WebApp.expand();
@@ -344,8 +357,28 @@
                 }
                 
                 await this.ensureUserProfile();
+
+                // Now that profile is loaded (or failed), render the correct UI
+                if (this.state.userProfile) {
+                    const homeScreen = document.getElementById('passenger-home-screen');
+                    const homeTemplate = document.getElementById('passenger-home-content-template');
+                    if (homeScreen && homeTemplate) {
+                        homeScreen.innerHTML = homeTemplate.innerHTML;
+                    }
+                } else {
+                    const homeScreen = document.getElementById('passenger-home-screen');
+                    if (homeScreen) {
+                        homeScreen.innerHTML = `
+                            <div class="p-5 text-center">
+                                <h3 class="font-bold text-red-600">Ошибка загрузки профиля</h3>
+                                <p class="text-slate-500 mt-2 text-sm">Не удалось получить данные. Проверьте интернет-соединение и попробуйте снова.</p>
+                                <button id="retry-init-btn" class="mt-4 text-sm btn bg-slate-800 text-white font-bold py-2 px-4 rounded-lg">Повторить</button>
+                            </div>
+                        `;
+                    }
+                }
+
                 this.bindEvents();
-                this.render.allScreens.call(this); 
                 this.render.updateRoleSwitcherUI.call(this);
                 this.render.updateAvatar.call(this);
             },
@@ -384,6 +417,7 @@
                         'apply-filters-btn': this.handlers.onApplyFilters,
                         'reset-filters-btn': this.handlers.onResetFilters,
                         'filter-toggle-btn': this.handlers.onToggleFilter,
+                        'retry-init-btn': this.init, // Handler for the new retry button
                     };
 
                     if(handlers[button.id]) { handlers[button.id].call(this); return; }
@@ -551,7 +585,7 @@
                     this.render.success('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет');
                 },
                 async onPassengerRequestSubmit(form) {
-                    if (!this.state.userProfile) { alert("Профиль не загружен, попробуйте еще раз."); return; }
+                    // FIX: Removed redundant profile check
                     const formData = new FormData(form);
                     const from = formData.get('from'); const to = formData.get('to'); const timeInterval = formData.get('timeInterval');
                     if (!from || !to || !timeInterval) {
@@ -566,7 +600,7 @@
                     this.render.success.call(this, 'Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично');
                 },
                 async onParcelRequestSubmit(form) {
-                    if (!this.state.userProfile) { alert("Профиль не загружен, попробуйте еще раз."); return; }
+                    // FIX: Removed redundant profile check
                     const formData = new FormData(form);
                     const from = formData.get('from'); const to = formData.get('to');
                     if (!from || !to) { form.querySelector('.form-error-direction').classList.remove('hidden'); return; }
