@@ -948,6 +948,58 @@
                     button.classList.remove('bg-green-500', 'hover:bg-green-600');
                     button.classList.add('bg-slate-400', 'cursor-not-allowed');
                 },
+                // --- ADMIN HANDLERS ---
+                async onEditPartner(partnerId = null) {
+                    App.state.editingPartnerId = partnerId;
+                    App.navigation.to('admin-edit-partner-screen');
+                    if (partnerId) {
+                        const { data, error } = await App.api.getPartnerById(partnerId);
+                        if (error) {
+                            alert('Не удалось загрузить данные партнера.');
+                            return;
+                        }
+                        App.ui.renderAdminForm(data);
+                    } else {
+                        App.ui.renderAdminForm(); // Render empty form
+                    }
+                },
+                async onSavePartner(form) {
+                    const formData = new FormData(form);
+                    const partnerData = {
+                        id: App.state.editingPartnerId || undefined,
+                        title: formData.get('title'),
+                        description: formData.get('description'),
+                        link_url: formData.get('link_url'),
+                        is_active: form.querySelector('#is_active_toggle').checked,
+                        slides: []
+                    };
+
+                    form.querySelectorAll('.slide-input-group').forEach(group => {
+                        const image_url = group.querySelector('input[name="image_url"]').value;
+                        const caption = group.querySelector('input[name="caption"]').value;
+                        if (image_url) {
+                            partnerData.slides.push({ image_url, caption });
+                        }
+                    });
+
+                    const { error } = await App.api.upsertPartner(partnerData);
+                    if (error) {
+                        alert(`Не удалось сохранить партнера: ${error.message}`);
+                        return;
+                    }
+                    App.navigation.to('admin-panel-screen', true);
+                },
+                async onDeletePartner() {
+                    if (!App.state.editingPartnerId || !confirm('Вы уверены, что хотите удалить этого партнера?')) {
+                        return;
+                    }
+                    const { error } = await App.api.deletePartner(App.state.editingPartnerId);
+                    if (error) {
+                        alert(`Не удалось удалить партнера: ${error.message}`);
+                        return;
+                    }
+                     App.navigation.to('admin-panel-screen', true);
+                },
                 // --- UI RELATED HANDLERS ---
                 onApplyFilters() {
                     App.state.currentFilters = { from: document.getElementById('filter-from').value, to: document.getElementById('filter-to').value, date: document.getElementById('filter-date').value, type: document.querySelector('#filter-type-buttons .active').dataset.type };
@@ -1028,13 +1080,25 @@
                 },
                 back() {
                     if (App.state.navigationHistory.length <= 1) return;
+                    // Remove current screen from history
                     App.state.navigationHistory.pop();
-                    const lastScreen = App.state.navigationHistory.at(-1);
-                    // This is a bit of a hack to call `to` without re-adding to history
-                    const originalPush = App.state.navigationHistory.push;
-                    App.state.navigationHistory.push = () => {};
-                    this.to(lastScreen);
-                    App.state.navigationHistory.push = originalPush;
+                    // Get the new last screen
+                    const lastScreenId = App.state.navigationHistory.at(-1);
+
+                    // Manually switch screens without calling the full `to` method
+                    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+                    const screenElement = document.getElementById(lastScreenId);
+                    if (screenElement) screenElement.classList.add('active');
+
+                    // Manually update header buttons based on new state
+                    const isAdmin = App.state.currentUser.id === App.config.adminId;
+                    const backButtonVisible = App.state.navigationHistory.length > 1;
+                    App.dom.backButton.classList.toggle('invisible', !backButtonVisible);
+                    
+                    const adminButton = document.getElementById('admin-plus-btn');
+                    if (adminButton) {
+                        adminButton.classList.toggle('hidden', !isAdmin || backButtonVisible);
+                    }
                 }
             },
             
@@ -1431,6 +1495,7 @@
                            <button data-action="cancelParcelRequest" data-request-id="${parcel.id}" class="btn w-full bg-red-100 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-200 text-sm">Удалить заявку на посылку</button>
                         </div>`;
                 },
+                // --- HELPERS ---
                 getLoaderHTML() { return '<div class="text-center p-8">Загрузка...</div>'; },
                 getErrorHTML(message) { return `<div class="text-center text-red-500 p-8">${message}</div>`},
                 setDefaultDates() {
