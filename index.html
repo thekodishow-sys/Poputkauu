@@ -19,9 +19,17 @@
             from { opacity: 0; transform: translateY(5px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .role-btn.active, .direction-buttons button.active, #time-interval-buttons button.active {
+        .role-btn.active, .direction-buttons button.active {
             background-color: #1e293b; /* slate-800 */
             color: white;
+        }
+        #time-interval-buttons button.active {
+            background-color: #1e293b; /* slate-800 */
+            color: white;
+            border-color: #1e293b;
+        }
+        #time-interval-buttons button.active .text-slate-500 {
+            color: #cbd5e1; /* slate-300 */
         }
         #role-switcher { position: relative; }
         #role-bg {
@@ -257,15 +265,27 @@
                 <input type="date" name="ride_date" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
                 <div>
                     <label class="block text-xs font-medium text-slate-600 mb-2">Желаемое время выезда</label>
-                    <div id="time-interval-buttons" class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">04-06</button>
-                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">06-08</button>
-                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">08-10</button>
-                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">10-12</button>
-                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">12-14</button>
-                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">14-16</button>
-                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">16-18</button>
-                        <button type="button" class="btn p-2 border border-slate-200 rounded-lg text-xs">18-20</button>
+                    <div id="time-interval-buttons" class="grid grid-cols-2 gap-3">
+                        <button type="button" data-interval="Утро (6-11)" class="flex flex-col items-center justify-center text-center p-3 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors">
+                            <span class="text-2xl mb-1">☀️</span>
+                            <span class="font-semibold text-sm">Утро</span>
+                            <span class="text-xs text-slate-500">6:00 - 11:00</span>
+                        </button>
+                        <button type="button" data-interval="День (12-17)" class="flex flex-col items-center justify-center text-center p-3 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors">
+                            <span class="text-2xl mb-1">😎</span>
+                            <span class="font-semibold text-sm">День</span>
+                            <span class="text-xs text-slate-500">12:00 - 17:00</span>
+                        </button>
+                        <button type="button" data-interval="Вечер (18-22)" class="flex flex-col items-center justify-center text-center p-3 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors">
+                            <span class="text-2xl mb-1">🌙</span>
+                            <span class="font-semibold text-sm">Вечер</span>
+                            <span class="text-xs text-slate-500">18:00 - 22:00</span>
+                        </button>
+                        <button type="button" data-interval="Любое" class="flex flex-col items-center justify-center text-center p-3 border border-slate-200 rounded-xl hover:bg-slate-100 transition-colors">
+                             <span class="text-2xl mb-1">🔄</span>
+                            <span class="font-semibold text-sm">Любое</span>
+                            <span class="text-xs text-slate-500">В течение дня</span>
+                        </button>
                     </div>
                     <input type="hidden" name="time_interval" id="timeIntervalInput" required>
                     <div class="form-error-time text-red-500 text-xs text-center mt-2 hidden">Пожалуйста, выберите время</div>
@@ -709,7 +729,7 @@
                 async onCancelParcelRequest(requestId) { await App.supabase.from('parcel_requests').delete().eq('id', requestId); App.handlers.onMyTrips(); },
 
                 async onOfferRideToRequest(requestId, button) {
-                    if (!App.state.userProfile?.driver_car?.trim()) { alert("Укажите авто в профиле."); this.navigation.to('profile-screen'); return; }
+                    if (!App.state.userProfile?.driver_car?.trim()) { alert("Укажите авто в профиле."); App.navigation.to('profile-screen'); return; }
                     
                     button.disabled = true;
                     button.textContent = 'Отправка...';
@@ -717,7 +737,18 @@
                     const { data: request, error } = await App.supabase.from('ride_requests').select('*').eq('id', requestId).single();
                     if (error || !request) { console.error("Заявка не найдена:", error); button.disabled = false; return; }
 
-                    const timeForOffer = request.time_interval.split('-')[0] + ':00';
+                    let timeForOffer;
+                    const interval = request.time_interval || '';
+                    if (interval.includes('Утро')) {
+                        timeForOffer = '06:00';
+                    } else if (interval.includes('День')) {
+                        timeForOffer = '12:00';
+                    } else if (interval.includes('Вечер')) {
+                        timeForOffer = '18:00';
+                    } else { // Covers "Любое" and any unexpected cases
+                        timeForOffer = '12:00';
+                    }
+
                     const { error: offerError } = await App.supabase.rpc('create_offer_and_booking_for_request', {
                         p_request_id: requestId,
                         p_driver_id: App.state.currentUser.id,
@@ -763,7 +794,7 @@
                     const form = button.closest('form');
                     button.parentElement.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
                     button.classList.add('active');
-                    form.querySelector('#timeIntervalInput').value = button.textContent;
+                    form.querySelector('#timeIntervalInput').value = button.dataset.interval;
                     form.querySelector('.form-error-time').classList.add('hidden');
                 },
 
