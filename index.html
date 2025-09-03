@@ -397,10 +397,15 @@
                             .select()
                             .single();
                         
-                        if (insertError) { console.error('Ошибка создания профиля:', insertError); return; }
+                        if (insertError) { 
+                            console.error('Ошибка создания профиля:', insertError); 
+                            alert(`Не удалось создать профиль при первом входе. Ошибка: ${insertError.message}`);
+                            return; 
+                        }
                         profile = newProfile;
                     } else if (error) {
-                        console.error('Ошибка получения профиля:', error); return;
+                        console.error('Ошибка получения профиля:', error); 
+                        return;
                     }
                     App.state.userProfile = profile;
                 },
@@ -412,12 +417,11 @@
                         .single();
                     if (error) {
                         console.error('Ошибка сохранения профиля:', error);
-                        alert("Не удалось сохранить профиль.");
+                        alert(`Не удалось сохранить профиль. Ошибка: ${error.message}`);
                         return null;
                     }
                     return data;
                 },
-                // ... other api calls can be abstracted here
             },
 
             // --- EVENT HANDLERS (Controller Layer) ---
@@ -548,7 +552,7 @@
 
                     const { error } = await App.supabase.from('ride_offers').insert(offerData);
 
-                    if (error) { console.error(error); alert("Ошибка публикации поездки."); return; }
+                    if (error) { console.error(error); alert(`Ошибка публикации поездки: ${error.message}`); return; }
                     
                     App.ui.resetForm(form);
                     App.ui.showSuccess('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет');
@@ -575,7 +579,7 @@
 
                     const { error } = await App.supabase.from('ride_requests').insert(requestData);
 
-                    if (error) { console.error(error); alert("Ошибка создания заявки."); return; }
+                    if (error) { console.error(error); alert(`Ошибка создания заявки: ${error.message}`); return; }
                     App.ui.resetForm(form);
                     App.ui.showSuccess('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично');
                 },
@@ -596,7 +600,7 @@
                     
                     const { error } = await App.supabase.from('parcel_requests').insert(parcelData);
 
-                    if (error) { console.error(error); alert("Ошибка создания заявки на посылку."); return; }
+                    if (error) { console.error(error); alert(`Ошибка создания заявки на посылку: ${error.message}`); return; }
                     App.ui.resetForm(form);
                     App.ui.showSuccess('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично');
                 },
@@ -673,7 +677,7 @@
                 
                 async onRequestBooking(offerId, bookingDetails = null) {
                     const { data: offer, error: offerError } = await App.supabase.from('ride_offers').select('*').eq('id', offerId).single();
-                    if(offerError || !offer) { console.error("Предложение не найдено"); alert("Не удалось найти поездку."); return; }
+                    if(offerError || !offer) { console.error("Предложение не найдено"); alert(`Не удалось найти поездку: ${offerError.message}`); return; }
                     
                     const bookingData = {
                         offer_id: offerId,
@@ -686,7 +690,7 @@
                     };
                     
                     const { error } = await App.supabase.from('bookings').insert(bookingData);
-                    if (error) { console.error('Ошибка бронирования:', error); alert("Ошибка бронирования."); return; }
+                    if (error) { console.error('Ошибка бронирования:', error); alert(`Ошибка бронирования: ${error.message}`); return; }
                     
                     App.utils.sendTelegramNotification(offer.driver_id, `*Новое бронирование!* 🚗\nПассажир *${App.state.userProfile.full_name}* хочет забронировать место на вашу поездку ${offer.from} → ${offer.to}.`);
                     App.ui.showSuccess('Заявка отправлена', 'Водитель рассмотрит вашу заявку и вы получите уведомление.', 'Отлично');
@@ -757,7 +761,7 @@
 
                     if (offerError) {
                         console.error("Не удалось создать предложение:", offerError);
-                        alert("Ошибка. Возможно, на эту заявку уже ответили.");
+                        alert(`Ошибка. Возможно, на эту заявку уже ответили. \n\nДетали: ${offerError.message}`);
                         button.disabled = false;
                         button.textContent = 'Предложить поездку';
                         return;
