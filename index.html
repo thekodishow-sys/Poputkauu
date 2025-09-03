@@ -65,6 +65,49 @@
         #main-content::-webkit-scrollbar { width: 4px; }
         #main-content::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
         #main-content::-webkit-scrollbar-track { background: transparent; }
+        
+        /* Partner Widget Slider Styles */
+        .slider-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: 0.75rem; /* rounded-xl */
+        }
+        .slider-track {
+            display: flex;
+            transition: transform 0.5s ease-in-out;
+        }
+        .slide {
+            flex: 0 0 100%;
+            width: 100%;
+            position: relative;
+        }
+        .slide-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 1rem; /* p-4 */
+            background: linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0));
+            color: white;
+        }
+        .slider-dots {
+            position: absolute;
+            bottom: 0.5rem; /* bottom-2 */
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 0.5rem; /* gap-2 */
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 9999px;
+            background-color: rgba(255, 255, 255, 0.5);
+            transition: background-color 0.3s ease;
+        }
+        .dot.active {
+            background-color: white;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 overflow-hidden">
@@ -120,9 +163,44 @@
             <div class="space-y-3">
                 <button data-action="viewDriverOffers" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button>
                 <button data-action="navigateTo" data-screen="passenger-request-screen" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button>
-                <button data-action="navigateTo" data-screen="parcel-request-screen" class="text-sm btn w-full bg-purple-100 text-purple-800 font-bold py-3 px-4 rounded-xl hover:bg-purple-200">Отправить посылку</button>
                 <button data-action="myTrips" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button>
             </div>
+
+            <div class="mt-8">
+                <h3 class="text-base font-bold text-slate-800 mb-3 text-center">Партнеры</h3>
+                <div class="partner-widget">
+                    <div class="slider-container shadow-lg">
+                        <div class="slider-track">
+                            <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Парк+им.+Горбунцова" alt="Парк им. Горбунцова" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                    <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Козьмодемьянск в одном канале — от важных новостей до интересных мероприятий!</p>
+                                </div>
+                            </div>
+                            <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Укладка+брусчатки" alt="Реконструкция улиц" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                    <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Улицы старого Козьмодемьянска преображаются: идет укладка новой брусчатки и создание пешеходных зон.</p>
+                                </div>
+                            </div>
+                             <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Улицы+Козьмодемьянска" alt="Улицы Козьмодемьянска" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                     <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Проект превращает историческую часть города в уютное пространство для всех гостей и жителей.</p>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="slider-dots"></div>
+                    </div>
+                    <a href="https://t.me/Kozmodem_news" target="_blank" class="mt-3 text-sm btn w-full bg-blue-100 text-blue-800 font-bold py-2 px-4 rounded-xl hover:bg-blue-200 flex items-center justify-center gap-2">
+                        Перейти в канал
+                    </a>
+                </div>
+            </div>
+
         </div>
     </template>
     <template id="driver-dashboard-screen-template">
@@ -132,6 +210,40 @@
                 <button data-action="viewPassengerRequests" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть заявки</button>
                 <button data-action="publishRide" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button>
                 <button data-action="myTrips" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button>
+            </div>
+             <div class="mt-8">
+                <h3 class="text-base font-bold text-slate-800 mb-3 text-center">Партнеры</h3>
+                <div class="partner-widget">
+                    <div class="slider-container shadow-lg">
+                        <div class="slider-track">
+                            <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Парк+им.+Горбунцова" alt="Парк им. Горбунцова" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                    <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Козьмодемьянск в одном канале — от важных новостей до интересных мероприятий!</p>
+                                </div>
+                            </div>
+                            <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Укладка+брусчатки" alt="Реконструкция улиц" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                    <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Улицы старого Козьмодемьянска преображаются: идет укладка новой брусчатки и создание пешеходных зон.</p>
+                                </div>
+                            </div>
+                             <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Улицы+Козьмодемьянска" alt="Улицы Козьмодемьянска" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                     <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Проект превращает историческую часть города в уютное пространство для всех гостей и жителей.</p>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="slider-dots"></div>
+                    </div>
+                    <a href="https://t.me/Kozmodem_news" target="_blank" class="mt-3 text-sm btn w-full bg-blue-100 text-blue-800 font-bold py-2 px-4 rounded-xl hover:bg-blue-200 flex items-center justify-center gap-2">
+                        Перейти в канал
+                    </a>
+                </div>
             </div>
         </div>
     </template>
@@ -889,6 +1001,7 @@
                     });
                     this.setDefaultDates();
                     this.populateSelects();
+                    this.initPartnerWidget();
                     const offerPriceSpan = document.querySelector('#offer-form #publish-price');
                     if (offerPriceSpan) offerPriceSpan.textContent = App.config.prices.base;
                     const parcelPriceSpan = document.querySelector('#parcel-request-form #parcel-price-info span');
@@ -1023,6 +1136,69 @@
                     const priceIncreaseSpan = form.querySelector('#ferry-price-increase');
                     if(priceIncreaseSpan) { priceIncreaseSpan.classList.toggle('hidden', !isFerryChecked || isCheboksaryRoute); priceIncreaseSpan.textContent = `(+${App.config.prices.ferrySurcharge} ₽)`; }
                     form.querySelector('#publish-price').textContent = price;
+                },
+
+                initPartnerWidget() {
+                    document.querySelectorAll('.partner-widget').forEach(widget => {
+                        const track = widget.querySelector('.slider-track');
+                        const slides = Array.from(track.children);
+                        const dotsContainer = widget.querySelector('.slider-dots');
+                        if (!slides.length) return;
+
+                        let currentIndex = 0;
+                        let autoSlideInterval;
+                        let touchStartX = 0;
+                        let touchEndX = 0;
+
+                        // Create dots
+                        slides.forEach((_, i) => {
+                            const dot = document.createElement('button');
+                            dot.classList.add('dot');
+                            if (i === 0) dot.classList.add('active');
+                            dot.addEventListener('click', () => {
+                                goToSlide(i);
+                                resetAutoSlide();
+                            });
+                            dotsContainer.appendChild(dot);
+                        });
+                        const dots = Array.from(dotsContainer.children);
+
+                        const goToSlide = (index) => {
+                            track.style.transform = `translateX(-${index * 100}%)`;
+                            dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+                            currentIndex = index;
+                        };
+
+                        const nextSlide = () => {
+                            const nextIndex = (currentIndex + 1) % slides.length;
+                            goToSlide(nextIndex);
+                        };
+                        
+                        const resetAutoSlide = () => {
+                             clearInterval(autoSlideInterval);
+                             autoSlideInterval = setInterval(nextSlide, 5000);
+                        };
+
+                        // Touch events
+                        track.addEventListener('touchstart', e => {
+                            touchStartX = e.touches[0].clientX;
+                            clearInterval(autoSlideInterval);
+                        });
+                        
+                        track.addEventListener('touchend', e => {
+                            touchEndX = e.changedTouches[0].clientX;
+                            if (touchStartX - touchEndX > 50) { // Swiped left
+                                nextSlide();
+                            } else if (touchEndX - touchStartX > 50) { // Swiped right
+                                const prevIndex = (currentIndex - 1 + slides.length) % slides.length;
+                                goToSlide(prevIndex);
+                            }
+                            resetAutoSlide();
+                        });
+
+
+                        autoSlideInterval = setInterval(nextSlide, 5000);
+                    });
                 },
 
                 // --- CARD RENDERERS ---
@@ -1174,6 +1350,4 @@
     </script>
 </body>
 </html>
-
-" code in "Попутка 12 (Обновленная версия).html". I would like you to make the following changes: Убрать кнопку "отправить посылку", но оставить функционал
 
