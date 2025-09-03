@@ -364,6 +364,11 @@
                      if (!this.state.currentUser) {
                         throw new Error("Not in Telegram");
                     }
+                    
+                    // Handle viewport height changes to prevent keyboard from pushing up the layout
+                    this.ui.setAppHeight(); 
+                    Telegram.WebApp.onEvent('viewportChanged', this.ui.setAppHeight);
+
                 } catch (e) {
                     console.warn("Тестовый режим.");
                     this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
@@ -868,6 +873,13 @@
             
             // --- UI & RENDER ---
             ui: {
+                setAppHeight() {
+                    const appContainer = document.getElementById('app-container');
+                    if (appContainer && window.Telegram?.WebApp?.viewportStableHeight) {
+                        // Use the stable viewport height from the Telegram API to avoid layout shifts with the keyboard
+                        appContainer.style.height = `${window.Telegram.WebApp.viewportStableHeight}px`;
+                    }
+                },
                 renderAllScreens() {
                     const templates = document.querySelectorAll('template');
                     templates.forEach(template => {
@@ -1162,4 +1174,6 @@
     </script>
 </body>
 </html>
+
+" code in "Попутка 12 (Обновленная версия).html". I would like you to make the following changes: Убрать кнопку "отправить посылку", но оставить функционал
 
