@@ -964,30 +964,62 @@
                     }
                 },
                 async onSavePartner(form) {
-                    const formData = new FormData(form);
-                    const partnerData = {
-                        id: App.state.editingPartnerId || undefined,
-                        title: formData.get('title'),
-                        description: formData.get('description'),
-                        link_url: formData.get('link_url'),
-                        is_active: form.querySelector('#is_active_toggle').checked,
-                        slides: []
-                    };
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    submitButton.disabled = true;
+                    submitButton.textContent = 'Сохранение...';
 
-                    form.querySelectorAll('.slide-input-group').forEach(group => {
-                        const image_url = group.querySelector('input[name="image_url"]').value;
-                        const caption = group.querySelector('input[name="caption"]').value;
-                        if (image_url) {
-                            partnerData.slides.push({ image_url, caption });
-                        }
-                    });
+                    try {
+                        const formData = new FormData(form);
+                        const partnerData = {
+                            id: App.state.editingPartnerId || undefined,
+                            title: formData.get('title'),
+                            description: formData.get('description'),
+                            link_url: formData.get('link_url'),
+                            is_active: form.querySelector('#is_active_toggle').checked,
+                            slides: []
+                        };
 
-                    const { error } = await App.api.upsertPartner(partnerData);
-                    if (error) {
-                        alert(`Не удалось сохранить партнера: ${error.message}`);
-                        return;
+                        const slidePromises = Array.from(form.querySelectorAll('.slide-input-group')).map(async (group) => {
+                            const fileInput = group.querySelector('input[type="file"]');
+                            const caption = group.querySelector('input[name="caption"]').value;
+                            const existingImageUrl = group.querySelector('input[name="existing_image_url"]').value;
+                            let finalImageUrl = existingImageUrl;
+
+                            if (fileInput.files[0]) {
+                                const file = fileInput.files[0];
+                                const filePath = `public/${Date.now()}-${file.name}`;
+                                
+                                const { error: uploadError } = await App.supabase.storage
+                                    .from('partner_images')
+                                    .upload(filePath, file, { upsert: true });
+
+                                if (uploadError) throw new Error(`Ошибка загрузки файла: ${uploadError.message}`);
+
+                                const { data: urlData } = App.supabase.storage
+                                    .from('partner_images')
+                                    .getPublicUrl(filePath);
+                                
+                                finalImageUrl = urlData.publicUrl;
+                            }
+                            
+                            if (finalImageUrl) {
+                                partnerData.slides.push({ image_url: finalImageUrl, caption });
+                            }
+                        });
+
+                        await Promise.all(slidePromises);
+
+                        const { error } = await App.api.upsertPartner(partnerData);
+                        if (error) throw new Error(`Не удалось сохранить партнера: ${error.message}`);
+                        
+                        App.navigation.to('admin-panel-screen', true);
+
+                    } catch(e) {
+                        alert(e.message);
+                    } finally {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Сохранить';
                     }
-                    App.navigation.to('admin-panel-screen', true);
                 },
                 async onDeletePartner() {
                     if (!App.state.editingPartnerId || !confirm('Вы уверены, что хотите удалить этого партнера?')) {
@@ -1079,26 +1111,15 @@
                     if (screenId === 'admin-panel-screen') App.ui.renderAdminPanel();
                 },
                 back() {
-                    if (App.state.navigationHistory.length <= 1) return;
-                    // Remove current screen from history
-                    App.state.navigationHistory.pop();
-                    // Get the new last screen
-                    const lastScreenId = App.state.navigationHistory.at(-1);
+                    if (this.state.navigationHistory.length <= 1) return;
+                    this.state.navigationHistory.pop();
+                    const lastScreen = this.state.navigationHistory.at(-1);
 
-                    // Manually switch screens without calling the full `to` method
-                    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-                    const screenElement = document.getElementById(lastScreenId);
-                    if (screenElement) screenElement.classList.add('active');
-
-                    // Manually update header buttons based on new state
-                    const isAdmin = App.state.currentUser.id === App.config.adminId;
-                    const backButtonVisible = App.state.navigationHistory.length > 1;
-                    App.dom.backButton.classList.toggle('invisible', !backButtonVisible);
-                    
-                    const adminButton = document.getElementById('admin-plus-btn');
-                    if (adminButton) {
-                        adminButton.classList.toggle('hidden', !isAdmin || backButtonVisible);
-                    }
+                    // Call `to` but prevent it from re-adding to history
+                    const originalPush = this.state.navigationHistory.push;
+                    this.state.navigationHistory.push = () => {};
+                    this.to(lastScreen, false); // Call to without adding to history
+                    this.state.navigationHistory.push = originalPush;
                 }
             },
             
@@ -1378,7 +1399,7 @@
                     const slidesEditor = document.getElementById('slides-editor');
                     slidesEditor.innerHTML = '';
                     if(partner.partner_slides && partner.partner_slides.length > 0) {
-                        partner.partner_slides.forEach(slide => this.addSlideInput(slide));
+                        partner.partner_slides.sort((a,b) => a.display_order - b.display_order).forEach(slide => this.addSlideInput(slide));
                     } else {
                         this.addSlideInput(); // Add one empty slide by default
                     }
@@ -1390,11 +1411,26 @@
                     const div = document.createElement('div');
                     div.className = 'slide-input-group border rounded-lg p-3 space-y-2 relative';
                     div.innerHTML = `
-                        <input type="url" name="image_url" class="w-full p-2 border border-slate-200 rounded-lg text-sm" placeholder="URL Картинки" value="${slide.image_url || ''}" required>
+                        <div class="flex items-center gap-2">
+                           <img src="${slide.image_url || 'https://placehold.co/100x60/e2e8f0/64748b?text=New'}" class="w-24 h-14 object-cover rounded-md bg-slate-100">
+                           <div class="flex-1">
+                                <label class="block text-xs font-medium text-slate-600 mb-1">Загрузить новое изображение</label>
+                                <input type="file" name="image_file" class="w-full text-sm file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200" accept="image/*">
+                                <input type="hidden" name="existing_image_url" value="${slide.image_url || ''}">
+                           </div>
+                        </div>
                         <input type="text" name="caption" class="w-full p-2 border border-slate-200 rounded-lg text-sm" placeholder="Подпись (необязательно)" value="${slide.caption || ''}">
-                        <button type="button" data-action="removeSlide" class="absolute top-2 right-2 text-red-500 hover:text-red-700">&times;</button>
+                        <button type="button" data-action="removeSlide" class="absolute top-2 right-2 text-red-500 hover:text-red-700 font-bold text-xl">&times;</button>
                     `;
                     container.appendChild(div);
+
+                    div.querySelector('input[type="file"]').addEventListener('change', (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                            const preview = e.target.closest('.slide-input-group').querySelector('img');
+                            preview.src = URL.createObjectURL(file);
+                        }
+                    });
                 },
                 getDriverOfferCard(item) {
                     const seatsLeft = item.seats_left;
@@ -1495,7 +1531,7 @@
                            <button data-action="cancelParcelRequest" data-request-id="${parcel.id}" class="btn w-full bg-red-100 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-200 text-sm">Удалить заявку на посылку</button>
                         </div>`;
                 },
-                // --- HELPERS ---
+                // --- HELPERS from original code ---
                 getLoaderHTML() { return '<div class="text-center p-8">Загрузка...</div>'; },
                 getErrorHTML(message) { return `<div class="text-center text-red-500 p-8">${message}</div>`},
                 setDefaultDates() {
