@@ -644,14 +644,14 @@
                         back: () => this.navigation.back(),
                         backToHub: () => {
                             const hubScreen = this.state.userRole === 'driver' ? 'driver-dashboard-screen' : 'passenger-home-screen';
-                            this.navigation.to(hubScreen, true);
+                            this.navigation.to(hubScreen, { resetHistory: true });
                         },
                         // Main actions
                         switchRole: () => {
                             this.state.userRole = this.state.userRole === 'passenger' ? 'driver' : 'passenger';
                             this.ui.updateRoleSwitcher();
                             const newScreen = this.state.userRole === 'passenger' ? 'passenger-home-screen' : 'driver-dashboard-screen';
-                            this.navigation.to(newScreen, true); // Reset history
+                            this.navigation.to(newScreen, { resetHistory: true });
                         },
                         viewDriverOffers: this.handlers.onViewDriverOffers,
                         viewPassengerRequests: this.handlers.onViewPassengerRequests,
@@ -1051,10 +1051,9 @@
 
                         const savedPartner = await App.api.savePartner(partnerData);
                         if (savedPartner) {
-                            App.navigation.back();
                             await App.api.getPartners();
-                            App.ui.renderAdminScreen();
                             App.ui.renderPartnerWidgets();
+                            App.navigation.back();
                         } else {
                             throw new Error('Не удалось сохранить данные партнера на сервере.');
                         }
@@ -1130,7 +1129,7 @@
 
             // --- NAVIGATION ---
             navigation: {
-                to(screenId, resetHistory = false) {
+                to(screenId, { resetHistory = false, addToHistory = true } = {}) {
                     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
                     const screenElement = document.getElementById(screenId);
                     if (!screenElement) { console.error(`Screen "${screenId}" not found.`); return; }
@@ -1139,7 +1138,7 @@
                     
                     if (resetHistory) {
                         App.state.navigationHistory = [screenId];
-                    } else if (App.state.navigationHistory.at(-1) !== screenId) {
+                    } else if (addToHistory && App.state.navigationHistory.at(-1) !== screenId) {
                         App.state.navigationHistory.push(screenId);
                     }
                     
@@ -1155,7 +1154,7 @@
                     if (App.state.navigationHistory.length <= 1) return;
                     App.state.navigationHistory.pop();
                     const lastScreen = App.state.navigationHistory.at(-1);
-                    this.to(lastScreen, false); // Pass false to not add to history again
+                    this.to(lastScreen, { addToHistory: false });
                 }
             },
             
@@ -1508,7 +1507,4 @@
     </script>
 </body>
 </html>
-" selected.
-
-The user query is: Не получается опубликовать в админ-панели рекламу. Разберись в чем проблема
 
