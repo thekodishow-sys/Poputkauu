@@ -115,7 +115,6 @@
     <div id="app-container" class="h-screen w-screen max-w-md mx-auto bg-white flex flex-col">
         <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
             <div class="w-10 h-10 flex items-center justify-start">
-                <button id="admin-plus-btn" data-action="navigateTo" data-screen="admin-panel-screen" class="text-slate-500 hover:text-slate-800 transition-colors hidden text-2xl font-light">+</button>
                 <button id="backButton" data-action="back" class="text-slate-500 hover:text-slate-800 transition-colors invisible">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
                 </button>
@@ -140,8 +139,6 @@
             <div id="success-screen" class="screen"></div>
             <div id="my-trips-screen" class="screen"></div>
             <div id="profile-screen" class="screen"></div>
-            <div id="admin-panel-screen" class="screen"></div>
-            <div id="admin-edit-partner-screen" class="screen"></div>
         </main>
         
         <footer id="app-footer" class="p-5 border-t border-slate-200 bg-white flex-shrink-0">
@@ -168,9 +165,42 @@
                 <button data-action="navigateTo" data-screen="passenger-request-screen" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button>
                 <button data-action="myTrips" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button>
             </div>
-            <div class="mt-8 partner-widget-container">
-                <!-- Partner widget will be rendered here by JS -->
+
+            <div class="mt-8">
+                <h3 class="text-base font-bold text-slate-800 mb-3 text-center">Партнеры</h3>
+                <div class="partner-widget">
+                    <div class="slider-container shadow-lg">
+                        <div class="slider-track">
+                            <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Парк+им.+Горбунцова" alt="Парк им. Горбунцова" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                    <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Козьмодемьянск в одном канале — от важных новостей до интересных мероприятий!</p>
+                                </div>
+                            </div>
+                            <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Укладка+брусчатки" alt="Реконструкция улиц" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                    <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Улицы старого Козьмодемьянска преображаются: идет укладка новой брусчатки и создание пешеходных зон.</p>
+                                </div>
+                            </div>
+                             <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Улицы+Козьмодемьянска" alt="Улицы Козьмодемьянска" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                     <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Проект превращает историческую часть города в уютное пространство для всех гостей и жителей.</p>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="slider-dots"></div>
+                    </div>
+                    <a href="https://t.me/Kozmodem_news" target="_blank" class="mt-3 text-sm btn w-full bg-blue-100 text-blue-800 font-bold py-2 px-4 rounded-xl hover:bg-blue-200 flex items-center justify-center gap-2">
+                        Перейти в канал
+                    </a>
+                </div>
             </div>
+
         </div>
     </template>
     <template id="driver-dashboard-screen-template">
@@ -181,8 +211,39 @@
                 <button data-action="publishRide" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button>
                 <button data-action="myTrips" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button>
             </div>
-            <div class="mt-8 partner-widget-container">
-                <!-- Partner widget will be rendered here by JS -->
+             <div class="mt-8">
+                <h3 class="text-base font-bold text-slate-800 mb-3 text-center">Партнеры</h3>
+                <div class="partner-widget">
+                    <div class="slider-container shadow-lg">
+                        <div class="slider-track">
+                            <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Парк+им.+Горбунцова" alt="Парк им. Горбунцова" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                    <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Козьмодемьянск в одном канале — от важных новостей до интересных мероприятий!</p>
+                                </div>
+                            </div>
+                            <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Укладка+брусчатки" alt="Реконструкция улиц" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                    <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Улицы старого Козьмодемьянска преображаются: идет укладка новой брусчатки и создание пешеходных зон.</p>
+                                </div>
+                            </div>
+                             <div class="slide">
+                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Улицы+Козьмодемьянска" alt="Улицы Козьмодемьянска" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                     <h4 class="font-bold">Город на Волге</h4>
+                                    <p class="text-xs mt-1 mb-2">Проект превращает историческую часть города в уютное пространство для всех гостей и жителей.</p>
+                                </div>
+                            </div>
+                        </div>
+                         <div class="slider-dots"></div>
+                    </div>
+                    <a href="https://t.me/Kozmodem_news" target="_blank" class="mt-3 text-sm btn w-full bg-blue-100 text-blue-800 font-bold py-2 px-4 rounded-xl hover:bg-blue-200 flex items-center justify-center gap-2">
+                        Перейти в канал
+                    </a>
+                </div>
             </div>
         </div>
     </template>
@@ -373,55 +434,6 @@
             </form>
         </div>
     </template>
-    <template id="admin-panel-screen-template">
-        <div class="p-5">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-bold">Админ-панель: Партнеры</h2>
-                <button data-action="editPartner" class="text-sm btn bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600">Добавить</button>
-            </div>
-            <div id="admin-partners-list" class="space-y-3">
-                <!-- Partner list will be rendered here -->
-            </div>
-        </div>
-    </template>
-    <template id="admin-edit-partner-screen-template">
-        <div class="p-5">
-            <h2 id="admin-form-title" class="text-lg font-bold mb-4">Добавить партнера</h2>
-            <form id="admin-partner-form" class="space-y-4">
-                <input type="hidden" name="id">
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-2">Название</label>
-                    <input type="text" name="title" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-2">Описание (для виджета)</label>
-                    <textarea name="description" class="w-full p-3 border border-slate-200 rounded-lg text-sm" rows="2"></textarea>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-slate-600 mb-2">Ссылка (URL)</label>
-                    <input type="url" name="link_url" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
-                </div>
-                <div class="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between">
-                    <label for="is_active_toggle" class="text-sm text-slate-700 font-medium cursor-pointer flex-grow">Активен</label>
-                    <label class="relative inline-flex items-center cursor-pointer">
-                        <input type="checkbox" id="is_active_toggle" name="is_active" class="sr-only peer" checked>
-                        <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-                    </label>
-                </div>
-
-                <h3 class="text-base font-bold pt-2">Слайды</h3>
-                <div id="slides-editor" class="space-y-3">
-                    <!-- Slide inputs will be rendered here -->
-                </div>
-                <button type="button" data-action="addSlide" class="text-sm btn w-full border border-slate-300 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-100">Добавить слайд</button>
-
-                <div class="flex gap-4 pt-4">
-                    <button type="submit" class="text-sm btn flex-1 bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button>
-                    <button type="button" data-action="deletePartner" id="delete-partner-btn" class="text-sm btn bg-red-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-600 hidden">Удалить</button>
-                </div>
-            </form>
-        </div>
-    </template>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
@@ -431,7 +443,6 @@
         const App = {
             // --- CONFIGURATION ---
             config: {
-                adminId: 5017229451,
                 supabaseUrl: 'https://scqkpvmmoaolahpxinja.supabase.co',
                 supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw',
                 prices: { base: 600, parcel: 300, cheboksary: 400, ferrySurcharge: 100 },
@@ -446,7 +457,6 @@
                 navigationHistory: ['passenger-home-screen'],
                 allRequests: [],
                 currentFilters: { from: '', to: '', date: '', type: 'all' },
-                editingPartnerId: null,
             },
             
             // --- DOM ELEMENTS CACHE ---
@@ -467,12 +477,13 @@
                         throw new Error("Not in Telegram");
                     }
                     
+                    // Handle viewport height changes to prevent keyboard from pushing up the layout
                     this.ui.setAppHeight(); 
                     Telegram.WebApp.onEvent('viewportChanged', this.ui.setAppHeight);
 
                 } catch (e) {
                     console.warn("Тестовый режим.");
-                    this.state.currentUser = { id: 5017229451, first_name: 'Admin', username: 'testadmin', photo_url: null };
+                    this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
                 }
 
                 if (!this.state.currentUser?.id) {
@@ -484,11 +495,6 @@
                 this.cacheDom();
                 this.bindEvents();
                 this.ui.renderAllScreens();
-
-                if (this.state.currentUser.id === this.config.adminId) {
-                    document.getElementById('admin-plus-btn').classList.remove('hidden');
-                }
-
                 this.ui.updateRoleSwitcher();
                 this.ui.updateAvatar();
             },
@@ -539,74 +545,11 @@
                     }
                     return data;
                 },
-                async getPublicPartners() {
-                    return await App.supabase
-                        .from('partners')
-                        .select(`*, partner_slides(*)`)
-                        .eq('is_active', true)
-                        .order('display_order', { referencedTable: 'partner_slides', ascending: true });
-                },
-                async getAllPartnersAdmin() {
-                     return await App.supabase
-                        .from('partners')
-                        .select(`*, partner_slides(*)`)
-                        .order('created_at', { ascending: false });
-                },
-                async getPartnerById(id) {
-                    return await App.supabase
-                        .from('partners')
-                        .select(`*, partner_slides(*)`)
-                        .eq('id', id)
-                        .single();
-                },
-                async upsertPartner(partnerData) {
-                    const { slides, ...partner } = partnerData;
-                    
-                    // Upsert Partner details
-                    const { data: savedPartner, error: partnerError } = await App.supabase
-                        .from('partners')
-                        .upsert(partner)
-                        .select()
-                        .single();
-
-                    if (partnerError) return { partnerError };
-
-                    // Delete old slides for this partner
-                    const { error: deleteError } = await App.supabase
-                        .from('partner_slides')
-                        .delete()
-                        .eq('partner_id', savedPartner.id);
-                    
-                    if (deleteError) return { deleteError };
-
-                    // Insert new slides
-                    if (slides && slides.length > 0) {
-                        const slidesToInsert = slides.map((slide, index) => ({
-                            ...slide,
-                            partner_id: savedPartner.id,
-                            display_order: index
-                        }));
-
-                        const { error: slidesError } = await App.supabase
-                            .from('partner_slides')
-                            .insert(slidesToInsert);
-                        
-                        if (slidesError) return { slidesError };
-                    }
-
-                    return { data: savedPartner };
-                },
-                async deletePartner(partnerId) {
-                    return await App.supabase
-                        .from('partners')
-                        .delete()
-                        .eq('id', partnerId);
-                }
             },
 
             // --- EVENT HANDLERS (Controller Layer) ---
             bindEvents() {
-                 document.body.addEventListener('click', (e) => {
+                document.body.addEventListener('click', (e) => {
                     const target = e.target;
                     const button = target.closest('button, [data-action]');
                     if (!button) return;
@@ -662,12 +605,6 @@
                         toggleFilter: this.ui.toggleFilter,
                         applyFilters: this.handlers.onApplyFilters,
                         resetFilters: this.handlers.onResetFilters,
-
-                        // --- ADMIN ACTIONS ---
-                        editPartner: () => this.handlers.onEditPartner(dataset.partnerId),
-                        addSlide: () => this.ui.addSlideInput(),
-                        removeSlide: () => button.closest('.slide-input-group').remove(),
-                        deletePartner: () => this.handlers.onDeletePartner(),
                     };
 
                     if (actions[action]) {
@@ -686,7 +623,6 @@
                         'offer-form': this.handlers.onOfferSubmit,
                         'passenger-request-form': this.handlers.onPassengerRequestSubmit,
                         'parcel-request-form': this.handlers.onParcelRequestSubmit,
-                        'admin-partner-form': this.handlers.onSavePartner,
                     };
                     if (formHandlers[e.target.id]) formHandlers[e.target.id](e.target);
                 });
@@ -715,6 +651,7 @@
                         App.navigation.back();
                     }
                 },
+
                 async onOfferSubmit(form) {
                     const formData = new FormData(form);
                     const data = Object.fromEntries(formData.entries());
@@ -743,6 +680,7 @@
                     App.ui.resetForm(form);
                     App.ui.showSuccess('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет');
                 },
+
                 async onPassengerRequestSubmit(form) {
                     const formData = new FormData(form);
                     const data = Object.fromEntries(formData.entries());
@@ -768,6 +706,7 @@
                     App.ui.resetForm(form);
                     App.ui.showSuccess('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично');
                 },
+                
                 async onParcelRequestSubmit(form) {
                     const formData = new FormData(form);
                     const data = Object.fromEntries(formData.entries());
@@ -788,6 +727,7 @@
                     App.ui.resetForm(form);
                     App.ui.showSuccess('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично');
                 },
+
                 async onViewDriverOffers() {
                     App.navigation.to('list-screen');
                     document.getElementById('filter-section-container').classList.add('hidden');
@@ -811,6 +751,7 @@
                     
                     App.ui.renderList(augmentedOffers, 'driverOffer');
                 },
+
                 async onViewPassengerRequests() {
                     App.navigation.to('list-screen');
                     document.getElementById('filter-section-container').classList.remove('hidden');
@@ -825,6 +766,7 @@
                     App.state.allRequests = data || [];
                     App.handlers.onResetFilters();
                 },
+                
                 async onMyTrips() {
                     App.navigation.to('my-trips-screen');
                     const container = document.getElementById('my-trips-container');
@@ -855,6 +797,7 @@
                         App.ui.renderMyTrips({ bookings: activeBookings, requests: requestsRes.data, parcels: parcelsRes.data }, 'passenger');
                     }
                 },
+                
                 async onRequestBooking(offerId, bookingDetails = null) {
                     const { data: offer, error: offerError } = await App.supabase.from('ride_offers').select('*').eq('id', offerId).single();
                     if(offerError || !offer) { console.error("Предложение не найдено"); alert(`Не удалось найти поездку: ${offerError.message}`); return; }
@@ -875,6 +818,7 @@
                     App.utils.sendTelegramNotification(offer.driver_id, `*Новое бронирование!* 🚗\nПассажир *${App.state.userProfile.full_name}* хочет забронировать место на вашу поездку ${offer.from} → ${offer.to}.`);
                     App.ui.showSuccess('Заявка отправлена', 'Водитель рассмотрит вашу заявку и вы получите уведомление.', 'Отлично');
                 },
+                
                  async onUpdateBookingStatus(bookingId, status) {
                      const { data: booking, error } = await App.supabase.from('bookings').update({ status }).eq('id', bookingId).select('*, offer:ride_offers(*)').single();
                      if (error) { console.error('Ошибка обновления брони:', error); return; }
@@ -884,6 +828,7 @@
                      
                      App.handlers.onMyTrips(); // Refresh the list
                  },
+
                 async onCancelBooking(bookingId) {
                     const { data: booking } = await App.supabase.from('bookings').select('offer:ride_offers(driver_id)').eq('id', bookingId).single();
                     const { error } = await App.supabase.from('bookings').delete().eq('id', bookingId);
@@ -896,6 +841,7 @@
                     if (App.state.navigationHistory.at(-1) === 'list-screen') App.handlers.onViewDriverOffers();
                     else App.handlers.onMyTrips();
                 },
+                
                  async onDeleteOffer(offerId) {
                     const { data: bookings } = await App.supabase.from('bookings').select('passenger_id').eq('offer_id', offerId);
                      if (bookings?.length) {
@@ -905,8 +851,10 @@
                     await App.supabase.from('ride_offers').delete().eq('id', offerId); // Bookings will be deleted by CASCADE
                     App.handlers.onMyTrips();
                 },
+                
                 async onCancelRequest(requestId) { await App.supabase.from('ride_requests').delete().eq('id', requestId); App.handlers.onMyTrips(); },
                 async onCancelParcelRequest(requestId) { await App.supabase.from('parcel_requests').delete().eq('id', requestId); App.handlers.onMyTrips(); },
+
                 async onOfferRideToRequest(requestId, button) {
                     if (!App.state.userProfile?.driver_car?.trim()) { alert("Укажите авто в профиле."); App.navigation.to('profile-screen'); return; }
                     
@@ -948,95 +896,13 @@
                     button.classList.remove('bg-green-500', 'hover:bg-green-600');
                     button.classList.add('bg-slate-400', 'cursor-not-allowed');
                 },
-                // --- ADMIN HANDLERS ---
-                async onEditPartner(partnerId = null) {
-                    App.state.editingPartnerId = partnerId;
-                    App.navigation.to('admin-edit-partner-screen');
-                    if (partnerId) {
-                        const { data, error } = await App.api.getPartnerById(partnerId);
-                        if (error) {
-                            alert('Не удалось загрузить данные партнера.');
-                            return;
-                        }
-                        App.ui.renderAdminForm(data);
-                    } else {
-                        App.ui.renderAdminForm(); // Render empty form
-                    }
-                },
-                async onSavePartner(form) {
-                    const submitButton = form.querySelector('button[type="submit"]');
-                    submitButton.disabled = true;
-                    submitButton.textContent = 'Сохранение...';
 
-                    try {
-                        const formData = new FormData(form);
-                        const partnerData = {
-                            id: App.state.editingPartnerId || undefined,
-                            title: formData.get('title'),
-                            description: formData.get('description'),
-                            link_url: formData.get('link_url'),
-                            is_active: form.querySelector('#is_active_toggle').checked,
-                            slides: []
-                        };
-
-                        const slidePromises = Array.from(form.querySelectorAll('.slide-input-group')).map(async (group) => {
-                            const fileInput = group.querySelector('input[type="file"]');
-                            const caption = group.querySelector('input[name="caption"]').value;
-                            const existingImageUrl = group.querySelector('input[name="existing_image_url"]').value;
-                            let finalImageUrl = existingImageUrl;
-
-                            if (fileInput.files[0]) {
-                                const file = fileInput.files[0];
-                                const filePath = `public/${Date.now()}-${file.name}`;
-                                
-                                const { error: uploadError } = await App.supabase.storage
-                                    .from('partner_images')
-                                    .upload(filePath, file, { upsert: true });
-
-                                if (uploadError) throw new Error(`Ошибка загрузки файла: ${uploadError.message}`);
-
-                                const { data: urlData } = App.supabase.storage
-                                    .from('partner_images')
-                                    .getPublicUrl(filePath);
-                                
-                                finalImageUrl = urlData.publicUrl;
-                            }
-                            
-                            if (finalImageUrl) {
-                                partnerData.slides.push({ image_url: finalImageUrl, caption });
-                            }
-                        });
-
-                        await Promise.all(slidePromises);
-
-                        const { error } = await App.api.upsertPartner(partnerData);
-                        if (error) throw new Error(`Не удалось сохранить партнера: ${error.message}`);
-                        
-                        App.navigation.to('admin-panel-screen', true);
-
-                    } catch(e) {
-                        alert(e.message);
-                    } finally {
-                        submitButton.disabled = false;
-                        submitButton.textContent = 'Сохранить';
-                    }
-                },
-                async onDeletePartner() {
-                    if (!App.state.editingPartnerId || !confirm('Вы уверены, что хотите удалить этого партнера?')) {
-                        return;
-                    }
-                    const { error } = await App.api.deletePartner(App.state.editingPartnerId);
-                    if (error) {
-                        alert(`Не удалось удалить партнера: ${error.message}`);
-                        return;
-                    }
-                     App.navigation.to('admin-panel-screen', true);
-                },
                 // --- UI RELATED HANDLERS ---
                 onApplyFilters() {
                     App.state.currentFilters = { from: document.getElementById('filter-from').value, to: document.getElementById('filter-to').value, date: document.getElementById('filter-date').value, type: document.querySelector('#filter-type-buttons .active').dataset.type };
                     App.ui.renderFilteredList();
                 },
+
                 onResetFilters() {
                     App.state.currentFilters = { from: '', to: '', date: '', type: 'all' };
                     document.getElementById('filter-from').value = '';
@@ -1045,10 +911,12 @@
                     document.querySelectorAll('#filter-type-buttons .filter-type-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.type === 'all'));
                     App.ui.renderFilteredList();
                 },
+
                 onFilterTypeSelect(button) {
                     button.parentElement.querySelectorAll('.filter-type-btn').forEach(btn => btn.classList.remove('active'));
                     button.classList.add('active');
                 },
+
                 onTimeSelect(button) {
                     const form = button.closest('form');
                     button.parentElement.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
@@ -1056,6 +924,7 @@
                     form.querySelector('#timeIntervalInput').value = button.dataset.interval;
                     form.querySelector('.form-error-time').classList.add('hidden');
                 },
+
                 onRouteOptionChange(checkbox) {
                     const form = checkbox.closest('form');
                     if (checkbox.id === 'via-ferry-toggle' && checkbox.checked) {
@@ -1063,6 +932,7 @@
                     }
                     this.onRouteDropdownChange(form.querySelector('select[name="from-select"]'));
                 },
+
                 onRouteDropdownChange(selectElement) {
                     const form = selectElement.closest('form');
                     const fromSelect = form.querySelector('select[name="from-select"]');
@@ -1096,30 +966,20 @@
                         App.state.navigationHistory.push(screenId);
                     }
                     
-                    const isAdmin = App.state.currentUser.id === App.config.adminId;
-                    const backButtonVisible = App.state.navigationHistory.length > 1;
-                    App.dom.backButton.classList.toggle('invisible', !backButtonVisible);
+                    App.dom.backButton.classList.toggle('invisible', App.state.navigationHistory.length <= 1);
+                    App.dom.mainContent.scrollTop = 0;
                     
-                    const adminButton = document.getElementById('admin-plus-btn');
-                    if (adminButton) {
-                        adminButton.classList.toggle('hidden', !isAdmin || backButtonVisible);
-                    }
-                    
-                    // Pre-population/rendering logic for new screens
+                    // Pre-population logic
                     if (screenId === 'profile-screen') App.ui.populateProfileForm();
-                    if (screenId === 'offer-screen') App.handlers.onRouteDropdownChange(document.querySelector('#offer-form select'));
-                    if (screenId === 'admin-panel-screen') App.ui.renderAdminPanel();
+                    if (screenId === 'offer-screen') App.handlers.onRouteDropdownChange(document.querySelector('#offer-form select'))
                 },
                 back() {
-                    if (this.state.navigationHistory.length <= 1) return;
-                    this.state.navigationHistory.pop();
-                    const lastScreen = this.state.navigationHistory.at(-1);
-
-                    // Call `to` but prevent it from re-adding to history
-                    const originalPush = this.state.navigationHistory.push;
-                    this.state.navigationHistory.push = () => {};
-                    this.to(lastScreen, false); // Call to without adding to history
-                    this.state.navigationHistory.push = originalPush;
+                    if (App.state.navigationHistory.length <= 1) return;
+                    App.state.navigationHistory.pop();
+                    const lastScreen = App.state.navigationHistory.at(-1);
+                    this.to(lastScreen);
+                    App.state.navigationHistory.push(lastScreen); // to() adds it, so pop it again
+                    App.state.navigationHistory.pop();
                 }
             },
             
@@ -1128,6 +988,7 @@
                 setAppHeight() {
                     const appContainer = document.getElementById('app-container');
                     if (appContainer && window.Telegram?.WebApp?.viewportStableHeight) {
+                        // Use the stable viewport height from the Telegram API to avoid layout shifts with the keyboard
                         appContainer.style.height = `${window.Telegram.WebApp.viewportStableHeight}px`;
                     }
                 },
@@ -1140,7 +1001,7 @@
                     });
                     this.setDefaultDates();
                     this.populateSelects();
-                    this.populatePartnerWidgets();
+                    this.initPartnerWidget();
                     const offerPriceSpan = document.querySelector('#offer-form #publish-price');
                     if (offerPriceSpan) offerPriceSpan.textContent = App.config.prices.base;
                     const parcelPriceSpan = document.querySelector('#parcel-request-form #parcel-price-info span');
@@ -1151,7 +1012,7 @@
                     const switcher = document.getElementById('role-switcher');
                     switcher.classList.toggle('driver', App.state.userRole === 'driver');
                     switcher.classList.toggle('passenger', App.state.userRole === 'passenger');
-                    switcher.dataset.action = 'switchRole';
+                    switcher.dataset.action = 'switchRole'; // Add action for event delegation
                 },
                 
                 updateAvatar() {
@@ -1221,7 +1082,9 @@
                     document.getElementById('back-to-hub-btn').textContent = buttonText;
                     App.navigation.to('success-screen');
                 },
-                showBookingOptionsModal(offer) {
+
+                // --- MODALS and FORMS ---
+                 showBookingOptionsModal(offer) {
                     const container = document.getElementById('booking-options-container');
                     const { base, cheboksary } = App.config.prices;
                     container.innerHTML = `
@@ -1242,6 +1105,7 @@
                         modal.classList.add('show');
                     });
                 },
+
                 hideBookingModal() {
                     const overlay = document.getElementById('booking-modal-overlay');
                     const modal = document.getElementById('booking-modal');
@@ -1249,10 +1113,12 @@
                     modal.classList.remove('show');
                     setTimeout(() => { overlay.classList.add('hidden'); }, 300);
                 },
+
                 toggleFilter() {
                     document.getElementById('filter-content').classList.toggle('collapsed');
                     document.getElementById('filter-toggle-btn').classList.toggle('collapsed');
                 },
+
                 populateProfileForm() {
                     const form = document.getElementById('profile-form');
                     if(form && App.state.userProfile) {
@@ -1260,6 +1126,7 @@
                         form.querySelector('#profile-car').value = App.state.userProfile.driver_car || '';
                     }
                 },
+
                 updateOfferPrice(form) {
                     const from = form.querySelector('input[name="from"]').value;
                     const to = form.querySelector('input[name="to"]').value;
@@ -1270,168 +1137,71 @@
                     if(priceIncreaseSpan) { priceIncreaseSpan.classList.toggle('hidden', !isFerryChecked || isCheboksaryRoute); priceIncreaseSpan.textContent = `(+${App.config.prices.ferrySurcharge} ₽)`; }
                     form.querySelector('#publish-price').textContent = price;
                 },
-                async populatePartnerWidgets() {
-                    const { data, error } = await App.api.getPublicPartners();
-                    if (error || !data || data.length === 0) {
-                        console.warn('No active partners found or error fetching them.', error);
-                        return;
-                    }
-                    
-                    const partner = data[0]; // For now, we only show the first partner
-                    
-                    document.querySelectorAll('.partner-widget-container').forEach(container => {
-                        const widgetHTML = this.getPartnerWidgetHTML(partner);
-                        container.innerHTML = widgetHTML;
-                        const widgetEl = container.querySelector('.partner-widget');
-                        if (widgetEl) this.initPartnerWidget(widgetEl);
-                    });
-                },
-                getPartnerWidgetHTML(partner) {
-                    if (!partner || !partner.partner_slides || partner.partner_slides.length === 0) return '';
-                    const slidesHTML = partner.partner_slides.map(slide => `
-                        <div class="slide">
-                            <img src="${slide.image_url}" onerror="this.onerror=null;this.src='https://placehold.co/600x400/e2e8f0/64748b?text=Image+Error';" alt="${slide.caption || partner.title}" class="w-full h-48 object-cover">
-                            <div class="slide-content">
-                                <h4 class="font-bold">${partner.title}</h4>
-                                <p class="text-xs mt-1 mb-2">${slide.caption || partner.description}</p>
-                            </div>
-                        </div>`).join('');
 
-                    return `
-                        <h3 class="text-base font-bold text-slate-800 mb-3 text-center">Партнеры</h3>
-                        <div class="partner-widget">
-                            <div class="slider-container shadow-lg">
-                                <div class="slider-track">${slidesHTML}</div>
-                                <div class="slider-dots"></div>
-                            </div>
-                            <a href="${partner.link_url}" target="_blank" class="mt-3 text-sm btn w-full bg-blue-100 text-blue-800 font-bold py-2 px-4 rounded-xl hover:bg-blue-200 flex items-center justify-center gap-2">
-                                Перейти
-                            </a>
-                        </div>`;
-                },
-                initPartnerWidget(widget) {
-                    const track = widget.querySelector('.slider-track');
-                    const slides = Array.from(track.children);
-                    const dotsContainer = widget.querySelector('.slider-dots');
-                    if (!slides.length || slides.length < 2) return;
+                initPartnerWidget() {
+                    document.querySelectorAll('.partner-widget').forEach(widget => {
+                        const track = widget.querySelector('.slider-track');
+                        const slides = Array.from(track.children);
+                        const dotsContainer = widget.querySelector('.slider-dots');
+                        if (!slides.length) return;
 
-                    let currentIndex = 0;
-                    let autoSlideInterval;
-                    let touchStartX = 0;
-                    
-                    slides.forEach((_, i) => {
-                        const dot = document.createElement('button');
-                        dot.classList.add('dot');
-                        if (i === 0) dot.classList.add('active');
-                        dot.addEventListener('click', () => {
-                            goToSlide(i);
+                        let currentIndex = 0;
+                        let autoSlideInterval;
+                        let touchStartX = 0;
+                        let touchEndX = 0;
+
+                        // Create dots
+                        slides.forEach((_, i) => {
+                            const dot = document.createElement('button');
+                            dot.classList.add('dot');
+                            if (i === 0) dot.classList.add('active');
+                            dot.addEventListener('click', () => {
+                                goToSlide(i);
+                                resetAutoSlide();
+                            });
+                            dotsContainer.appendChild(dot);
+                        });
+                        const dots = Array.from(dotsContainer.children);
+
+                        const goToSlide = (index) => {
+                            track.style.transform = `translateX(-${index * 100}%)`;
+                            dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+                            currentIndex = index;
+                        };
+
+                        const nextSlide = () => {
+                            const nextIndex = (currentIndex + 1) % slides.length;
+                            goToSlide(nextIndex);
+                        };
+                        
+                        const resetAutoSlide = () => {
+                             clearInterval(autoSlideInterval);
+                             autoSlideInterval = setInterval(nextSlide, 5000);
+                        };
+
+                        // Touch events
+                        track.addEventListener('touchstart', e => {
+                            touchStartX = e.touches[0].clientX;
+                            clearInterval(autoSlideInterval);
+                        });
+                        
+                        track.addEventListener('touchend', e => {
+                            touchEndX = e.changedTouches[0].clientX;
+                            if (touchStartX - touchEndX > 50) { // Swiped left
+                                nextSlide();
+                            } else if (touchEndX - touchStartX > 50) { // Swiped right
+                                const prevIndex = (currentIndex - 1 + slides.length) % slides.length;
+                                goToSlide(prevIndex);
+                            }
                             resetAutoSlide();
                         });
-                        dotsContainer.appendChild(dot);
-                    });
-                    const dots = Array.from(dotsContainer.children);
 
-                    const goToSlide = (index) => {
-                        track.style.transform = `translateX(-${index * 100}%)`;
-                        dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
-                        currentIndex = index;
-                    };
 
-                    const nextSlide = () => goToSlide((currentIndex + 1) % slides.length);
-                    const prevSlide = () => goToSlide((currentIndex - 1 + slides.length) % slides.length);
-                    
-                    const resetAutoSlide = () => {
-                         clearInterval(autoSlideInterval);
-                         autoSlideInterval = setInterval(nextSlide, 5000);
-                    };
-
-                    track.addEventListener('touchstart', e => {
-                        touchStartX = e.touches[0].clientX;
-                        clearInterval(autoSlideInterval);
-                    }, { passive: true });
-                    
-                    track.addEventListener('touchend', e => {
-                        const touchEndX = e.changedTouches[0].clientX;
-                        if (touchStartX - touchEndX > 50) nextSlide();
-                        else if (touchEndX - touchStartX > 50) prevSlide();
-                        resetAutoSlide();
-                    });
-
-                    resetAutoSlide();
-                },
-                async renderAdminPanel() {
-                    const container = document.getElementById('admin-partners-list');
-                    if (!container) return;
-                    container.innerHTML = this.getLoaderHTML();
-
-                    const { data, error } = await App.api.getAllPartnersAdmin();
-                    if (error) {
-                        container.innerHTML = this.getErrorHTML('Не удалось загрузить партнеров.');
-                        return;
-                    }
-                    if (!data.length) {
-                        container.innerHTML = '<p class="text-center text-slate-500">Партнеры еще не добавлены.</p>';
-                        return;
-                    }
-
-                    container.innerHTML = data.map(p => `
-                        <div class="border rounded-lg p-3 flex justify-between items-center">
-                            <div>
-                                <p class="font-bold">${p.title}</p>
-                                <p class="text-xs ${p.is_active ? 'text-green-600' : 'text-slate-500'}">${p.is_active ? 'Активен' : 'Неактивен'}</p>
-                            </div>
-                            <button data-action="editPartner" data-partner-id="${p.id}" class="text-sm btn bg-slate-100 text-slate-800 font-bold py-1 px-3 rounded-lg">Изм.</button>
-                        </div>
-                    `).join('');
-                },
-                renderAdminForm(partner = {}) {
-                    const form = document.getElementById('admin-partner-form');
-                    const title = document.getElementById('admin-form-title');
-                    const deleteBtn = document.getElementById('delete-partner-btn');
-                    
-                    title.textContent = partner.id ? 'Редактировать партнера' : 'Добавить партнера';
-                    form.querySelector('[name="id"]').value = partner.id || '';
-                    form.querySelector('[name="title"]').value = partner.title || '';
-                    form.querySelector('[name="description"]').value = partner.description || '';
-                    form.querySelector('[name="link_url"]').value = partner.link_url || '';
-                    form.querySelector('#is_active_toggle').checked = partner.id ? partner.is_active : true;
-                    
-                    const slidesEditor = document.getElementById('slides-editor');
-                    slidesEditor.innerHTML = '';
-                    if(partner.partner_slides && partner.partner_slides.length > 0) {
-                        partner.partner_slides.sort((a,b) => a.display_order - b.display_order).forEach(slide => this.addSlideInput(slide));
-                    } else {
-                        this.addSlideInput(); // Add one empty slide by default
-                    }
-                    
-                    deleteBtn.classList.toggle('hidden', !partner.id);
-                },
-                addSlideInput(slide = {}) {
-                    const container = document.getElementById('slides-editor');
-                    const div = document.createElement('div');
-                    div.className = 'slide-input-group border rounded-lg p-3 space-y-2 relative';
-                    div.innerHTML = `
-                        <div class="flex items-center gap-2">
-                           <img src="${slide.image_url || 'https://placehold.co/100x60/e2e8f0/64748b?text=New'}" class="w-24 h-14 object-cover rounded-md bg-slate-100">
-                           <div class="flex-1">
-                                <label class="block text-xs font-medium text-slate-600 mb-1">Загрузить новое изображение</label>
-                                <input type="file" name="image_file" class="w-full text-sm file:mr-4 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200" accept="image/*">
-                                <input type="hidden" name="existing_image_url" value="${slide.image_url || ''}">
-                           </div>
-                        </div>
-                        <input type="text" name="caption" class="w-full p-2 border border-slate-200 rounded-lg text-sm" placeholder="Подпись (необязательно)" value="${slide.caption || ''}">
-                        <button type="button" data-action="removeSlide" class="absolute top-2 right-2 text-red-500 hover:text-red-700 font-bold text-xl">&times;</button>
-                    `;
-                    container.appendChild(div);
-
-                    div.querySelector('input[type="file"]').addEventListener('change', (e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                            const preview = e.target.closest('.slide-input-group').querySelector('img');
-                            preview.src = URL.createObjectURL(file);
-                        }
+                        autoSlideInterval = setInterval(nextSlide, 5000);
                     });
                 },
+
+                // --- CARD RENDERERS ---
                 getDriverOfferCard(item) {
                     const seatsLeft = item.seats_left;
                     const seatsText = seatsLeft === 1 ? '1 место' : (seatsLeft > 1 && seatsLeft < 5 ? `${seatsLeft} места` : `${seatsLeft} мест`);
@@ -1531,7 +1301,8 @@
                            <button data-action="cancelParcelRequest" data-request-id="${parcel.id}" class="btn w-full bg-red-100 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-200 text-sm">Удалить заявку на посылку</button>
                         </div>`;
                 },
-                // --- HELPERS from original code ---
+
+                // --- HELPERS ---
                 getLoaderHTML() { return '<div class="text-center p-8">Загрузка...</div>'; },
                 getErrorHTML(message) { return `<div class="text-center text-red-500 p-8">${message}</div>`},
                 setDefaultDates() {
