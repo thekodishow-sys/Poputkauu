@@ -108,6 +108,24 @@
         .dot.active {
             background-color: white;
         }
+        /* Custom file input */
+        .file-input-label {
+            display: block;
+            padding: 0.75rem;
+            border: 2px dashed #d1d5db;
+            border-radius: 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .file-input-label:hover {
+            background-color: #f9fafb;
+        }
+        #partner-image-preview {
+            max-height: 200px;
+            object-fit: cover;
+            border-radius: 0.5rem;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 overflow-hidden">
@@ -139,6 +157,8 @@
             <div id="success-screen" class="screen"></div>
             <div id="my-trips-screen" class="screen"></div>
             <div id="profile-screen" class="screen"></div>
+            <div id="admin-screen" class="screen"></div>
+            <div id="partner-form-screen" class="screen"></div>
         </main>
         
         <footer id="app-footer" class="p-5 border-t border-slate-200 bg-white flex-shrink-0">
@@ -165,44 +185,10 @@
                 <button data-action="navigateTo" data-screen="passenger-request-screen" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Оставить заявку на поездку</button>
                 <button data-action="myTrips" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки и заявки</button>
             </div>
-
-            <div class="mt-8">
-                <h3 class="text-base font-bold text-slate-800 mb-3 text-center">Партнеры</h3>
-                <div class="partner-widget">
-                    <div class="slider-container shadow-lg">
-                        <div class="slider-track">
-                            <div class="slide">
-                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Парк+им.+Горбунцова" alt="Парк им. Горбунцова" class="w-full h-48 object-cover">
-                                <div class="slide-content">
-                                    <h4 class="font-bold">Город на Волге</h4>
-                                    <p class="text-xs mt-1 mb-2">Козьмодемьянск в одном канале — от важных новостей до интересных мероприятий!</p>
-                                </div>
-                            </div>
-                            <div class="slide">
-                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Укладка+брусчатки" alt="Реконструкция улиц" class="w-full h-48 object-cover">
-                                <div class="slide-content">
-                                    <h4 class="font-bold">Город на Волге</h4>
-                                    <p class="text-xs mt-1 mb-2">Улицы старого Козьмодемьянска преображаются: идет укладка новой брусчатки и создание пешеходных зон.</p>
-                                </div>
-                            </div>
-                             <div class="slide">
-                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Улицы+Козьмодемьянска" alt="Улицы Козьмодемьянска" class="w-full h-48 object-cover">
-                                <div class="slide-content">
-                                     <h4 class="font-bold">Город на Волге</h4>
-                                    <p class="text-xs mt-1 mb-2">Проект превращает историческую часть города в уютное пространство для всех гостей и жителей.</p>
-                                </div>
-                            </div>
-                        </div>
-                         <div class="slider-dots"></div>
-                    </div>
-                    <a href="https://t.me/Kozmodem_news" target="_blank" class="mt-3 text-sm btn w-full bg-blue-100 text-blue-800 font-bold py-2 px-4 rounded-xl hover:bg-blue-200 flex items-center justify-center gap-2">
-                        Перейти в канал
-                    </a>
-                </div>
-            </div>
-
+            <div class="mt-8 partner-widget-container"></div>
         </div>
     </template>
+    
     <template id="driver-dashboard-screen-template">
         <div class="p-5">
             <div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Кабинет водителя</h2></div>
@@ -211,44 +197,25 @@
                 <button data-action="publishRide" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button>
                 <button data-action="myTrips" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button>
             </div>
-             <div class="mt-8">
-                <h3 class="text-base font-bold text-slate-800 mb-3 text-center">Партнеры</h3>
-                <div class="partner-widget">
-                    <div class="slider-container shadow-lg">
-                        <div class="slider-track">
-                            <div class="slide">
-                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Парк+им.+Горбунцова" alt="Парк им. Горбунцова" class="w-full h-48 object-cover">
-                                <div class="slide-content">
-                                    <h4 class="font-bold">Город на Волге</h4>
-                                    <p class="text-xs mt-1 mb-2">Козьмодемьянск в одном канале — от важных новостей до интересных мероприятий!</p>
-                                </div>
-                            </div>
-                            <div class="slide">
-                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Укладка+брусчатки" alt="Реконструкция улиц" class="w-full h-48 object-cover">
-                                <div class="slide-content">
-                                    <h4 class="font-bold">Город на Волге</h4>
-                                    <p class="text-xs mt-1 mb-2">Улицы старого Козьмодемьянска преображаются: идет укладка новой брусчатки и создание пешеходных зон.</p>
-                                </div>
-                            </div>
-                             <div class="slide">
-                                <img src="https://placehold.co/600x400/e2e8f0/64748b?text=Улицы+Козьмодемьянска" alt="Улицы Козьмодемьянска" class="w-full h-48 object-cover">
-                                <div class="slide-content">
-                                     <h4 class="font-bold">Город на Волге</h4>
-                                    <p class="text-xs mt-1 mb-2">Проект превращает историческую часть города в уютное пространство для всех гостей и жителей.</p>
-                                </div>
-                            </div>
-                        </div>
-                         <div class="slider-dots"></div>
-                    </div>
-                    <a href="https://t.me/Kozmodem_news" target="_blank" class="mt-3 text-sm btn w-full bg-blue-100 text-blue-800 font-bold py-2 px-4 rounded-xl hover:bg-blue-200 flex items-center justify-center gap-2">
-                        Перейти в канал
-                    </a>
-                </div>
-            </div>
+            <div class="mt-8 partner-widget-container"></div>
         </div>
     </template>
+    
+    <template id="partner-widget-template">
+        <h3 class="text-base font-bold text-slate-800 mb-3 text-center">Партнеры</h3>
+        <div class="partner-widget">
+            <div class="slider-container shadow-lg">
+                <div class="slider-track"></div>
+                <div class="slider-dots"></div>
+            </div>
+            <a id="partner-channel-link" href="#" target="_blank" class="mt-3 text-sm btn w-full bg-blue-100 text-blue-800 font-bold py-2 px-4 rounded-xl hover:bg-blue-200 flex items-center justify-center gap-2">
+                Перейти в канал
+            </a>
+        </div>
+    </template>
+
     <template id="list-screen-template">
-         <div class="p-4 space-y-4">
+       <div class="p-4 space-y-4">
             <div id="filter-section-container" class="hidden">
                 <div class="p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <button data-action="toggleFilter" id="filter-toggle-btn" class="flex justify-between items-center w-full mb-3">
@@ -289,6 +256,7 @@
             <div id="no-results" class="text-center text-slate-500 py-10 hidden"><h3 id="no-results-title" class="text-base font-semibold"></h3><p id="no-results-text" class="text-xs"></p></div>
         </div>
     </template>
+    
     <template id="success-screen-template">
         <div class="p-5 flex flex-col items-center justify-center h-full text-center">
             <div class="mb-4"><svg class="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg></div>
@@ -297,13 +265,15 @@
             <button data-action="backToHub" id="back-to-hub-btn" class="text-sm btn w-full max-w-xs bg-slate-800 text-white font-bold py-3 px-4 rounded-lg"></button>
         </div>
     </template>
+    
     <template id="my-trips-screen-template">
-         <div class="flex-1 flex flex-col p-5 space-y-4">
+       <div class="flex-1 flex flex-col p-5 space-y-4">
              <div id="my-trips-container" class="space-y-4 flex-1"></div>
         </div>
     </template>
+    
     <template id="profile-screen-template">
-         <div class="p-5">
+       <div class="p-5">
             <h2 class="text-lg font-bold mb-4">Мой профиль</h2>
             <p class="text-xs text-slate-600 mb-4">Здесь вы можете изменить ваше имя. Если вы планируете быть водителем, пожалуйста, укажите данные вашего автомобиля.</p>
             <form id="profile-form" class="space-y-4">
@@ -317,8 +287,10 @@
                 </div>
                 <button type="submit" class="text-sm btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button>
             </form>
+            <div id="admin-actions" class="mt-6"></div>
         </div>
     </template>
+    
     <template id="offer-screen-template">
         <div class="p-5">
             <h2 class="text-lg font-bold mb-4">Данные о поездке</h2>
@@ -364,6 +336,7 @@
             </form>
         </div>
     </template>
+    
     <template id="passenger-request-screen-template">
         <div class="p-5">
             <h2 class="text-lg font-bold mb-4">Ваша заявка</h2>
@@ -412,6 +385,7 @@
             </form>
         </div>
     </template>
+    
     <template id="parcel-request-screen-template">
         <div class="p-5">
             <h2 class="text-lg font-bold mb-4">Отправить посылку</h2>
@@ -435,6 +409,47 @@
         </div>
     </template>
     
+    <template id="admin-screen-template">
+        <div class="p-5">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Админ-панель</h2>
+                <button data-action="addPartner" class="btn bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm">Добавить</button>
+            </div>
+            <div id="partners-list" class="space-y-3"></div>
+        </div>
+    </template>
+
+    <template id="partner-form-screen-template">
+        <div class="p-5">
+            <h2 id="partner-form-title" class="text-xl font-bold mb-4"></h2>
+            <form id="partner-form" class="space-y-4">
+                <input type="hidden" name="id">
+                <input type="hidden" name="old_image_url">
+                <div>
+                    <label for="partner-title" class="block text-xs font-medium text-slate-600 mb-2">Заголовок</label>
+                    <input type="text" name="title" id="partner-title" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
+                </div>
+                <div>
+                    <label for="partner-description" class="block text-xs font-medium text-slate-600 mb-2">Описание</label>
+                    <textarea name="description" id="partner-description" rows="3" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required></textarea>
+                </div>
+                <div>
+                    <label for="partner-channel-url" class="block text-xs font-medium text-slate-600 mb-2">Ссылка на Telegram канал (https://t.me/...)</label>
+                    <input type="url" name="channel_url" id="partner-channel-url" class="w-full p-3 border border-slate-200 rounded-lg text-sm" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-2">Изображение</label>
+                    <img id="partner-image-preview" class="w-full mb-2 hidden">
+                    <label class="file-input-label">
+                        <span id="file-input-text">Нажмите, чтобы выбрать файл</span>
+                        <input type="file" name="image_file" id="partner-image-file" class="hidden" accept="image/*">
+                    </label>
+                </div>
+                <button type="submit" class="text-sm btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button>
+            </form>
+        </div>
+    </template>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -447,6 +462,7 @@
                 supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw',
                 prices: { base: 600, parcel: 300, cheboksary: 400, ferrySurcharge: 100 },
                 cities: ['Йошкар-Ола', 'Чебоксары', 'Козьмодемьянск'],
+                adminId: 5017229451, // Hardcoded for initial check
             },
             
             // --- STATE ---
@@ -457,6 +473,8 @@
                 navigationHistory: ['passenger-home-screen'],
                 allRequests: [],
                 currentFilters: { from: '', to: '', date: '', type: 'all' },
+                partners: [],
+                editingPartner: null,
             },
             
             // --- DOM ELEMENTS CACHE ---
@@ -474,16 +492,15 @@
                     Telegram.WebApp.expand();
                     this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
                      if (!this.state.currentUser) {
-                        throw new Error("Not in Telegram");
+                         throw new Error("Not in Telegram");
                     }
                     
-                    // Handle viewport height changes to prevent keyboard from pushing up the layout
                     this.ui.setAppHeight(); 
                     Telegram.WebApp.onEvent('viewportChanged', this.ui.setAppHeight);
 
                 } catch (e) {
-                    console.warn("Тестовый режим.");
-                    this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
+                    console.warn("Тестовый режим. Используется мок-пользователь.");
+                    this.state.currentUser = { id: this.config.adminId, first_name: 'Admin', username: 'testadmin', photo_url: null };
                 }
 
                 if (!this.state.currentUser?.id) {
@@ -497,6 +514,11 @@
                 this.ui.renderAllScreens();
                 this.ui.updateRoleSwitcher();
                 this.ui.updateAvatar();
+                if(this.state.userProfile.is_admin) {
+                    this.ui.renderAdminButton();
+                }
+                await this.api.getPartners();
+                this.ui.renderPartnerWidgets();
             },
 
             cacheDom() {
@@ -515,7 +537,8 @@
                             .insert({ 
                                 id: App.state.currentUser.id, 
                                 username: App.state.currentUser.username, 
-                                full_name: App.state.currentUser.first_name || 'Пользователь' 
+                                full_name: App.state.currentUser.first_name || 'Пользователь',
+                                is_admin: App.state.currentUser.id === App.config.adminId // Set admin on creation
                             })
                             .select()
                             .single();
@@ -544,6 +567,45 @@
                         return null;
                     }
                     return data;
+                },
+                // --- Partners API ---
+                async getPartners() {
+                    const { data, error } = await App.supabase.from('partners').select('*').order('created_at', { ascending: false });
+                    if (error) {
+                        console.error('Ошибка загрузки партнеров:', error);
+                        return;
+                    }
+                    App.state.partners = data || [];
+                },
+                async uploadPartnerImage(file) {
+                    const fileName = `${Date.now()}-${file.name}`;
+                    const { data, error } = await App.supabase.storage.from('partner_images').upload(fileName, file);
+                    if (error) {
+                        console.error('Ошибка загрузки изображения:', error);
+                        return null;
+                    }
+                    const { data: { publicUrl } } = App.supabase.storage.from('partner_images').getPublicUrl(fileName);
+                    return publicUrl;
+                },
+                async deletePartnerImage(imageUrl) {
+                    if (!imageUrl) return;
+                    const fileName = imageUrl.split('/').pop();
+                    await App.supabase.storage.from('partner_images').remove([fileName]);
+                },
+                 async savePartner(partnerData) {
+                    if (partnerData.id) { // Update
+                        const { error } = await App.supabase.from('partners').update(partnerData).eq('id', partnerData.id);
+                        if (error) { console.error('Ошибка обновления партнера:', error); return false; }
+                    } else { // Insert
+                        const { error } = await App.supabase.from('partners').insert(partnerData);
+                        if (error) { console.error('Ошибка добавления партнера:', error); return false; }
+                    }
+                    return true;
+                },
+                async deletePartner(partnerId) {
+                    const { error } = await App.supabase.from('partners').delete().eq('id', partnerId);
+                    if (error) { console.error('Ошибка удаления партнера:', error); return false; }
+                    return true;
                 },
             },
 
@@ -605,6 +667,10 @@
                         toggleFilter: this.ui.toggleFilter,
                         applyFilters: this.handlers.onApplyFilters,
                         resetFilters: this.handlers.onResetFilters,
+                        // Admin Actions
+                        addPartner: () => this.handlers.onAddPartner(),
+                        editPartner: () => this.handlers.onEditPartner(dataset.partnerId),
+                        deletePartner: () => this.handlers.onDeletePartner(dataset.partnerId),
                     };
 
                     if (actions[action]) {
@@ -623,14 +689,16 @@
                         'offer-form': this.handlers.onOfferSubmit,
                         'passenger-request-form': this.handlers.onPassengerRequestSubmit,
                         'parcel-request-form': this.handlers.onParcelRequestSubmit,
+                        'partner-form': this.handlers.onPartnerFormSubmit,
                     };
                     if (formHandlers[e.target.id]) formHandlers[e.target.id](e.target);
                 });
 
                  document.body.addEventListener('change', (e) => {
-                    if (['via-ferry-toggle', 'via-cheboksary-detour-toggle'].includes(e.target.id)) this.handlers.onRouteOptionChange(e.target);
-                    if (['from-select', 'to-select'].includes(e.target.name)) this.handlers.onRouteDropdownChange(e.target);
-                });
+                     if (['via-ferry-toggle', 'via-cheboksary-detour-toggle'].includes(e.target.id)) this.handlers.onRouteOptionChange(e.target);
+                     if (['from-select', 'to-select'].includes(e.target.name)) this.handlers.onRouteDropdownChange(e.target);
+                     if (e.target.id === 'partner-image-file') this.handlers.onPartnerImageChange(e.target);
+                 });
             },
 
             // --- ACTION HANDLERS (Business Logic) ---
@@ -820,13 +888,13 @@
                 },
                 
                  async onUpdateBookingStatus(bookingId, status) {
-                     const { data: booking, error } = await App.supabase.from('bookings').update({ status }).eq('id', bookingId).select('*, offer:ride_offers(*)').single();
-                     if (error) { console.error('Ошибка обновления брони:', error); return; }
+                       const { data: booking, error } = await App.supabase.from('bookings').update({ status }).eq('id', bookingId).select('*, offer:ride_offers(*)').single();
+                       if (error) { console.error('Ошибка обновления брони:', error); return; }
 
-                     const message = status === 'confirmed' ? `*Бронь подтверждена!* ✅` : `*Бронь отклонена* ❌`;
-                     App.utils.sendTelegramNotification(booking.passenger_id, `${message}\nВодитель ответил на вашу заявку на поездку ${booking.offer.from} → ${booking.offer.to}.`);
-                     
-                     App.handlers.onMyTrips(); // Refresh the list
+                       const message = status === 'confirmed' ? `*Бронь подтверждена!* ✅` : `*Бронь отклонена* ❌`;
+                       App.utils.sendTelegramNotification(booking.passenger_id, `${message}\nВодитель ответил на вашу заявку на поездку ${booking.offer.from} → ${booking.offer.to}.`);
+                       
+                       App.handlers.onMyTrips(); // Refresh the list
                  },
 
                 async onCancelBooking(bookingId) {
@@ -843,14 +911,14 @@
                 },
                 
                  async onDeleteOffer(offerId) {
-                    const { data: bookings } = await App.supabase.from('bookings').select('passenger_id').eq('offer_id', offerId);
-                     if (bookings?.length) {
-                         const notifications = bookings.map(b => App.utils.sendTelegramNotification(b.passenger_id, `*Поездка отменена водителем* ❌`));
-                         await Promise.all(notifications);
-                     }
-                    await App.supabase.from('ride_offers').delete().eq('id', offerId); // Bookings will be deleted by CASCADE
-                    App.handlers.onMyTrips();
-                },
+                     const { data: bookings } = await App.supabase.from('bookings').select('passenger_id').eq('offer_id', offerId);
+                       if (bookings?.length) {
+                             const notifications = bookings.map(b => App.utils.sendTelegramNotification(b.passenger_id, `*Поездка отменена водителем* ❌`));
+                             await Promise.all(notifications);
+                       }
+                     await App.supabase.from('ride_offers').delete().eq('id', offerId); // Bookings will be deleted by CASCADE
+                     App.handlers.onMyTrips();
+                 },
                 
                 async onCancelRequest(requestId) { await App.supabase.from('ride_requests').delete().eq('id', requestId); App.handlers.onMyTrips(); },
                 async onCancelParcelRequest(requestId) { await App.supabase.from('parcel_requests').delete().eq('id', requestId); App.handlers.onMyTrips(); },
@@ -896,13 +964,103 @@
                     button.classList.remove('bg-green-500', 'hover:bg-green-600');
                     button.classList.add('bg-slate-400', 'cursor-not-allowed');
                 },
+                // --- ADMIN HANDLERS ---
+                async onAddPartner() {
+                    App.state.editingPartner = null;
+                    App.ui.renderPartnerForm();
+                    App.navigation.to('partner-form-screen');
+                },
+                async onEditPartner(partnerId) {
+                    const partner = App.state.partners.find(p => p.id == partnerId);
+                    if (partner) {
+                        App.state.editingPartner = partner;
+                        App.ui.renderPartnerForm(partner);
+                        App.navigation.to('partner-form-screen');
+                    }
+                },
+                async onDeletePartner(partnerId) {
+                    if (!confirm('Вы уверены, что хотите удалить этого партнера?')) return;
+                    const partnerToDelete = App.state.partners.find(p => p.id == partnerId);
+                    
+                    // Delete from DB first
+                    const success = await App.api.deletePartner(partnerId);
+                    if (success) {
+                        // Then delete image from storage
+                        await App.api.deletePartnerImage(partnerToDelete.image_url);
+                        await App.api.getPartners(); // Refresh state
+                        App.ui.renderAdminScreen(); // Re-render admin list
+                        App.ui.renderPartnerWidgets(); // Re-render public widgets
+                    } else {
+                        alert('Не удалось удалить партнера.');
+                    }
+                },
+                async onPartnerFormSubmit(form) {
+                    const submitButton = form.querySelector('button[type="submit"]');
+                    submitButton.disabled = true;
+                    submitButton.textContent = 'Сохранение...';
 
+                    const formData = new FormData(form);
+                    const id = formData.get('id');
+                    const oldImageUrl = formData.get('old_image_url');
+                    const imageFile = formData.get('image_file');
+
+                    const partnerData = {
+                        id: id ? parseInt(id) : null,
+                        title: formData.get('title'),
+                        description: formData.get('description'),
+                        channel_url: formData.get('channel_url'),
+                        image_url: oldImageUrl,
+                    };
+
+                    // Handle image upload
+                    if (imageFile && imageFile.size > 0) {
+                        const newImageUrl = await App.api.uploadPartnerImage(imageFile);
+                        if (newImageUrl) {
+                            partnerData.image_url = newImageUrl;
+                            // Delete old image if it's a new upload on an existing partner
+                            if (id && oldImageUrl) {
+                                await App.api.deletePartnerImage(oldImageUrl);
+                            }
+                        } else {
+                            alert('Не удалось загрузить изображение. Попробуйте еще раз.');
+                            submitButton.disabled = false;
+                            submitButton.textContent = 'Сохранить';
+                            return;
+                        }
+                    }
+
+                    const success = await App.api.savePartner(partnerData);
+                    if (success) {
+                        await App.api.getPartners(); // Refresh state
+                        App.ui.renderAdminScreen(); // Re-render admin list
+                        App.ui.renderPartnerWidgets(); // Re-render public widgets
+                        App.navigation.back();
+                    } else {
+                        alert('Не удалось сохранить данные партнера.');
+                    }
+
+                    submitButton.disabled = false;
+                    submitButton.textContent = 'Сохранить';
+                },
+                onPartnerImageChange(input) {
+                    const file = input.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        const preview = document.getElementById('partner-image-preview');
+                        const text = document.getElementById('file-input-text');
+                        reader.onload = (e) => {
+                            preview.src = e.target.result;
+                            preview.classList.remove('hidden');
+                        };
+                        reader.readAsDataURL(file);
+                        text.textContent = file.name;
+                    }
+                },
                 // --- UI RELATED HANDLERS ---
                 onApplyFilters() {
                     App.state.currentFilters = { from: document.getElementById('filter-from').value, to: document.getElementById('filter-to').value, date: document.getElementById('filter-date').value, type: document.querySelector('#filter-type-buttons .active').dataset.type };
                     App.ui.renderFilteredList();
                 },
-
                 onResetFilters() {
                     App.state.currentFilters = { from: '', to: '', date: '', type: 'all' };
                     document.getElementById('filter-from').value = '';
@@ -911,12 +1069,10 @@
                     document.querySelectorAll('#filter-type-buttons .filter-type-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.type === 'all'));
                     App.ui.renderFilteredList();
                 },
-
                 onFilterTypeSelect(button) {
                     button.parentElement.querySelectorAll('.filter-type-btn').forEach(btn => btn.classList.remove('active'));
                     button.classList.add('active');
                 },
-
                 onTimeSelect(button) {
                     const form = button.closest('form');
                     button.parentElement.querySelectorAll('button').forEach(btn => btn.classList.remove('active'));
@@ -924,7 +1080,6 @@
                     form.querySelector('#timeIntervalInput').value = button.dataset.interval;
                     form.querySelector('.form-error-time').classList.add('hidden');
                 },
-
                 onRouteOptionChange(checkbox) {
                     const form = checkbox.closest('form');
                     if (checkbox.id === 'via-ferry-toggle' && checkbox.checked) {
@@ -932,7 +1087,6 @@
                     }
                     this.onRouteDropdownChange(form.querySelector('select[name="from-select"]'));
                 },
-
                 onRouteDropdownChange(selectElement) {
                     const form = selectElement.closest('form');
                     const fromSelect = form.querySelector('select[name="from-select"]');
@@ -972,14 +1126,13 @@
                     // Pre-population logic
                     if (screenId === 'profile-screen') App.ui.populateProfileForm();
                     if (screenId === 'offer-screen') App.handlers.onRouteDropdownChange(document.querySelector('#offer-form select'))
+                    if (screenId === 'admin-screen') App.ui.renderAdminScreen();
                 },
                 back() {
                     if (App.state.navigationHistory.length <= 1) return;
                     App.state.navigationHistory.pop();
                     const lastScreen = App.state.navigationHistory.at(-1);
-                    this.to(lastScreen);
-                    App.state.navigationHistory.push(lastScreen); // to() adds it, so pop it again
-                    App.state.navigationHistory.pop();
+                    this.to(lastScreen, false); // Pass false to not add to history again
                 }
             },
             
@@ -988,7 +1141,6 @@
                 setAppHeight() {
                     const appContainer = document.getElementById('app-container');
                     if (appContainer && window.Telegram?.WebApp?.viewportStableHeight) {
-                        // Use the stable viewport height from the Telegram API to avoid layout shifts with the keyboard
                         appContainer.style.height = `${window.Telegram.WebApp.viewportStableHeight}px`;
                     }
                 },
@@ -997,11 +1149,13 @@
                     templates.forEach(template => {
                         const screenId = template.id.replace('-template', '');
                         const screen = document.getElementById(screenId);
-                        if (screen) screen.innerHTML = template.innerHTML;
+                        // Don't render the partner widget here, it's dynamic now
+                        if (screen && !template.id.startsWith('partner-widget')) {
+                           screen.innerHTML = template.innerHTML;
+                        }
                     });
                     this.setDefaultDates();
                     this.populateSelects();
-                    this.initPartnerWidget();
                     const offerPriceSpan = document.querySelector('#offer-form #publish-price');
                     if (offerPriceSpan) offerPriceSpan.textContent = App.config.prices.base;
                     const parcelPriceSpan = document.querySelector('#parcel-request-form #parcel-price-info span');
@@ -1012,7 +1166,7 @@
                     const switcher = document.getElementById('role-switcher');
                     switcher.classList.toggle('driver', App.state.userRole === 'driver');
                     switcher.classList.toggle('passenger', App.state.userRole === 'passenger');
-                    switcher.dataset.action = 'switchRole'; // Add action for event delegation
+                    switcher.dataset.action = 'switchRole';
                 },
                 
                 updateAvatar() {
@@ -1082,29 +1236,82 @@
                     document.getElementById('back-to-hub-btn').textContent = buttonText;
                     App.navigation.to('success-screen');
                 },
+                // --- ADMIN UI ---
+                renderAdminButton() {
+                    const container = document.getElementById('admin-actions');
+                    if(container) {
+                        container.innerHTML = `<button data-action="navigateTo" data-screen="admin-screen" class="text-sm btn w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700">Админ-панель</button>`;
+                    }
+                },
+                renderAdminScreen() {
+                    const container = document.getElementById('partners-list');
+                    if (!container) return;
+                    if (App.state.partners.length === 0) {
+                        container.innerHTML = `<p class="text-slate-500 text-center">Партнеры еще не добавлены.</p>`;
+                        return;
+                    }
+                    container.innerHTML = App.state.partners.map(p => `
+                        <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-4">
+                           <img src="${p.image_url}" alt="${p.title}" class="w-16 h-16 object-cover rounded-lg shrink-0">
+                           <div class="flex-grow">
+                                <h4 class="font-bold">${p.title}</h4>
+                                <p class="text-xs text-slate-600">${p.description.substring(0, 50)}...</p>
+                           </div>
+                           <div class="flex flex-col gap-2 shrink-0">
+                                <button data-action="editPartner" data-partner-id="${p.id}" class="text-xs btn bg-slate-100 text-slate-700 font-semibold py-1 px-3 rounded-md">Изм.</button>
+                                <button data-action="deletePartner" data-partner-id="${p.id}" class="text-xs btn bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-md">Удал.</button>
+                           </div>
+                        </div>
+                    `).join('');
+                },
+                renderPartnerForm(partner = null) {
+                    const form = document.getElementById('partner-form');
+                    const title = document.getElementById('partner-form-title');
+                    const preview = document.getElementById('partner-image-preview');
+                    const fileText = document.getElementById('file-input-text');
 
+                    form.reset(); // Clear previous data
+                    preview.classList.add('hidden');
+                    fileText.textContent = 'Нажмите, чтобы выбрать файл';
+
+                    if (partner) {
+                        title.textContent = 'Редактировать партнера';
+                        form.querySelector('[name="id"]').value = partner.id;
+                        form.querySelector('[name="title"]').value = partner.title;
+                        form.querySelector('[name="description"]').value = partner.description;
+                        form.querySelector('[name="channel_url"]').value = partner.channel_url;
+                        form.querySelector('[name="old_image_url"]').value = partner.image_url;
+                        if(partner.image_url) {
+                            preview.src = partner.image_url;
+                            preview.classList.remove('hidden');
+                            fileText.textContent = 'Заменить изображение';
+                        }
+                    } else {
+                        title.textContent = 'Добавить партнера';
+                    }
+                },
                 // --- MODALS and FORMS ---
                  showBookingOptionsModal(offer) {
-                    const container = document.getElementById('booking-options-container');
-                    const { base, cheboksary } = App.config.prices;
-                    container.innerHTML = `
-                        <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="full" data-price="${base}" data-from="${offer.from}" data-to="${offer.to}"><span>${offer.from} → ${offer.to}</span><span class="font-semibold">${base} ₽</span></button>
-                        <div class="h-px bg-slate-200"></div>
-                        <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="start_to_cheb" data-price="${cheboksary}" data-from="${offer.from}" data-to="Чебоксары"><span>${offer.from} → Чебоксары</span><span class="font-semibold">${cheboksary} ₽</span></button>
-                        <div class="h-px bg-slate-200"></div>
-                        <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="cheb_to_end" data-price="${cheboksary}" data-from="Чебоксары" data-to="${offer.to}"><span>Чебоксары → ${offer.to}</span><span class="font-semibold">${cheboksary} ₽</span></button>`;
+                     const container = document.getElementById('booking-options-container');
+                     const { base, cheboksary } = App.config.prices;
+                     container.innerHTML = `
+                         <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="full" data-price="${base}" data-from="${offer.from}" data-to="${offer.to}"><span>${offer.from} → ${offer.to}</span><span class="font-semibold">${base} ₽</span></button>
+                         <div class="h-px bg-slate-200"></div>
+                         <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="start_to_cheb" data-price="${cheboksary}" data-from="${offer.from}" data-to="Чебоксары"><span>${offer.from} → Чебоксары</span><span class="font-semibold">${cheboksary} ₽</span></button>
+                         <div class="h-px bg-slate-200"></div>
+                         <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="cheb_to_end" data-price="${cheboksary}" data-from="Чебоксары" data-to="${offer.to}"><span>Чебоксары → ${offer.to}</span><span class="font-semibold">${cheboksary} ₽</span></button>`;
                     
-                    const overlay = document.getElementById('booking-modal-overlay');
-                    const modal = document.getElementById('booking-modal');
-                    overlay.classList.remove('hidden');
-                    overlay.dataset.action = 'hideModal';
-                    document.getElementById('booking-modal-cancel-btn').dataset.action = 'hideModal';
+                     const overlay = document.getElementById('booking-modal-overlay');
+                     const modal = document.getElementById('booking-modal');
+                     overlay.classList.remove('hidden');
+                     overlay.dataset.action = 'hideModal';
+                     document.getElementById('booking-modal-cancel-btn').dataset.action = 'hideModal';
                     
-                    requestAnimationFrame(() => {
-                        overlay.classList.add('show');
-                        modal.classList.add('show');
-                    });
-                },
+                     requestAnimationFrame(() => {
+                         overlay.classList.add('show');
+                         modal.classList.add('show');
+                     });
+                 },
 
                 hideBookingModal() {
                     const overlay = document.getElementById('booking-modal-overlay');
@@ -1137,170 +1344,96 @@
                     if(priceIncreaseSpan) { priceIncreaseSpan.classList.toggle('hidden', !isFerryChecked || isCheboksaryRoute); priceIncreaseSpan.textContent = `(+${App.config.prices.ferrySurcharge} ₽)`; }
                     form.querySelector('#publish-price').textContent = price;
                 },
-
-                initPartnerWidget() {
-                    document.querySelectorAll('.partner-widget').forEach(widget => {
-                        const track = widget.querySelector('.slider-track');
-                        const slides = Array.from(track.children);
-                        const dotsContainer = widget.querySelector('.slider-dots');
-                        if (!slides.length) return;
-
-                        let currentIndex = 0;
-                        let autoSlideInterval;
-                        let touchStartX = 0;
-                        let touchEndX = 0;
-
-                        // Create dots
-                        slides.forEach((_, i) => {
-                            const dot = document.createElement('button');
-                            dot.classList.add('dot');
-                            if (i === 0) dot.classList.add('active');
-                            dot.addEventListener('click', () => {
-                                goToSlide(i);
-                                resetAutoSlide();
-                            });
-                            dotsContainer.appendChild(dot);
-                        });
-                        const dots = Array.from(dotsContainer.children);
-
-                        const goToSlide = (index) => {
-                            track.style.transform = `translateX(-${index * 100}%)`;
-                            dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
-                            currentIndex = index;
-                        };
-
-                        const nextSlide = () => {
-                            const nextIndex = (currentIndex + 1) % slides.length;
-                            goToSlide(nextIndex);
-                        };
+                renderPartnerWidgets() {
+                    const containers = document.querySelectorAll('.partner-widget-container');
+                    if (!containers.length) return;
+                    
+                    if (App.state.partners.length === 0) {
+                        containers.forEach(c => c.innerHTML = '');
+                        return;
+                    }
+                    
+                    const widgetTemplate = document.getElementById('partner-widget-template').innerHTML;
+                    
+                    containers.forEach(container => {
+                        container.innerHTML = widgetTemplate;
+                        const track = container.querySelector('.slider-track');
                         
-                        const resetAutoSlide = () => {
-                             clearInterval(autoSlideInterval);
-                             autoSlideInterval = setInterval(nextSlide, 5000);
-                        };
+                        track.innerHTML = App.state.partners.map(p => `
+                            <div class="slide">
+                                <img src="${p.image_url}" alt="${p.title}" class="w-full h-48 object-cover">
+                                <div class="slide-content">
+                                    <h4 class="font-bold">${p.title}</h4>
+                                    <p class="text-xs mt-1 mb-2">${p.description}</p>
+                                </div>
+                            </div>
+                        `).join('');
 
-                        // Touch events
-                        track.addEventListener('touchstart', e => {
-                            touchStartX = e.touches[0].clientX;
-                            clearInterval(autoSlideInterval);
-                        });
-                        
-                        track.addEventListener('touchend', e => {
-                            touchEndX = e.changedTouches[0].clientX;
-                            if (touchStartX - touchEndX > 50) { // Swiped left
-                                nextSlide();
-                            } else if (touchEndX - touchStartX > 50) { // Swiped right
-                                const prevIndex = (currentIndex - 1 + slides.length) % slides.length;
-                                goToSlide(prevIndex);
-                            }
-                            resetAutoSlide();
-                        });
-
-
-                        autoSlideInterval = setInterval(nextSlide, 5000);
+                        this.initSlider(container.querySelector('.partner-widget'));
                     });
                 },
 
-                // --- CARD RENDERERS ---
-                getDriverOfferCard(item) {
-                    const seatsLeft = item.seats_left;
-                    const seatsText = seatsLeft === 1 ? '1 место' : (seatsLeft > 1 && seatsLeft < 5 ? `${seatsLeft} места` : `${seatsLeft} мест`);
-                    let buttonHtml = '';
-                    if (item.currentUserBookingId) {
-                        buttonHtml = `<button class="btn w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 text-sm" data-action="cancelBooking" data-booking-id="${item.currentUserBookingId}">Отменить бронь</button>`;
-                    } else if (item.via_cheboksary_detour) {
-                         buttonHtml = `<button class="btn w-full bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 text-sm" data-action="detourBooking" data-offer='${encodeURIComponent(JSON.stringify(item))}'>Забронировать</button>`;
+                initSlider(widgetElement) {
+                    const track = widgetElement.querySelector('.slider-track');
+                    const slides = Array.from(track.children);
+                    const dotsContainer = widgetElement.querySelector('.slider-dots');
+                    const channelLink = widgetElement.querySelector('#partner-channel-link');
+
+                    if (slides.length <= 1) {
+                         dotsContainer.style.display = 'none';
                     } else {
-                        buttonHtml = `<button class="btn w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 text-sm" data-action="requestBooking" data-offer-id="${item.id}">Забронировать</button>`;
+                         dotsContainer.style.display = 'flex';
                     }
-                    return `
-                        <p class="text-xs text-slate-500">${item.driver_car || 'Авто не указано'}</p>
-                        <div class="flex justify-between items-center">
-                            <h3 class="text-base font-bold">${item.from} → ${item.to}</h3>
-                            <span class="text-base font-bold">${item.price} ₽</span>
-                        </div>
-                        <p class="text-sm text-slate-600">${this.formatDate(item.ride_date)} в ${this.formatTime(item.ride_time)}</p>
-                        <p class="text-sm">Свободно: <b>${seatsText}</b></p>
-                         ${(item.via_ferry || item.via_cheboksary_detour) ? `<p class="text-xs font-medium ${item.via_ferry ? 'text-blue-600' : 'text-orange-600'}">${item.via_ferry ? '⛴️ Через паром' : ' detour-icon Заезд в Чебоксары'}</p>` : ''}
-                        <div class="pt-2">${buttonHtml}</div>`;
-                },
-                getPassengerRequestCard(item) {
-                    const isParcel = item.type === 'parcel_request';
-                    const buttonHtml = isParcel ? '' : `<button data-action="offerRide" data-request-id="${item.id}" class="btn w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm">Предложить поездку</button>`;
-                    return `
-                        <div class="flex justify-between items-center">
-                             <h3 class="text-base font-bold">${item.from} → ${item.to}</h3>
-                            <span class="text-base font-bold">${item.price} ₽</span>
-                        </div>
-                        <p class="text-sm text-slate-600">${this.formatDate(item.ride_date)}</p>
-                        <p class="text-sm">${isParcel ? '<b>Посылка</b>' : `Желаемое время: <b>${item.time_interval}</b>`}</p>
-                        <div class="pt-2">${buttonHtml}</div>`;
-                },
-                getMyDriverOfferCard(offer) {
-                    let passengerList = '<p class="text-xs text-slate-500">Пока нет подтвержденных пассажиров.</p>';
-                    if (offer.bookings && offer.bookings.length > 0) {
-                        passengerList = offer.bookings.map(b => `
-                            <div class="flex items-center justify-between p-2 rounded-lg ${b.status === 'pending' ? 'bg-yellow-100' : 'bg-green-100'}">
-                                <div>
-                                    <p class="text-sm font-medium">${b.passenger.full_name}</p>
-                                    <a href="https://t.me/${b.passenger.username}" target="_blank" class="text-xs text-blue-600">@${b.passenger.username}</a>
-                                </div>
-                                ${b.status === 'pending' ? `
-                                <div class="flex gap-2">
-                                    <button data-action="updateBookingStatus" data-booking-id="${b.id}" data-status="confirmed" class="w-8 h-8 flex items-center justify-center bg-green-500 text-white rounded-md hover:bg-green-600">✓</button>
-                                    <button data-action="updateBookingStatus" data-booking-id="${b.id}" data-status="rejected" class="w-8 h-8 flex items-center justify-center bg-red-500 text-white rounded-md hover:bg-red-600">×</button>
-                                </div>
-                                ` : `<span class="text-xs font-bold text-green-700">Подтвержден</span>`}
-                            </div>`).join('');
-                    }
-                    return `
-                        <h3 class="text-base font-bold">${offer.from} → ${offer.to} - ${offer.price} ₽</h3>
-                        <p class="text-sm text-slate-600">${this.formatDate(offer.ride_date, true)} в ${this.formatTime(offer.ride_time)}</p>
-                        <div class="space-y-2">
-                            <h4 class="text-xs font-semibold text-slate-600">Пассажиры:</h4>
-                            ${passengerList}
-                        </div>
-                        <div class="pt-2">
-                           <button data-action="deleteOffer" data-offer-id="${offer.id}" class="btn w-full bg-red-100 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-200 text-sm">Удалить поездку</button>
-                        </div>`;
-                },
-                getMyBookingCard(booking) {
-                    const statusMap = {
-                        pending: { text: 'Ожидает подтверждения', color: 'bg-yellow-100 text-yellow-800' },
-                        confirmed: { text: 'Подтверждено', color: 'bg-green-100 text-green-800' },
-                        rejected: { text: 'Отклонено', color: 'bg-red-100 text-red-800' },
+
+                    if (!slides.length) return;
+
+                    dotsContainer.innerHTML = '';
+                    let currentIndex = 0;
+                    let autoSlideInterval;
+
+                    slides.forEach((_, i) => {
+                        const dot = document.createElement('button');
+                        dot.classList.add('dot');
+                        if (i === 0) dot.classList.add('active');
+                        dot.addEventListener('click', () => {
+                            goToSlide(i);
+                            resetAutoSlide();
+                        });
+                        dotsContainer.appendChild(dot);
+                    });
+                    const dots = Array.from(dotsContainer.children);
+
+                    const goToSlide = (index) => {
+                        if (index < 0 || index >= slides.length) return;
+                        track.style.transform = `translateX(-${index * 100}%)`;
+                        dots.forEach((dot, i) => dot.classList.toggle('active', i === index));
+                        channelLink.href = App.state.partners[index].channel_url;
+                        currentIndex = index;
                     };
-                    const driver = booking.offer.driver;
-                    return `
-                        <h3 class="text-base font-bold">${booking.from_city} → ${booking.to_city} - ${booking.price} ₽</h3>
-                        <p class="text-sm text-slate-600">${this.formatDate(booking.offer.ride_date, true)} в ${this.formatTime(booking.offer.ride_time)}</p>
-                        <p class="text-xs font-medium px-2 py-1 rounded-full ${statusMap[booking.status]?.color} inline-block">${statusMap[booking.status]?.text}</p>
-                        ${booking.status === 'confirmed' ? `
-                         <div>
-                            <p class="text-sm">Водитель: <b>${driver.full_name}</b> (${driver.driver_car || ''})</p>
-                            <a href="https://t.me/${driver.username}" target="_blank" class="text-sm text-blue-600">Связаться в Telegram</a>
-                         </div>
-                        ` : ''}
-                        <div class="pt-2">
-                           <button data-action="cancelBooking" data-booking-id="${booking.id}" class="btn w-full bg-red-100 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-200 text-sm">Отменить бронь</button>
-                        </div>`;
+
+                    const nextSlide = () => {
+                        const nextIndex = (currentIndex + 1) % slides.length;
+                        goToSlide(nextIndex);
+                    };
+                    
+                    const resetAutoSlide = () => {
+                        clearInterval(autoSlideInterval);
+                        if (slides.length > 1) {
+                            autoSlideInterval = setInterval(nextSlide, 5000);
+                        }
+                    };
+                    
+                    // Init
+                    goToSlide(0);
+                    resetAutoSlide();
                 },
-                getMyRequestCard(request) {
-                    return `
-                        <h3 class="text-base font-bold">${request.from} → ${request.to} - ${request.price} ₽</h3>
-                        <p class="text-sm text-slate-600">${this.formatDate(request.ride_date, true)}, примерно в ${request.time_interval}</p>
-                        <div class="pt-2">
-                           <button data-action="cancelRequest" data-request-id="${request.id}" class="btn w-full bg-red-100 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-200 text-sm">Удалить заявку</button>
-                        </div>`;
-                },
-                getMyParcelRequestCard(parcel) {
-                    return `
-                        <h3 class="text-base font-bold">Посылка: ${parcel.from} → ${parcel.to} - ${parcel.price} ₽</h3>
-                        <p class="text-sm text-slate-600">Дата: ${this.formatDate(parcel.ride_date, true)}</p>
-                        <div class="pt-2">
-                           <button data-action="cancelParcelRequest" data-request-id="${parcel.id}" class="btn w-full bg-red-100 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-200 text-sm">Удалить заявку на посылку</button>
-                        </div>`;
-                },
+                // --- CARD RENDERERS ---
+                getDriverOfferCard(item) { /* ... original code ... */ },
+                getPassengerRequestCard(item) { /* ... original code ... */ },
+                getMyDriverOfferCard(offer) { /* ... original code ... */ },
+                getMyBookingCard(booking) { /* ... original code ... */ },
+                getMyRequestCard(request) { /* ... original code ... */ },
+                getMyParcelRequestCard(parcel) { /* ... original code ... */ },
 
                 // --- HELPERS ---
                 getLoaderHTML() { return '<div class="text-center p-8">Загрузка...</div>'; },
@@ -1327,27 +1460,36 @@
                     }
                 },
                  formatDate(dateStr, withYear = false) {
-                    const date = new Date(dateStr);
-                    const options = { day: 'numeric', month: 'long' };
-                    if (withYear) options.year = 'numeric';
-                    return date.toLocaleDateString('ru-RU', options);
-                },
-                formatTime(timeStr) {
-                    return timeStr.substring(0, 5);
-                }
+                     const date = new Date(dateStr);
+                     const options = { day: 'numeric', month: 'long' };
+                     if (withYear) options.year = 'numeric';
+                     return date.toLocaleDateString('ru-RU', options);
+                 },
+                 formatTime(timeStr) {
+                     return timeStr.substring(0, 5);
+                 }
             },
 
             // --- UTILS ---
             utils: {
                 sendTelegramNotification(userId, text) {
-                    console.log(`Sending notification to ${userId}: ${text}`);
+                    // This is a placeholder as client-side JS cannot securely call a bot API.
+                    // This should be implemented via a server-side function (e.g., Supabase Edge Function).
+                    console.log(`(Симуляция) Отправка уведомления пользователю ${userId}: ${text}`);
                 }
             },
         };
+        // Copying original card renderers to the new structure
+        App.ui.getDriverOfferCard = App.ui.getDriverOfferCard.toString().includes('...') ? function(item) { const seatsLeft = item.seats_left; const seatsText = seatsLeft === 1 ? '1 место' : (seatsLeft > 1 && seatsLeft < 5 ? `${seatsLeft} места` : `${seatsLeft} мест`); let buttonHtml = ''; if (item.currentUserBookingId) { buttonHtml = `<button class="btn w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 text-sm" data-action="cancelBooking" data-booking-id="${item.currentUserBookingId}">Отменить бронь</button>`; } else if (item.via_cheboksary_detour) { buttonHtml = `<button class="btn w-full bg-orange-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-orange-600 text-sm" data-action="detourBooking" data-offer='${encodeURIComponent(JSON.stringify(item))}'>Забронировать</button>`; } else { buttonHtml = `<button class="btn w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 text-sm" data-action="requestBooking" data-offer-id="${item.id}">Забронировать</button>`; } return ` <p class="text-xs text-slate-500">${item.driver_car || 'Авто не указано'}</p> <div class="flex justify-between items-center"> <h3 class="text-base font-bold">${item.from} → ${item.to}</h3> <span class="text-base font-bold">${item.price} ₽</span> </div> <p class="text-sm text-slate-600">${this.formatDate(item.ride_date)} в ${this.formatTime(item.ride_time)}</p> <p class="text-sm">Свободно: <b>${seatsText}</b></p> ${(item.via_ferry || item.via_cheboksary_detour) ? `<p class="text-xs font-medium ${item.via_ferry ? 'text-blue-600' : 'text-orange-600'}">${item.via_ferry ? '⛴️ Через паром' : ' detour-icon Заезд в Чебоксары'}</p>` : ''} <div class="pt-2">${buttonHtml}</div>`; } : App.ui.getDriverOfferCard;
+        App.ui.getPassengerRequestCard = App.ui.getPassengerRequestCard.toString().includes('...') ? function(item) { const isParcel = item.type === 'parcel_request'; const buttonHtml = isParcel ? '' : `<button data-action="offerRide" data-request-id="${item.id}" class="btn w-full bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm">Предложить поездку</button>`; return ` <div class="flex justify-between items-center"> <h3 class="text-base font-bold">${item.from} → ${item.to}</h3> <span class="text-base font-bold">${item.price} ₽</span> </div> <p class="text-sm text-slate-600">${this.formatDate(item.ride_date)}</p> <p class="text-sm">${isParcel ? '<b>Посылка</b>' : `Желаемое время: <b>${item.time_interval}</b>`}</p> <div class="pt-2">${buttonHtml}</div>`; } : App.ui.getPassengerRequestCard;
+        App.ui.getMyDriverOfferCard = App.ui.getMyDriverOfferCard.toString().includes('...') ? function(offer) { let passengerList = '<p class="text-xs text-slate-500">Пока нет подтвержденных пассажиров.</p>'; if (offer.bookings && offer.bookings.length > 0) { passengerList = offer.bookings.map(b => ` <div class="flex items-center justify-between p-2 rounded-lg ${b.status === 'pending' ? 'bg-yellow-100' : 'bg-green-100'}"> <div> <p class="text-sm font-medium">${b.passenger.full_name}</p> <a href="https://t.me/${b.passenger.username}" target="_blank" class="text-xs text-blue-600">@${b.passenger.username}</a> </div> ${b.status === 'pending' ? ` <div class="flex gap-2"> <button data-action="updateBookingStatus" data-booking-id="${b.id}" data-status="confirmed" class="w-8 h-8 flex items-center justify-center bg-green-500 text-white rounded-md hover:bg-green-600">✓</button> <button data-action="updateBookingStatus" data-booking-id="${b.id}" data-status="rejected" class="w-8 h-8 flex items-center justify-center bg-red-500 text-white rounded-md hover:bg-red-600">×</button> </div> ` : `<span class="text-xs font-bold text-green-700">Подтвержден</span>`} </div>`).join(''); } return ` <h3 class="text-base font-bold">${offer.from} → ${offer.to} - ${offer.price} ₽</h3> <p class="text-sm text-slate-600">${this.formatDate(offer.ride_date, true)} в ${this.formatTime(offer.ride_time)}</p> <div class="space-y-2"> <h4 class="text-xs font-semibold text-slate-600">Пассажиры:</h4> ${passengerList} </div> <div class="pt-2"> <button data-action="deleteOffer" data-offer-id="${offer.id}" class="btn w-full bg-red-100 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-200 text-sm">Удалить поездку</button> </div>`; } : App.ui.getMyDriverOfferCard;
+        App.ui.getMyBookingCard = App.ui.getMyBookingCard.toString().includes('...') ? function(booking) { const statusMap = { pending: { text: 'Ожидает подтверждения', color: 'bg-yellow-100 text-yellow-800' }, confirmed: { text: 'Подтверждено', color: 'bg-green-100 text-green-800' }, rejected: { text: 'Отклонено', color: 'bg-red-100 text-red-800' }, }; const driver = booking.offer.driver; return ` <h3 class="text-base font-bold">${booking.from_city} → ${booking.to_city} - ${booking.price} ₽</h3> <p class="text-sm text-slate-600">${this.formatDate(booking.offer.ride_date, true)} в ${this.formatTime(booking.offer.ride_time)}</p> <p class="text-xs font-medium px-2 py-1 rounded-full ${statusMap[booking.status]?.color} inline-block">${statusMap[booking.status]?.text}</p> ${booking.status === 'confirmed' ? ` <div> <p class="text-sm">Водитель: <b>${driver.full_name}</b> (${driver.driver_car || ''})</p> <a href="https://t.me/${driver.username}" target="_blank" class="text-sm text-blue-600">Связаться в Telegram</a> </div> ` : ''} <div class="pt-2"> <button data-action="cancelBooking" data-booking-id="${booking.id}" class="btn w-full bg-red-100 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-200 text-sm">Отменить бронь</button> </div>`; } : App.ui.getMyBookingCard;
+        App.ui.getMyRequestCard = App.ui.getMyRequestCard.toString().includes('...') ? function(request) { return ` <h3 class="text-base font-bold">${request.from} → ${request.to} - ${request.price} ₽</h3> <p class="text-sm text-slate-600">${this.formatDate(request.ride_date, true)}, примерно в ${request.time_interval}</p> <div class="pt-2"> <button data-action="cancelRequest" data-request-id="${request.id}" class="btn w-full bg-red-100 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-200 text-sm">Удалить заявку</button> </div>`; } : App.ui.getMyRequestCard;
+        App.ui.getMyParcelRequestCard = App.ui.getMyParcelRequestCard.toString().includes('...') ? function(parcel) { return ` <h3 class="text-base font-bold">Посылка: ${parcel.from} → ${parcel.to} - ${parcel.price} ₽</h3> <p class="text-sm text-slate-600">Дата: ${this.formatDate(parcel.ride_date, true)}</p> <div class="pt-2"> <button data-action="cancelParcelRequest" data-request-id="${parcel.id}" class="btn w-full bg-red-100 text-red-700 font-bold py-2 px-4 rounded-lg hover:bg-red-200 text-sm">Удалить заявку на посылку</button> </div>`; } : App.ui.getMyParcelRequestCard;
+
 
         App.init();
     });
     </script>
 </body>
 </html>
-
