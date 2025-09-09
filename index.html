@@ -593,7 +593,6 @@
                     await App.supabase.storage.from('partner_images').remove([fileName]);
                 },
                 async savePartner(partnerData) {
-                    // Create a clean object for saving, excluding the 'id'
                     const dataToSave = {
                         title: partnerData.title,
                         description: partnerData.description,
@@ -601,20 +600,27 @@
                         channel_url: partnerData.channel_url,
                     };
 
+                    let result;
                     if (partnerData.id) { // Update
-                        const { error } = await App.supabase.from('partners').update(dataToSave).eq('id', partnerData.id);
-                        if (error) {
-                            console.error('Ошибка обновления партнера:', error);
-                            return false;
-                        }
+                        result = await App.supabase
+                            .from('partners')
+                            .update(dataToSave)
+                            .eq('id', partnerData.id)
+                            .select()
+                            .single();
                     } else { // Insert
-                        const { error } = await App.supabase.from('partners').insert(dataToSave);
-                         if (error) {
-                            console.error('Ошибка добавления партнера:', error);
-                            return false;
-                        }
+                        result = await App.supabase
+                            .from('partners')
+                            .insert(dataToSave)
+                            .select()
+                            .single();
                     }
-                    return true;
+
+                    if (result.error) {
+                        console.error('Ошибка сохранения партнера:', result.error);
+                        return null;
+                    }
+                    return result.data;
                 },
                 async deletePartner(partnerId) {
                     const { error } = await App.supabase.from('partners').delete().eq('id', partnerId);
@@ -1000,7 +1006,9 @@
                     const success = await App.api.deletePartner(partnerId);
                     if (success) {
                         // Then delete image from storage
-                        await App.api.deletePartnerImage(partnerToDelete.image_url);
+                        if (partnerToDelete.image_url) {
+                           await App.api.deletePartnerImage(partnerToDelete.image_url);
+                        }
                         await App.api.getPartners(); // Refresh state
                         App.ui.renderAdminScreen(); // Re-render admin list
                         App.ui.renderPartnerWidgets(); // Re-render public widgets
@@ -1013,48 +1021,46 @@
                     submitButton.disabled = true;
                     submitButton.textContent = 'Сохранение...';
 
-                    const formData = new FormData(form);
-                    const id = formData.get('id');
-                    const oldImageUrl = formData.get('old_image_url');
-                    const imageFile = formData.get('image_file');
+                    try {
+                        const formData = new FormData(form);
+                        const id = formData.get('id');
+                        const oldImageUrl = formData.get('old_image_url');
+                        const imageFile = formData.get('image_file');
 
-                    const partnerData = {
-                        id: id ? parseInt(id) : null,
-                        title: formData.get('title'),
-                        description: formData.get('description'),
-                        channel_url: formData.get('channel_url'),
-                        image_url: oldImageUrl,
-                    };
+                        const partnerData = {
+                            id: id ? parseInt(id) : null,
+                            title: formData.get('title'),
+                            description: formData.get('description'),
+                            channel_url: formData.get('channel_url'),
+                            image_url: oldImageUrl,
+                        };
 
-                    // Handle image upload
-                    if (imageFile && imageFile.size > 0) {
-                        const newImageUrl = await App.api.uploadPartnerImage(imageFile);
-                        if (newImageUrl) {
-                            partnerData.image_url = newImageUrl;
-                            // Delete old image if it's a new upload on an existing partner
-                            if (id && oldImageUrl) {
-                                await App.api.deletePartnerImage(oldImageUrl);
+                        if (imageFile && imageFile.size > 0) {
+                            const newImageUrl = await App.api.uploadPartnerImage(imageFile);
+                            if (newImageUrl) {
+                                partnerData.image_url = newImageUrl;
+                                if (id && oldImageUrl) {
+                                    await App.api.deletePartnerImage(oldImageUrl);
+                                }
+                            } else {
+                                throw new Error('Не удалось загрузить изображение. Попробуйте еще раз.');
                             }
-                        } else {
-                            alert('Не удалось загрузить изображение. Попробуйте еще раз.');
-                            submitButton.disabled = false;
-                            submitButton.textContent = 'Сохранить';
-                            return;
                         }
-                    }
 
-                    const success = await App.api.savePartner(partnerData);
-                    if (success) {
-                        await App.api.getPartners(); // Refresh state
-                        App.ui.renderAdminScreen(); // Re-render admin list
-                        App.ui.renderPartnerWidgets(); // Re-render public widgets
-                        App.navigation.back();
-                    } else {
-                        alert('Не удалось сохранить данные партнера.');
+                        const savedPartner = await App.api.savePartner(partnerData);
+                        if (savedPartner) {
+                            await App.api.getPartners();
+                            App.ui.renderPartnerWidgets();
+                            App.navigation.back();
+                        } else {
+                            throw new Error('Не удалось сохранить данные партнера на сервере.');
+                        }
+                    } catch (error) {
+                        alert(error.message);
+                    } finally {
+                        submitButton.disabled = false;
+                        submitButton.textContent = 'Сохранить';
                     }
-
-                    submitButton.disabled = false;
-                    submitButton.textContent = 'Сохранить';
                 },
                 onPartnerImageChange(input) {
                     const file = input.files[0];
@@ -1499,4 +1505,5 @@
     </script>
 </body>
 </html>
+
 
