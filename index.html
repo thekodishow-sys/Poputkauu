@@ -1002,16 +1002,14 @@
                     if (!confirm('Вы уверены, что хотите удалить этого партнера?')) return;
                     const partnerToDelete = App.state.partners.find(p => p.id == partnerId);
                     
-                    // Delete from DB first
                     const success = await App.api.deletePartner(partnerId);
                     if (success) {
-                        // Then delete image from storage
                         if (partnerToDelete.image_url) {
                            await App.api.deletePartnerImage(partnerToDelete.image_url);
                         }
-                        await App.api.getPartners(); // Refresh state
-                        App.ui.renderAdminScreen(); // Re-render admin list
-                        App.ui.renderPartnerWidgets(); // Re-render public widgets
+                        await App.api.getPartners();
+                        App.ui.renderAdminScreen();
+                        App.ui.renderPartnerWidgets();
                     } else {
                         alert('Не удалось удалить партнера.');
                     }
@@ -1026,6 +1024,10 @@
                         const id = formData.get('id');
                         const oldImageUrl = formData.get('old_image_url');
                         const imageFile = formData.get('image_file');
+
+                        if (!id && (!imageFile || imageFile.size === 0)) {
+                            throw new Error('Для нового партнера необходимо загрузить изображение.');
+                        }
 
                         const partnerData = {
                             id: id ? parseInt(id) : null,
@@ -1049,9 +1051,10 @@
 
                         const savedPartner = await App.api.savePartner(partnerData);
                         if (savedPartner) {
-                            await App.api.getPartners();
-                            App.ui.renderPartnerWidgets();
                             App.navigation.back();
+                            await App.api.getPartners();
+                            App.ui.renderAdminScreen();
+                            App.ui.renderPartnerWidgets();
                         } else {
                             throw new Error('Не удалось сохранить данные партнера на сервере.');
                         }
@@ -1505,5 +1508,7 @@
     </script>
 </body>
 </html>
+" selected.
 
+The user query is: Не получается опубликовать в админ-панели рекламу. Разберись в чем проблема
 
