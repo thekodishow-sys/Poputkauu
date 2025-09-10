@@ -498,7 +498,7 @@
                         <input type="file" name="image_files" id="partner-image-files" class="hidden" accept="image/*" multiple>
                     </label>
                 </div>
-                <button id="partner-form-submit-btn" type="submit" class="text-sm btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Опубликовать</button>
+                <button id="partner-form-submit-btn" type="submit" class="text-sm btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button>
             </form>
         </div>
     </template>
@@ -551,7 +551,7 @@
                     Telegram.WebApp.expand();
                     this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
                      if (!this.state.currentUser) {
-                         throw new Error("Not in Telegram");
+                          throw new Error("Not in Telegram");
                     }
                     
                     this.ui.setAppHeight(); 
@@ -575,8 +575,8 @@
                 this.ui.updateAvatar();
                 if(this.state.userProfile.is_admin) {
                     this.ui.renderAdminButton();
+                    await this.api.getAllPartnersForAdmin(); // Admin gets all partners
                 }
-                await this.api.getPartners();
                 this.ui.renderPartnerWidgets();
             },
 
@@ -628,13 +628,26 @@
                     return data;
                 },
                 // --- Partners API ---
-                async getPartners() {
+                async getAllPartnersForAdmin() {
                     const { data, error } = await App.supabase.from('partners').select('*').order('created_at', { ascending: false });
                     if (error) {
                         console.error('Ошибка загрузки партнеров:', error);
                         return;
                     }
                     App.state.partners = data || [];
+                },
+                async updatePartnerStatus(partnerId, is_published) {
+                    const { data, error } = await App.supabase
+                        .from('partners')
+                        .update({ is_published })
+                        .eq('id', partnerId)
+                        .select()
+                        .single();
+                    if (error) {
+                        console.error('Ошибка обновления статуса партнера:', error);
+                        return null;
+                    }
+                    return data;
                 },
                 async uploadPartnerImage(file) {
                     const fileName = `${Date.now()}-${file.name}`;
@@ -662,6 +675,8 @@
                     }
                 },
                 async savePartner(partnerData) {
+                    // NOTE: This function no longer controls the is_published flag.
+                    // New partners will use the database default (should be FALSE).
                     const dataToSave = {
                         title: partnerData.title,
                         description: partnerData.description,
@@ -760,6 +775,7 @@
                         addPartner: () => this.handlers.onAddPartner(),
                         editPartner: () => this.handlers.onEditPartner(dataset.partnerId),
                         deletePartner: () => this.handlers.onDeletePartner(dataset.partnerId),
+                        togglePublish: () => this.handlers.onTogglePublish(dataset.partnerId),
                         deletePreviewImage: () => this.handlers.onDeletePreviewImage(button),
                         addUrl: () => this.handlers.onAddUrl(),
                     };
@@ -786,9 +802,9 @@
                 });
 
                  document.body.addEventListener('change', (e) => {
-                     if (['via-ferry-toggle', 'via-cheboksary-detour-toggle'].includes(e.target.id)) this.handlers.onRouteOptionChange(e.target);
-                     if (['from-select', 'to-select'].includes(e.target.name)) this.handlers.onRouteDropdownChange(e.target);
-                     if (e.target.id === 'partner-image-files') this.handlers.onPartnerImageChange(e.target);
+                      if (['via-ferry-toggle', 'via-cheboksary-detour-toggle'].includes(e.target.id)) this.handlers.onRouteOptionChange(e.target);
+                      if (['from-select', 'to-select'].includes(e.target.name)) this.handlers.onRouteDropdownChange(e.target);
+                      if (e.target.id === 'partner-image-files') this.handlers.onPartnerImageChange(e.target);
                  });
             },
 
@@ -979,13 +995,13 @@
                 },
                 
                  async onUpdateBookingStatus(bookingId, status) {
-                       const { data: booking, error } = await App.supabase.from('bookings').update({ status }).eq('id', bookingId).select('*, offer:ride_offers(*)').single();
-                       if (error) { console.error('Ошибка обновления брони:', error); return; }
+                      const { data: booking, error } = await App.supabase.from('bookings').update({ status }).eq('id', bookingId).select('*, offer:ride_offers(*)').single();
+                      if (error) { console.error('Ошибка обновления брони:', error); return; }
 
-                       const message = status === 'confirmed' ? `*Бронь подтверждена!* ✅` : `*Бронь отклонена* ❌`;
-                       App.utils.sendTelegramNotification(booking.passenger_id, `${message}\nВодитель ответил на вашу заявку на поездку ${booking.offer.from} → ${booking.offer.to}.`);
-                       
-                       App.handlers.onMyTrips(); // Refresh the list
+                      const message = status === 'confirmed' ? `*Бронь подтверждена!* ✅` : `*Бронь отклонена* ❌`;
+                      App.utils.sendTelegramNotification(booking.passenger_id, `${message}\nВодитель ответил на вашу заявку на поездку ${booking.offer.from} → ${booking.offer.to}.`);
+                      
+                      App.handlers.onMyTrips(); // Refresh the list
                  },
 
                 async onCancelBooking(bookingId) {
@@ -1002,13 +1018,13 @@
                 },
                 
                  async onDeleteOffer(offerId) {
-                     const { data: bookings } = await App.supabase.from('bookings').select('passenger_id').eq('offer_id', offerId);
-                       if (bookings?.length) {
-                             const notifications = bookings.map(b => App.utils.sendTelegramNotification(b.passenger_id, `*Поездка отменена водителем* ❌`));
-                             await Promise.all(notifications);
-                       }
-                     await App.supabase.from('ride_offers').delete().eq('id', offerId); // Bookings will be deleted by CASCADE
-                     App.handlers.onMyTrips();
+                       const { data: bookings } = await App.supabase.from('bookings').select('passenger_id').eq('offer_id', offerId);
+                         if (bookings?.length) {
+                               const notifications = bookings.map(b => App.utils.sendTelegramNotification(b.passenger_id, `*Поездка отменена водителем* ❌`));
+                               await Promise.all(notifications);
+                         }
+                       await App.supabase.from('ride_offers').delete().eq('id', offerId); // Bookings will be deleted by CASCADE
+                       App.handlers.onMyTrips();
                  },
                 
                 async onCancelRequest(requestId) { await App.supabase.from('ride_requests').delete().eq('id', requestId); App.handlers.onMyTrips(); },
@@ -1055,7 +1071,7 @@
                     button.classList.remove('bg-green-500', 'hover:bg-green-600');
                     button.classList.add('bg-slate-400', 'cursor-not-allowed');
                 },
-                // --- ADMIN HANDLERS (REWRITTEN) ---
+                // --- ADMIN HANDLERS (REVISED) ---
                 onAddPartner() {
                     App.state.editingPartner = null;
                     App.ui.renderPartnerForm();
@@ -1067,6 +1083,21 @@
                         App.state.editingPartner = partner;
                         App.ui.renderPartnerForm(partner);
                         App.navigation.to('partner-form-screen');
+                    }
+                },
+                async onTogglePublish(partnerId) {
+                    const partner = App.state.partners.find(p => p.id == partnerId);
+                    if (!partner) return;
+
+                    const updatedPartner = await App.api.updatePartnerStatus(partner.id, !partner.is_published);
+                    
+                    if (updatedPartner) {
+                        partner.is_published = updatedPartner.is_published;
+                        App.ui.showToast(updatedPartner.is_published ? 'Партнер опубликован!' : 'Партнер снят с публикации.', 'success');
+                        App.ui.renderAdminScreen();
+                        App.ui.renderPartnerWidgets();
+                    } else {
+                        App.ui.showToast('Не удалось обновить статус.');
                     }
                 },
                 async onDeletePartner(partnerId) {
@@ -1159,24 +1190,24 @@
                         const savedPartner = await App.api.savePartner(partnerData);
                         
                         if (savedPartner) {
-                             // Step 5: Refetch all data to ensure consistency
-                            await App.api.getPartners();
+                             // Step 5: Refetch all data for admin to ensure consistency
+                            await App.api.getAllPartnersForAdmin();
                             
                             // Step 6: Update all relevant UI components
                             App.ui.renderPartnerWidgets();
                             
                             // Step 7: Navigate back and show success
                             App.navigation.back();
-                            App.ui.showToast('Партнер опубликован!', 'success');
+                            App.ui.showToast('Партнер сохранен!', 'success');
                         } else {
                             throw new Error('Не удалось сохранить данные партнера на сервере.');
                         }
                     } catch (error) {
-                        console.error('Ошибка при публикации партнера:', error);
+                        console.error('Ошибка при сохранении партнера:', error);
                         App.ui.showToast(error.message || 'Произошла неизвестная ошибка.');
                     } finally {
                         submitButton.disabled = false;
-                        submitButton.textContent = 'Опубликовать';
+                        submitButton.textContent = 'Сохранить';
                     }
                 },
                  onPartnerImageChange(input) {
@@ -1423,6 +1454,10 @@
                     }
                 },
                 renderAdminScreen() {
+                    // IMPORTANT: For this to work, you must add a new column to your `partners` table in Supabase.
+                    // Column name: `is_published`
+                    // Column type: `boolean`
+                    // Default value: `false`
                     const container = document.getElementById('partners-list');
                     if (!container) return;
                     if (App.state.partners.length === 0) {
@@ -1433,17 +1468,22 @@
                         const imageUrl = (p.image_urls && p.image_urls.length > 0) 
                             ? p.image_urls[0] 
                             : 'https://placehold.co/64x64/e2e8f0/64748b?text=Нет%20фото';
+                        const isPublished = p.is_published;
+                        const publishBtnClass = isPublished ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700';
+                        const publishBtnText = isPublished ? 'Снять' : 'Опубликовать';
+
                         return `
-                            <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-4">
-                               <img src="${imageUrl}" alt="${p.title}" class="w-16 h-16 object-cover rounded-lg shrink-0">
-                               <div class="flex-grow">
-                                    <h4 class="font-bold">${p.title}</h4>
-                                    <p class="text-xs text-slate-600">${p.description.substring(0, 50)}...</p>
-                               </div>
-                               <div class="flex flex-col gap-2 shrink-0">
-                                    <button data-action="editPartner" data-partner-id="${p.id}" class="text-xs btn bg-slate-100 text-slate-700 font-semibold py-1 px-3 rounded-md">Изм.</button>
-                                    <button data-action="deletePartner" data-partner-id="${p.id}" data-confirming="false" class="text-xs btn bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-md transition-colors">Удал.</button>
-                               </div>
+                            <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3">
+                                <img src="${imageUrl}" alt="${p.title}" class="w-16 h-16 object-cover rounded-lg shrink-0">
+                                <div class="flex-grow min-w-0">
+                                    <h4 class="font-bold truncate">${p.title}</h4>
+                                    <p class="text-xs ${isPublished ? 'text-green-600 font-semibold' : 'text-slate-500'}">${isPublished ? '● Опубликовано' : '○ Черновик'}</p>
+                                </div>
+                                <div class="flex flex-col gap-2 shrink-0">
+                                     <button data-action="togglePublish" data-partner-id="${p.id}" class="text-xs btn ${publishBtnClass} font-semibold py-1 px-3 rounded-md">${publishBtnText}</button>
+                                     <button data-action="editPartner" data-partner-id="${p.id}" class="text-xs btn bg-slate-100 text-slate-700 font-semibold py-1 px-3 rounded-md">Изм.</button>
+                                     <button data-action="deletePartner" data-partner-id="${p.id}" data-confirming="false" class="text-xs btn bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-md transition-colors">Удал.</button>
+                                </div>
                             </div>`;
                     }).join('');
                 },
@@ -1507,25 +1547,25 @@
                 },
                 // --- MODALS and FORMS ---
                  showBookingOptionsModal(offer) {
-                     const container = document.getElementById('booking-options-container');
-                     const { base, cheboksary } = App.config.prices;
-                     container.innerHTML = `
-                         <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="full" data-price="${base}" data-from="${offer.from}" data-to="${offer.to}"><span>${offer.from} → ${offer.to}</span><span class="font-semibold">${base} ₽</span></button>
-                         <div class="h-px bg-slate-200"></div>
-                         <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="start_to_cheb" data-price="${cheboksary}" data-from="${offer.from}" data-to="Чебоксары"><span>${offer.from} → Чебоксары</span><span class="font-semibold">${cheboksary} ₽</span></button>
-                         <div class="h-px bg-slate-200"></div>
-                         <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="cheb_to_end" data-price="${cheboksary}" data-from="Чебоксары" data-to="${offer.to}"><span>Чебоксары → ${offer.to}</span><span class="font-semibold">${cheboksary} ₽</span></button>`;
+                       const container = document.getElementById('booking-options-container');
+                       const { base, cheboksary } = App.config.prices;
+                       container.innerHTML = `
+                            <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="full" data-price="${base}" data-from="${offer.from}" data-to="${offer.to}"><span>${offer.from} → ${offer.to}</span><span class="font-semibold">${base} ₽</span></button>
+                            <div class="h-px bg-slate-200"></div>
+                            <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="start_to_cheb" data-price="${cheboksary}" data-from="${offer.from}" data-to="Чебоксары"><span>${offer.from} → Чебоксары</span><span class="font-semibold">${cheboksary} ₽</span></button>
+                            <div class="h-px bg-slate-200"></div>
+                            <button class="w-full flex justify-between items-center text-left p-3 text-blue-500 text-base" data-action="confirmBookingSegment" data-offer-id="${offer.id}" data-segment="cheb_to_end" data-price="${cheboksary}" data-from="Чебоксары" data-to="${offer.to}"><span>Чебоксары → ${offer.to}</span><span class="font-semibold">${cheboksary} ₽</span></button>`;
                     
-                     const overlay = document.getElementById('booking-modal-overlay');
-                     const modal = document.getElementById('booking-modal');
-                     overlay.classList.remove('hidden');
-                     overlay.dataset.action = 'hideModal';
-                     document.getElementById('booking-modal-cancel-btn').dataset.action = 'hideModal';
+                       const overlay = document.getElementById('booking-modal-overlay');
+                       const modal = document.getElementById('booking-modal');
+                       overlay.classList.remove('hidden');
+                       overlay.dataset.action = 'hideModal';
+                       document.getElementById('booking-modal-cancel-btn').dataset.action = 'hideModal';
                     
-                     requestAnimationFrame(() => {
-                         overlay.classList.add('show');
-                         modal.classList.add('show');
-                     });
+                       requestAnimationFrame(() => {
+                           overlay.classList.add('show');
+                           modal.classList.add('show');
+                       });
                  },
 
                 hideBookingModal() {
@@ -1563,7 +1603,9 @@
                     const containers = document.querySelectorAll('.partner-widget-container');
                     if (!containers.length) return;
                     
-                    if (App.state.partners.length === 0) {
+                    const publishedPartners = App.state.partners.filter(p => p.is_published);
+
+                    if (publishedPartners.length === 0) {
                         containers.forEach(c => c.innerHTML = '');
                         return;
                     }
@@ -1575,7 +1617,7 @@
                         const track = container.querySelector('.slider-track');
                         
                         let slidesHtml = '';
-                        App.state.partners.forEach(p => {
+                        publishedPartners.forEach(p => {
                             if (p.image_urls && p.image_urls.length > 0) {
                                 p.image_urls.forEach(imageUrl => {
                                     slidesHtml += `
@@ -1683,13 +1725,13 @@
                     }
                 },
                  formatDate(dateStr, withYear = false) {
-                     const date = new Date(dateStr);
-                     const options = { day: 'numeric', month: 'long' };
-                     if (withYear) options.year = 'numeric';
-                     return date.toLocaleDateString('ru-RU', options);
+                       const date = new Date(dateStr);
+                       const options = { day: 'numeric', month: 'long' };
+                       if (withYear) options.year = 'numeric';
+                       return date.toLocaleDateString('ru-RU', options);
                  },
                  formatTime(timeStr) {
-                     return timeStr.substring(0, 5);
+                       return timeStr.substring(0, 5);
                  }
             },
 
@@ -1708,4 +1750,3 @@
     </script>
 </body>
 </html>
-
