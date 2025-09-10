@@ -573,10 +573,15 @@
                 this.ui.renderAllScreens();
                 this.ui.updateRoleSwitcher();
                 this.ui.updateAvatar();
-                if(this.state.userProfile.is_admin) {
+                
+                // Fetch partners based on role
+                if (this.state.userProfile.is_admin) {
                     this.ui.renderAdminButton();
-                    await this.api.getAllPartnersForAdmin(); // Admin gets all partners
+                    await this.api.getAllPartnersForAdmin();
+                } else {
+                    await this.api.getPublishedPartners();
                 }
+                
                 this.ui.renderPartnerWidgets();
             },
 
@@ -628,6 +633,19 @@
                     return data;
                 },
                 // --- Partners API ---
+                async getPublishedPartners() {
+                    const { data, error } = await App.supabase
+                        .from('partners')
+                        .select('*')
+                        .eq('is_published', true)
+                        .order('created_at', { ascending: false });
+                    if (error) {
+                        console.error('Ошибка загрузки опубликованных партнеров:', error);
+                        App.state.partners = [];
+                        return;
+                    }
+                    App.state.partners = data || [];
+                },
                 async getAllPartnersForAdmin() {
                     const { data, error } = await App.supabase.from('partners').select('*').order('created_at', { ascending: false });
                     if (error) {
@@ -1750,3 +1768,4 @@
     </script>
 </body>
 </html>
+
