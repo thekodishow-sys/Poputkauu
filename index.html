@@ -498,7 +498,7 @@
                         <input type="file" name="image_files" id="partner-image-files" class="hidden" accept="image/*" multiple>
                     </label>
                 </div>
-                <button id="partner-form-submit-btn" type="submit" class="text-sm btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button>
+                <button id="partner-form-submit-btn" type="submit" class="text-sm btn w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700">Сохранить и опубликовать</button>
             </form>
         </div>
     </template>
@@ -701,14 +701,13 @@
                     App.state.partners = data || [];
                 },
                 async getAllPartnersForAdmin() {
-                    const { data, error } = await App.supabase
-                        .from('partners')
-                        .select('*')
-                        .order('created_at', { ascending: false });
+                    // Используем RPC для вызова безопасной функции
+                    const { data, error } = await App.supabase.rpc('get_all_partners_for_admin');
 
                     if (error) {
                         console.error('Ошибка загрузки партнеров:', error);
                         App.ui.showToast(`Ошибка загрузки: ${error.message}`, 'error');
+                        App.state.partners = []; // Очищаем, чтобы не показывать старые данные
                         return;
                     }
                     App.state.partners = data || [];
@@ -1284,7 +1283,7 @@
                         App.ui.showToast(error.message || 'Произошла неизвестная ошибка.');
                     } finally {
                         submitButton.disabled = false;
-                        submitButton.textContent = 'Сохранить';
+                        submitButton.textContent = 'Сохранить и опубликовать';
                     }
                 },
                  onPartnerImageChange(input) {
