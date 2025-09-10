@@ -409,7 +409,7 @@
                     <label for="images" class="block text-sm font-medium text-slate-700 mb-1">Фото для карусели (несколько файлов)</label>
                     <input type="file" id="images" name="images" multiple class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100" accept="image/*">
                 </div>
-                <button type="submit" class="w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 disabled:bg-slate-400 transition-colors">
+                <button type="submit" id="ad-submit-btn" class="w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 disabled:bg-slate-400 transition-colors">
                     Сохранить
                 </button>
             </form>
@@ -707,9 +707,8 @@
                 },
 
                 async onAdSubmit(form) {
-                    const submitBtn = form.querySelector('button[type="submit"]');
+                    const submitBtn = form.querySelector('#ad-submit-btn');
                     submitBtn.disabled = true;
-                    submitBtn.textContent = 'Загрузка...';
 
                     const formData = new FormData(form);
                     const name = formData.get('name');
@@ -721,21 +720,38 @@
                     let logoUrl = null;
                     let imageUrls = [];
 
+                    const sanitizeFilename = (filename) => {
+                        return filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+                    };
+
                     try {
                         // 1. Upload Logo
                         if (logoFile && logoFile.size > 0) {
-                            const filePath = `public/logo-${Date.now()}-${logoFile.name}`;
+                            submitBtn.textContent = 'Загрузка логотипа...';
+                            const sanitizedName = sanitizeFilename(logoFile.name);
+                            const filePath = `public/logo-${Date.now()}-${sanitizedName}`;
+                            
+                            console.log(`Загрузка лого: ${filePath}`);
                             const { error: uploadError } = await App.supabase.storage.from('advertisements').upload(filePath, logoFile);
                             if (uploadError) throw new Error(`Ошибка загрузки логотипа: ${uploadError.message}`);
+                            
                             const { data: { publicUrl } } = App.supabase.storage.from('advertisements').getPublicUrl(filePath);
                             logoUrl = publicUrl;
+                             console.log(`Логотип загружен: ${publicUrl}`);
                         }
 
                         // 2. Upload Gallery Images
                         if (imageFiles && imageFiles.length > 0 && imageFiles[0].size > 0) {
-                            const uploadPromises = imageFiles.map(file => {
-                                const filePath = `public/gallery-${Date.now()}-${file.name}`;
-                                return App.supabase.storage.from('advertisements').upload(filePath, file);
+                             submitBtn.textContent = `Загрузка фото (0/${imageFiles.length})...`;
+                            const uploadPromises = imageFiles.map((file, index) => {
+                                const sanitizedName = sanitizeFilename(file.name);
+                                const filePath = `public/gallery-${Date.now()}-${sanitizedName}`;
+                                console.log(`Загрузка изображения: ${filePath}`);
+                                return App.supabase.storage.from('advertisements').upload(filePath, file)
+                                    .then(result => {
+                                        submitBtn.textContent = `Загрузка фото (${index + 1}/${imageFiles.length})...`;
+                                        return result;
+                                    });
                             });
 
                             const uploadResults = await Promise.all(uploadPromises);
@@ -744,10 +760,12 @@
                                 if (result.error) throw new Error(`Ошибка загрузки изображения: ${result.error.message}`);
                                 const { data: { publicUrl } } = App.supabase.storage.from('advertisements').getPublicUrl(result.data.path);
                                 imageUrls.push(publicUrl);
+                                console.log(`Изображение загружено: ${publicUrl}`);
                             }
                         }
 
                         // 3. Insert into Database
+                        submitBtn.textContent = 'Сохранение данных...';
                         const { error: insertError } = await App.supabase.from('advertisements').insert({
                             name,
                             description,
@@ -756,7 +774,7 @@
                             image_urls: imageUrls,
                         });
 
-                        if (insertError) throw new Error(`Ошибка сохранения данных: ${insertError.message}`);
+                        if (insertError) throw new Error(`Ошибка сохранения в БД: ${insertError.message}`);
                         
                         App.ui.showToast('Объявление успешно сохранено!', 'success');
                         form.reset();
@@ -764,7 +782,7 @@
                         App.navigation.back();
 
                     } catch (error) {
-                        console.error(error);
+                        console.error("Полная ошибка:", error);
                         App.ui.showToast(error.message, 'error');
                     } finally {
                         submitBtn.disabled = false;
