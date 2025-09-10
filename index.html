@@ -498,7 +498,7 @@
                         <input type="file" name="image_files" id="partner-image-files" class="hidden" accept="image/*" multiple>
                     </label>
                 </div>
-                <button type="submit" class="text-sm btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Сохранить</button>
+                <button id="partner-form-submit-btn" type="submit" class="text-sm btn w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700">Опубликовать</button>
             </form>
         </div>
     </template>
@@ -1105,20 +1105,24 @@
                     }
                 },
                 async onPartnerFormSubmit(form) {
-                    const submitButton = form.querySelector('button[type="submit"]');
-                    submitButton.disabled = true;
+                    const submitButton = document.getElementById('partner-form-submit-btn');
+                    if (submitButton.disabled) return;
                     
+                    submitButton.disabled = true;
+                    submitButton.textContent = 'Проверка данных...';
+
                     try {
                         const formData = new FormData(form);
                         const id = formData.get('id');
                         const title = formData.get('title').trim();
                         const description = formData.get('description').trim();
+                        const channel_url = formData.get('channel_url').trim();
 
-                        if (!title || !description) {
-                            throw new Error('Заголовок и описание обязательны.');
+                        if (!title || !description || !channel_url) {
+                            throw new Error('Все поля (Заголовок, Описание, Ссылка) обязательны для заполнения.');
                         }
 
-                        // Step 1: Handle file uploads
+                        // Step 1: Handle image uploads
                         submitButton.textContent = 'Загрузка фото...';
                         const uploadPromises = App.state.partnerFormImages.toAddFiles.map(file => App.api.uploadPartnerImage(file));
                         const newImageUrls = await Promise.all(uploadPromises);
@@ -1126,8 +1130,8 @@
                             throw new Error('Не удалось загрузить одно или несколько изображений.');
                         }
                         
-                        // Step 2: Handle file deletions from storage
-                        submitButton.textContent = 'Очистка...';
+                        // Step 2: Handle image deletions from storage
+                        submitButton.textContent = 'Очистка хранилища...';
                         const deletePromises = App.state.partnerFormImages.toDeleteUrls.map(url => App.api.deletePartnerImage(url));
                         await Promise.all(deletePromises);
 
@@ -1136,7 +1140,7 @@
                             ...App.state.partnerFormImages.existing, 
                             ...newImageUrls, 
                             ...App.state.partnerFormImages.toAddUrls
-                        ];
+                        ].filter(url => url); // Filter out any null/empty URLs
 
                         if (finalImageUrls.length === 0) {
                             throw new Error('Для партнера необходимо добавить хотя бы одно изображение.');
@@ -1144,9 +1148,9 @@
 
                         const partnerData = {
                             id: id ? parseInt(id) : null,
-                            title: title,
-                            description: description,
-                            channel_url: formData.get('channel_url'),
+                            title,
+                            description,
+                            channel_url,
                             image_urls: finalImageUrls,
                         };
                         
@@ -1155,7 +1159,7 @@
                         const savedPartner = await App.api.savePartner(partnerData);
                         
                         if (savedPartner) {
-                            // Step 5: Refetch all data to ensure consistency
+                             // Step 5: Refetch all data to ensure consistency
                             await App.api.getPartners();
                             
                             // Step 6: Update all relevant UI components
@@ -1163,15 +1167,16 @@
                             
                             // Step 7: Navigate back and show success
                             App.navigation.back();
-                            App.ui.showToast('Партнер сохранен!', 'success');
+                            App.ui.showToast('Партнер опубликован!', 'success');
                         } else {
                             throw new Error('Не удалось сохранить данные партнера на сервере.');
                         }
                     } catch (error) {
-                        App.ui.showToast(error.message);
+                        console.error('Ошибка при публикации партнера:', error);
+                        App.ui.showToast(error.message || 'Произошла неизвестная ошибка.');
                     } finally {
                         submitButton.disabled = false;
-                        submitButton.textContent = 'Сохранить';
+                        submitButton.textContent = 'Опубликовать';
                     }
                 },
                  onPartnerImageChange(input) {
