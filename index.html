@@ -462,7 +462,7 @@
     <template id="admin-screen-template">
         <div class="p-5">
             <div class="flex justify-between items-center mb-4">
-                <h2 class="text-xl font-bold">Админ-панель</h2>
+                <h2 class="text-xl font-bold">Управление рекламой</h2>
                 <button data-action="addPartner" class="btn bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600 text-sm">Добавить</button>
             </div>
             <div id="partners-list" class="space-y-3"></div>
@@ -702,28 +702,18 @@
                     App.state.partners = data || [];
                 },
                 async getAllPartnersForAdmin() {
-                    // Используем RPC для вызова безопасной функции
-                    const { data, error } = await App.supabase.rpc('get_all_partners_for_admin');
+                    const { data, error } = await App.supabase
+                        .from('partners')
+                        .select('*')
+                        .order('created_at', { ascending: false });
 
                     if (error) {
-                        console.error('Ошибка загрузки партнеров:', error);
+                        console.error('Ошибка загрузки партнеров для админа:', error);
                         App.ui.showToast(`Ошибка загрузки: ${error.message}`, 'error');
-                        App.state.partners = []; // Очищаем, чтобы не показывать старые данные
+                        App.state.partners = [];
                         return;
                     }
                     App.state.partners = data || [];
-                },
-                async updatePartnerStatus(partnerId, is_published) {
-                    const { data, error } = await App.supabase
-                        .from('partners')
-                        .update({ is_published })
-                        .eq('id', partnerId)
-                        .select();
-                    if (error) {
-                        console.error('Ошибка обновления статуса партнера:', error);
-                        return null;
-                    }
-                    return data ? data[0] : null;
                 },
                 async uploadPartnerImage(file) {
                     const fileName = `${Date.now()}-${file.name}`;
@@ -735,7 +725,6 @@
                     const publicUrlData = App.supabase.storage.from('partner_images').getPublicUrl(fileName);
                     if (publicUrlData.error || !publicUrlData.data.publicUrl) {
                         console.error('Ошибка получения public URL:', publicUrlData.error);
-                        // Try to delete the uploaded file if getting URL fails, to avoid orphaned files
                         await App.supabase.storage.from('partner_images').remove([fileName]);
                         return null;
                     }
@@ -751,29 +740,19 @@
                     }
                 },
                 async savePartner(partnerData) {
-                    const dataToSave = {
+                    const dataToUpsert = {
+                        id: partnerData.id,
                         title: partnerData.title,
                         description: partnerData.description,
                         image_urls: partnerData.image_urls,
                         channel_url: partnerData.channel_url,
-                        is_published: true // Simplified logic: always publish on save/update
+                        is_published: true
                     };
 
-                    let query;
-                    if (partnerData.id) { // Update existing partner
-                        query = App.supabase
-                            .from('partners')
-                            .update(dataToSave)
-                            .eq('id', partnerData.id)
-                            .select();
-                    } else { // Insert new partner
-                        query = App.supabase
-                            .from('partners')
-                            .insert(dataToSave)
-                            .select();
-                    }
-
-                    const { data, error } = await query;
+                    const { data, error } = await App.supabase
+                        .from('partners')
+                        .upsert(dataToUpsert)
+                        .select();
 
                     if (error) {
                         console.error('Ошибка сохранения партнера в API:', error);
@@ -850,7 +829,6 @@
                         addPartner: () => this.handlers.onAddPartner(),
                         editPartner: () => this.handlers.onEditPartner(dataset.partnerId),
                         deletePartner: () => this.handlers.onDeletePartner(dataset.partnerId),
-                        togglePublish: () => this.handlers.onTogglePublish(dataset.partnerId),
                         deletePreviewImage: () => this.handlers.onDeletePreviewImage(button),
                         addUrl: () => this.handlers.onAddUrl(),
                     };
@@ -1164,21 +1142,6 @@
                         App.navigation.to('partner-form-screen');
                     }
                 },
-                async onTogglePublish(partnerId) {
-                    const partner = App.state.partners.find(p => p.id == partnerId);
-                    if (!partner) return;
-
-                    const updatedPartner = await App.api.updatePartnerStatus(partner.id, !partner.is_published);
-                    
-                    if (updatedPartner) {
-                        partner.is_published = updatedPartner.is_published;
-                        App.ui.showToast(updatedPartner.is_published ? 'Партнер опубликован!' : 'Партнер снят с публикации.', 'success');
-                        App.ui.renderAdminScreen();
-                        App.ui.renderPartnerWidgets();
-                    } else {
-                        App.ui.showToast('Не удалось обновить статус.');
-                    }
-                },
                 async onDeletePartner(partnerId) {
                     const button = document.querySelector(`[data-partner-id="${partnerId}"][data-action="deletePartner"]`);
                     const isConfirming = button.dataset.confirming === 'true';
@@ -1188,7 +1151,7 @@
                         button.classList.add('bg-red-500', 'text-white');
                         button.dataset.confirming = 'true';
                         setTimeout(() => {
-                            button.textContent = 'Удал.';
+                            button.textContent = 'Удалить';
                             button.classList.remove('bg-red-500', 'text-white');
                             button.dataset.confirming = 'false';
                         }, 3000);
@@ -1539,28 +1502,24 @@
                     const container = document.getElementById('partners-list');
                     if (!container) return;
                     if (App.state.partners.length === 0) {
-                        container.innerHTML = `<p class="text-slate-500 text-center">Партнеры еще не добавлены.</p>`;
+                        container.innerHTML = `<p class="text-slate-500 text-center">Рекламные объявления еще не добавлены.</p>`;
                         return;
                     }
                     container.innerHTML = App.state.partners.map(p => {
                         const imageUrl = (p.image_urls && p.image_urls.length > 0) 
                             ? p.image_urls[0] 
                             : 'https://placehold.co/64x64/e2e8f0/64748b?text=Нет%20фото';
-                        const isPublished = p.is_published;
-                        const publishBtnClass = isPublished ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700';
-                        const publishBtnText = isPublished ? 'Снять' : 'Опубликовать';
 
                         return `
                             <div class="bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3">
                                 <img src="${imageUrl}" alt="${p.title}" class="w-16 h-16 object-cover rounded-lg shrink-0">
                                 <div class="flex-grow min-w-0">
                                     <h4 class="font-bold truncate">${p.title}</h4>
-                                    <p class="text-xs ${isPublished ? 'text-green-600 font-semibold' : 'text-slate-500'}">${isPublished ? '● Опубликовано' : '○ Черновик'}</p>
+                                     <p class="text-xs text-green-600 font-semibold">● Опубликовано</p>
                                 </div>
-                                <div class="flex flex-col gap-2 shrink-0">
-                                     <button data-action="togglePublish" data-partner-id="${p.id}" class="text-xs btn ${publishBtnClass} font-semibold py-1 px-3 rounded-md">${publishBtnText}</button>
-                                     <button data-action="editPartner" data-partner-id="${p.id}" class="text-xs btn bg-slate-100 text-slate-700 font-semibold py-1 px-3 rounded-md">Изм.</button>
-                                     <button data-action="deletePartner" data-partner-id="${p.id}" data-confirming="false" class="text-xs btn bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-md transition-colors">Удал.</button>
+                                <div class="flex gap-2 shrink-0">
+                                     <button data-action="editPartner" data-partner-id="${p.id}" class="text-xs btn bg-slate-100 text-slate-700 font-semibold py-2 px-3 rounded-md">Изм.</button>
+                                     <button data-action="deletePartner" data-partner-id="${p.id}" data-confirming="false" class="text-xs btn bg-red-100 text-red-700 font-semibold py-2 px-3 rounded-md transition-colors">Удалить</button>
                                 </div>
                             </div>`;
                     }).join('');
