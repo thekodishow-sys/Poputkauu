@@ -643,8 +643,14 @@
                         console.error('Ошибка загрузки изображения:', error);
                         return null;
                     }
-                    const { data: { publicUrl } } = App.supabase.storage.from('partner_images').getPublicUrl(fileName);
-                    return publicUrl;
+                    const publicUrlData = App.supabase.storage.from('partner_images').getPublicUrl(fileName);
+                    if (publicUrlData.error || !publicUrlData.data.publicUrl) {
+                        console.error('Ошибка получения public URL:', publicUrlData.error);
+                        // Try to delete the uploaded file if getting URL fails, to avoid orphaned files
+                        await App.supabase.storage.from('partner_images').remove([fileName]);
+                        return null;
+                    }
+                    return publicUrlData.data.publicUrl;
                 },
                 async deletePartnerImage(imageUrl) {
                     if (!imageUrl || !imageUrl.includes(App.config.supabaseUrl)) return; // Don't delete external URLs
@@ -1101,11 +1107,16 @@
                 async onPartnerFormSubmit(form) {
                     const submitButton = form.querySelector('button[type="submit"]');
                     submitButton.disabled = true;
-                    submitButton.textContent = 'Сохранение...';
-
+                    
                     try {
                         const formData = new FormData(form);
                         const id = formData.get('id');
+                        const title = formData.get('title').trim();
+                        const description = formData.get('description').trim();
+
+                        if (!title || !description) {
+                            throw new Error('Заголовок и описание обязательны.');
+                        }
 
                         // Step 1: Handle file uploads
                         submitButton.textContent = 'Загрузка фото...';
@@ -1133,8 +1144,8 @@
 
                         const partnerData = {
                             id: id ? parseInt(id) : null,
-                            title: formData.get('title'),
-                            description: formData.get('description'),
+                            title: title,
+                            description: description,
                             channel_url: formData.get('channel_url'),
                             image_urls: finalImageUrls,
                         };
@@ -1288,6 +1299,10 @@
                     const messageEl = document.getElementById('toast-message');
                     if (!toast || !messageEl) return;
                     
+                    if (type === 'error') {
+                        console.error("Toast Error:", message);
+                    }
+
                     messageEl.textContent = message;
                     toast.className = 'fixed top-5 left-1/2 z-[100] px-4 py-2 rounded-lg text-white shadow-lg transition-transform duration-300'; // Reset classes
                     toast.classList.add(type);
