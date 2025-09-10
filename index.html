@@ -1082,8 +1082,19 @@
                         const savedPartner = await App.api.savePartner(partnerData);
                         
                         if (savedPartner) {
-                            await App.api.getPartners();
+                             // --- REFACTORED LOGIC ---
+                            // 1. Update local state directly
+                            if (partnerData.id) { // Update
+                                const index = App.state.partners.findIndex(p => p.id === savedPartner.id);
+                                if (index !== -1) App.state.partners[index] = savedPartner;
+                            } else { // Insert
+                                App.state.partners.unshift(savedPartner);
+                            }
+                            
+                            // 2. Update UI that depends on the state
                             App.ui.renderPartnerWidgets();
+                            
+                            // 3. Navigate back (which will trigger a re-render of the admin list)
                             App.navigation.back();
                             App.ui.showToast('Партнер сохранен!', 'success');
                         } else {
@@ -1553,4 +1564,3 @@
     </script>
 </body>
 </html>
-
