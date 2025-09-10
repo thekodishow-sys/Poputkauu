@@ -632,7 +632,7 @@
                     
                     if (error && error.code === 'PGRST116') { // Profile doesn't exist, create it
                         console.log('Профиль не найден, создаем новый...');
-                        const { data: newProfile, error: insertError } = await App.supabase.from('profiles')
+                        const { data: newProfileData, error: insertError } = await App.supabase.from('profiles')
                             .insert({ 
                                 id: App.state.currentUser.id, 
                                 username: App.state.currentUser.username, 
@@ -640,33 +640,31 @@
                                 is_admin: isAdmin,
                                 user_uuid: userUUID
                             })
-                            .select()
-                            .single();
+                            .select();
                         
                         if (insertError) { 
                             console.error('Ошибка создания профиля:', insertError); 
                             App.ui.showToast(`Не удалось создать профиль: ${insertError.message}`);
                             return; 
                         }
-                        profile = newProfile;
+                        profile = newProfileData[0];
                         console.log('Новый профиль создан:', profile);
                     } else if (profile) { // Profile exists, check if it's up-to-date
                         if (!profile.user_uuid || profile.is_admin !== isAdmin) {
                             console.log('Профиль устарел, обновляем...');
-                            const { data: updatedProfile, error: updateError } = await App.supabase.from('profiles')
+                            const { data: updatedProfileData, error: updateError } = await App.supabase.from('profiles')
                                 .update({ 
                                     user_uuid: userUUID,
                                     is_admin: isAdmin
                                 })
                                 .eq('id', App.state.currentUser.id)
-                                .select()
-                                .single();
+                                .select();
                             
                             if (updateError) {
                                  console.error('Ошибка обновления профиля:', updateError);
                                  App.ui.showToast(`Ошибка обновления профиля: ${updateError.message}`);
                             }
-                            profile = updatedProfile || profile; // Use updated profile if successful
+                            profile = updatedProfileData ? updatedProfileData[0] : profile; // Use updated profile if successful
                             console.log('Профиль обновлен:', profile);
                         }
                     } else if (error) {
@@ -681,14 +679,13 @@
                     const { data, error } = await App.supabase.from('profiles')
                         .update(profileData)
                         .eq('id', App.state.currentUser.id)
-                        .select()
-                        .single();
+                        .select();
                     if (error) {
                         console.error('Ошибка сохранения профиля:', error);
                         App.ui.showToast(`Не удалось сохранить профиль: ${error.message}`);
                         return null;
                     }
-                    return data;
+                    return data ? data[0] : null;
                 },
                 // --- Partners API ---
                 async getPublishedPartners() {
@@ -721,13 +718,12 @@
                         .from('partners')
                         .update({ is_published })
                         .eq('id', partnerId)
-                        .select()
-                        .single();
+                        .select();
                     if (error) {
                         console.error('Ошибка обновления статуса партнера:', error);
                         return null;
                     }
-                    return data;
+                    return data ? data[0] : null;
                 },
                 async uploadPartnerImage(file) {
                     const fileName = `${Date.now()}-${file.name}`;
@@ -763,27 +759,27 @@
                         channel_url: partnerData.channel_url,
                     };
 
-                    let result;
+                    let query;
                     if (partnerData.id) { // Update existing partner
-                        result = await App.supabase
+                        query = App.supabase
                             .from('partners')
                             .update(dataToSave)
                             .eq('id', partnerData.id)
-                            .select()
-                            .single();
+                            .select();
                     } else { // Insert new partner as a draft
-                        result = await App.supabase
+                        query = App.supabase
                             .from('partners')
                             .insert({ ...dataToSave, is_published: false }) // New partners are unpublished by default
-                            .select()
-                            .single();
+                            .select();
                     }
 
-                    if (result.error) {
-                        console.error('Ошибка сохранения партнера в API:', result.error);
-                        throw result.error; // Пробрасываем ошибку для обработки в UI
+                    const { data, error } = await query;
+
+                    if (error) {
+                        console.error('Ошибка сохранения партнера в API:', error);
+                        throw error; // Пробрасываем ошибку для обработки в UI
                     }
-                    return result.data;
+                    return data ? data[0] : null;
                 },
                 async deletePartner(partnerId) {
                     const { error } = await App.supabase.from('partners').delete().eq('id', partnerId);
@@ -1044,6 +1040,7 @@
                         ]);
 
                         if (bookingsRes.error || requestsRes.error || parcelsRes.error) {
+                             console.error("Errors fetching my trips:", { b: bookingsRes.error, r: requestsRes.error, p: parcelsRes.error });
                              container.innerHTML = App.ui.getErrorHTML("Ошибка загрузки данных"); return;
                         }
                         
@@ -1053,8 +1050,9 @@
                 },
                 
                 async onRequestBooking(offerId, bookingDetails = null) {
-                    const { data: offer, error: offerError } = await App.supabase.from('ride_offers').select('*').eq('id', offerId).single();
-                    if(offerError || !offer) { console.error("Предложение не найдено"); App.ui.showToast(`Не удалось найти поездку: ${offerError.message}`); return; }
+                    const { data: offerData, error: offerError } = await App.supabase.from('ride_offers').select('*').eq('id', offerId);
+                    if(offerError || !offerData || offerData.length === 0) { console.error("Предложение не найдено"); App.ui.showToast(`Не удалось найти поездку: ${offerError?.message}`); return; }
+                    const offer = offerData[0];
                     
                     const bookingData = {
                         offer_id: offerId,
@@ -1074,8 +1072,9 @@
                 },
                 
                  async onUpdateBookingStatus(bookingId, status) {
-                       const { data: booking, error } = await App.supabase.from('bookings').update({ status }).eq('id', bookingId).select('*, offer:ride_offers(*)').single();
-                       if (error) { console.error('Ошибка обновления брони:', error); return; }
+                       const { data: bookingData, error } = await App.supabase.from('bookings').update({ status }).eq('id', bookingId).select('*, offer:ride_offers(*)');
+                       if (error || !bookingData || bookingData.length === 0) { console.error('Ошибка обновления брони:', error); return; }
+                       const booking = bookingData[0];
 
                        const message = status === 'confirmed' ? `*Бронь подтверждена!* ✅` : `*Бронь отклонена* ❌`;
                        App.utils.sendTelegramNotification(booking.passenger_id, `${message}\nВодитель ответил на вашу заявку на поездку ${booking.offer.from} → ${booking.offer.to}.`);
@@ -1084,12 +1083,12 @@
                 },
 
                 async onCancelBooking(bookingId) {
-                    const { data: booking } = await App.supabase.from('bookings').select('offer:ride_offers(driver_id)').eq('id', bookingId).single();
+                    const { data: bookingData } = await App.supabase.from('bookings').select('offer:ride_offers(driver_id)').eq('id', bookingId);
                     const { error } = await App.supabase.from('bookings').delete().eq('id', bookingId);
                     if(error) { console.error(error); return; }
                     
-                    if (booking?.offer?.driver_id) {
-                        App.utils.sendTelegramNotification(booking.offer.driver_id, `Пассажир отменил бронь на вашу поездку.`);
+                    if (bookingData && bookingData.length > 0 && bookingData[0].offer?.driver_id) {
+                        App.utils.sendTelegramNotification(bookingData[0].offer.driver_id, `Пассажир отменил бронь на вашу поездку.`);
                     }
 
                     if (App.state.navigationHistory.at(-1) === 'list-screen') App.handlers.onViewDriverOffers();
@@ -1115,8 +1114,9 @@
                     button.disabled = true;
                     button.textContent = 'Отправка...';
 
-                    const { data: request, error } = await App.supabase.from('ride_requests').select('*').eq('id', requestId).single();
-                    if (error || !request) { console.error("Заявка не найдена:", error); button.disabled = false; return; }
+                    const { data: requestData, error } = await App.supabase.from('ride_requests').select('*').eq('id', requestId);
+                    if (error || !requestData || requestData.length === 0) { console.error("Заявка не найдена:", error); button.disabled = false; return; }
+                    const request = requestData[0];
 
                     let timeForOffer;
                     const interval = request.time_interval || '';
