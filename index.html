@@ -619,15 +619,14 @@
                 async ensureUserProfile() {
                     if (!App.state.currentUser) return;
 
-                    // Get the Supabase auth user after signing in
                     const { data: { user } } = await App.supabase.auth.getUser();
                     if (!user) {
                         App.ui.showToast("Не удалось получить данные сессии пользователя.");
                         return;
                     }
                     const userUUID = user.id;
+                    const isAdmin = App.state.currentUser.id === App.config.adminId;
 
-                    // Check for profile using Telegram ID
                     let { data: profile, error } = await App.supabase.from('profiles').select('*').eq('id', App.state.currentUser.id).single();
                     
                     if (error && error.code === 'PGRST116') { // Profile doesn't exist, create it
@@ -636,8 +635,8 @@
                                 id: App.state.currentUser.id, 
                                 username: App.state.currentUser.username, 
                                 full_name: App.state.currentUser.first_name || 'Пользователь',
-                                is_admin: App.state.currentUser.id === App.config.adminId,
-                                user_uuid: userUUID // Save the Supabase Auth UUID
+                                is_admin: isAdmin,
+                                user_uuid: userUUID
                             })
                             .select()
                             .single();
@@ -648,20 +647,24 @@
                             return; 
                         }
                         profile = newProfile;
-                    } else if (profile && !profile.user_uuid) { // Profile exists but needs UUID populated
-                        const { data: updatedProfile, error: updateError } = await App.supabase.from('profiles')
-                            .update({ user_uuid: userUUID })
-                            .eq('id', App.state.currentUser.id)
-                            .select()
-                            .single();
-                        
-                        if (updateError) {
-                             console.error('Ошибка обновления UUID в профиле:', updateError);
-                             App.ui.showToast(`Ошибка обновления профиля: ${updateError.message}`);
+                    } else if (profile) { // Profile exists, check if it's up-to-date
+                        // Check if UUID is missing or admin status is out of sync
+                        if (!profile.user_uuid || profile.is_admin !== isAdmin) {
+                            const { data: updatedProfile, error: updateError } = await App.supabase.from('profiles')
+                                .update({ 
+                                    user_uuid: userUUID,
+                                    is_admin: isAdmin
+                                })
+                                .eq('id', App.state.currentUser.id)
+                                .select()
+                                .single();
+                            
+                            if (updateError) {
+                                 console.error('Ошибка обновления профиля:', updateError);
+                                 App.ui.showToast(`Ошибка обновления профиля: ${updateError.message}`);
+                            }
+                            profile = updatedProfile || profile; // Use updated profile if successful
                         }
-                        // Use the updated profile, or the old one if update failed
-                        profile = updatedProfile || profile;
-
                     } else if (error) {
                         console.error('Ошибка получения профиля:', error); 
                         App.ui.showToast(`Ошибка получения профиля: ${error.message}`);
@@ -698,11 +701,14 @@
                     App.state.partners = data || [];
                 },
                 async getAllPartnersForAdmin() {
-                    // ИЗМЕНЕНО: Вызываем безопасную RPC-функцию вместо прямого select
-                    const { data, error } = await App.supabase.rpc('get_all_partners_for_admin');
-                    
+                    const { data, error } = await App.supabase
+                        .from('partners')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+
                     if (error) {
                         console.error('Ошибка загрузки партнеров:', error);
+                        App.ui.showToast(`Ошибка загрузки: ${error.message}`, 'error');
                         return;
                     }
                     App.state.partners = data || [];
