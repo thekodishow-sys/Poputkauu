@@ -751,27 +751,26 @@
                     }
                 },
                 async savePartner(partnerData) {
-                    // This function now saves and immediately publishes the ad.
+                    // This function saves partner data. New partners are saved as drafts.
                     const dataToSave = {
                         title: partnerData.title,
                         description: partnerData.description,
                         image_urls: partnerData.image_urls,
                         channel_url: partnerData.channel_url,
-                        is_published: true // Always set is_published to true on save
                     };
 
                     let result;
-                    if (partnerData.id) { // Update existing
+                    if (partnerData.id) { // Update existing partner
                         result = await App.supabase
                             .from('partners')
                             .update(dataToSave)
                             .eq('id', partnerData.id)
                             .select()
                             .single();
-                    } else { // Insert new
+                    } else { // Insert new partner as a draft
                         result = await App.supabase
                             .from('partners')
-                            .insert(dataToSave)
+                            .insert({ ...dataToSave, is_published: false }) // New partners are unpublished by default
                             .select()
                             .single();
                     }
@@ -1274,7 +1273,7 @@
                             
                             // Step 7: Navigate back (which will re-render the admin screen) and show success
                             App.navigation.back();
-                            App.ui.showToast('Партнер сохранен и опубликован!', 'success');
+                            App.ui.showToast('Данные партнера сохранены!', 'success');
                         } else {
                             throw new Error('Не удалось сохранить данные партнера на сервере.');
                         }
@@ -1822,3 +1821,4 @@
     </script>
 </body>
 </html>
+
