@@ -164,6 +164,7 @@
         #toast-notification {
             transform: translate(-50%, -150%);
             opacity: 0;
+            pointer-events: none;
         }
         #toast-notification.show {
             opacity: 1;
@@ -646,9 +647,13 @@
                     return publicUrl;
                 },
                 async deletePartnerImage(imageUrl) {
-                    if (!imageUrl) return;
+                    if (!imageUrl || !imageUrl.includes(App.config.supabaseUrl)) return; // Don't delete external URLs
                     const fileName = imageUrl.split('/').pop();
-                    await App.supabase.storage.from('partner_images').remove([fileName]);
+                    try {
+                        await App.supabase.storage.from('partner_images').remove([fileName]);
+                    } catch (e) {
+                        console.warn("Could not delete image, it might not exist in storage:", fileName);
+                    }
                 },
                 async savePartner(partnerData) {
                     const dataToSave = {
@@ -1102,18 +1107,25 @@
                         const formData = new FormData(form);
                         const id = formData.get('id');
 
-                        // Handle image uploads
+                        // Step 1: Handle file uploads
+                        submitButton.textContent = 'Загрузка фото...';
                         const uploadPromises = App.state.partnerFormImages.toAddFiles.map(file => App.api.uploadPartnerImage(file));
                         const newImageUrls = await Promise.all(uploadPromises);
                         if(newImageUrls.some(url => url === null)) {
                             throw new Error('Не удалось загрузить одно или несколько изображений.');
                         }
                         
-                        // Handle image deletions from storage
+                        // Step 2: Handle file deletions from storage
+                        submitButton.textContent = 'Очистка...';
                         const deletePromises = App.state.partnerFormImages.toDeleteUrls.map(url => App.api.deletePartnerImage(url));
                         await Promise.all(deletePromises);
 
-                        const finalImageUrls = [...App.state.partnerFormImages.existing, ...newImageUrls, ...App.state.partnerFormImages.toAddUrls];
+                        // Step 3: Construct the final list of URLs
+                        const finalImageUrls = [
+                            ...App.state.partnerFormImages.existing, 
+                            ...newImageUrls, 
+                            ...App.state.partnerFormImages.toAddUrls
+                        ];
 
                         if (finalImageUrls.length === 0) {
                             throw new Error('Для партнера необходимо добавить хотя бы одно изображение.');
@@ -1127,17 +1139,18 @@
                             image_urls: finalImageUrls,
                         };
                         
+                        // Step 4: Save partner data to the database
+                        submitButton.textContent = 'Сохранение данных...';
                         const savedPartner = await App.api.savePartner(partnerData);
                         
                         if (savedPartner) {
-                            if (id) {
-                                const index = App.state.partners.findIndex(p => p.id === savedPartner.id);
-                                if (index !== -1) App.state.partners[index] = savedPartner;
-                            } else {
-                                App.state.partners.unshift(savedPartner);
-                            }
+                            // Step 5: Refetch all data to ensure consistency
+                            await App.api.getPartners();
                             
+                            // Step 6: Update all relevant UI components
                             App.ui.renderPartnerWidgets();
+                            
+                            // Step 7: Navigate back and show success
                             App.navigation.back();
                             App.ui.showToast('Партнер сохранен!', 'success');
                         } else {
