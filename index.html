@@ -126,9 +126,24 @@
             object-fit: cover;
             border-radius: 0.5rem;
         }
+        /* Toast Notification */
+        #toast-notification {
+            transform: translate(-50%, -150%);
+            opacity: 0;
+        }
+        #toast-notification.show {
+            opacity: 1;
+            transform: translate(-50%, 0);
+        }
+        #toast-notification.error { background-color: #ef4444; }
+        #toast-notification.success { background-color: #22c55e; }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 overflow-hidden">
+
+    <div id="toast-notification" class="fixed top-5 left-1/2 z-50 px-4 py-2 rounded-lg text-white shadow-lg transition-transform duration-300">
+        <span id="toast-message"></span>
+    </div>
 
     <div id="app-container" class="h-screen w-screen max-w-md mx-auto bg-white flex flex-col">
         <header id="app-header" class="p-4 flex items-center justify-between bg-white border-b border-slate-200 flex-shrink-0 sticky top-0 z-10">
@@ -545,7 +560,7 @@
                         
                         if (insertError) { 
                             console.error('Ошибка создания профиля:', insertError); 
-                            alert(`Не удалось создать профиль при первом входе. Ошибка: ${insertError.message}`);
+                            App.ui.showToast(`Не удалось создать профиль: ${insertError.message}`);
                             return; 
                         }
                         profile = newProfile;
@@ -563,7 +578,7 @@
                         .single();
                     if (error) {
                         console.error('Ошибка сохранения профиля:', error);
-                        alert(`Не удалось сохранить профиль. Ошибка: ${error.message}`);
+                        App.ui.showToast(`Не удалось сохранить профиль: ${error.message}`);
                         return null;
                     }
                     return data;
@@ -658,7 +673,7 @@
                         myTrips: this.handlers.onMyTrips,
                         publishRide: () => {
                             if (!this.state.userProfile?.driver_car?.trim()) {
-                                alert("Пожалуйста, укажите информацию о вашем автомобиле в профиле.");
+                                this.ui.showToast("Пожалуйста, укажите информацию о вашем автомобиле в профиле.");
                                 this.navigation.to('profile-screen');
                             } else {
                                 this.navigation.to('offer-screen');
@@ -726,7 +741,7 @@
                 async onProfileSubmit(form) {
                     const formData = new FormData(form);
                     const fullName = formData.get('full_name').trim();
-                    if (!fullName) { alert("Имя не может быть пустым."); return; }
+                    if (!fullName) { App.ui.showToast("Имя не может быть пустым."); return; }
                     
                     const updatedProfile = await App.api.updateUserProfile({
                         full_name: fullName,
@@ -763,7 +778,7 @@
 
                     const { error } = await App.supabase.from('ride_offers').insert(offerData);
 
-                    if (error) { console.error(error); alert(`Ошибка публикации поездки: ${error.message}`); return; }
+                    if (error) { console.error(error); App.ui.showToast(`Ошибка публикации поездки: ${error.message}`); return; }
                     
                     App.ui.resetForm(form);
                     App.ui.showSuccess('Поездка опубликована', 'Пассажиры теперь видят ваше предложение.', 'В кабинет');
@@ -790,7 +805,7 @@
 
                     const { error } = await App.supabase.from('ride_requests').insert(requestData);
 
-                    if (error) { console.error(error); alert(`Ошибка создания заявки: ${error.message}`); return; }
+                    if (error) { console.error(error); App.ui.showToast(`Ошибка создания заявки: ${error.message}`); return; }
                     App.ui.resetForm(form);
                     App.ui.showSuccess('Заявка создана', 'Водители скоро увидят вашу заявку.', 'Отлично');
                 },
@@ -811,7 +826,7 @@
                     
                     const { error } = await App.supabase.from('parcel_requests').insert(parcelData);
 
-                    if (error) { console.error(error); alert(`Ошибка создания заявки на посылку: ${error.message}`); return; }
+                    if (error) { console.error(error); App.ui.showToast(`Ошибка создания заявки на посылку: ${error.message}`); return; }
                     App.ui.resetForm(form);
                     App.ui.showSuccess('Заявка на посылку создана', 'Водители увидят вашу заявку.', 'Отлично');
                 },
@@ -888,7 +903,7 @@
                 
                 async onRequestBooking(offerId, bookingDetails = null) {
                     const { data: offer, error: offerError } = await App.supabase.from('ride_offers').select('*').eq('id', offerId).single();
-                    if(offerError || !offer) { console.error("Предложение не найдено"); alert(`Не удалось найти поездку: ${offerError.message}`); return; }
+                    if(offerError || !offer) { console.error("Предложение не найдено"); App.ui.showToast(`Не удалось найти поездку: ${offerError.message}`); return; }
                     
                     const bookingData = {
                         offer_id: offerId,
@@ -901,7 +916,7 @@
                     };
                     
                     const { error } = await App.supabase.from('bookings').insert(bookingData);
-                    if (error) { console.error('Ошибка бронирования:', error); alert(`Ошибка бронирования: ${error.message}`); return; }
+                    if (error) { console.error('Ошибка бронирования:', error); App.ui.showToast(`Ошибка бронирования: ${error.message}`); return; }
                     
                     App.utils.sendTelegramNotification(offer.driver_id, `*Новое бронирование!* 🚗\nПассажир *${App.state.userProfile.full_name}* хочет забронировать место на вашу поездку ${offer.from} → ${offer.to}.`);
                     App.ui.showSuccess('Заявка отправлена', 'Водитель рассмотрит вашу заявку и вы получите уведомление.', 'Отлично');
@@ -944,7 +959,7 @@
                 async onCancelParcelRequest(requestId) { await App.supabase.from('parcel_requests').delete().eq('id', requestId); App.handlers.onMyTrips(); },
 
                 async onOfferRideToRequest(requestId, button) {
-                    if (!App.state.userProfile?.driver_car?.trim()) { alert("Укажите авто в профиле."); App.navigation.to('profile-screen'); return; }
+                    if (!App.state.userProfile?.driver_car?.trim()) { App.ui.showToast("Укажите авто в профиле."); App.navigation.to('profile-screen'); return; }
                     
                     button.disabled = true;
                     button.textContent = 'Отправка...';
@@ -972,7 +987,7 @@
 
                     if (offerError) {
                         console.error("Не удалось создать предложение:", offerError);
-                        alert(`Ошибка. Возможно, на эту заявку уже ответили. \n\nДетали: ${offerError.message}`);
+                        App.ui.showToast(`Ошибка: ${offerError.message}`);
                         button.disabled = false;
                         button.textContent = 'Предложить поездку';
                         return;
@@ -999,7 +1014,21 @@
                     }
                 },
                 async onDeletePartner(partnerId) {
-                    if (!confirm('Вы уверены, что хотите удалить этого партнера?')) return;
+                    const button = document.querySelector(`[data-partner-id="${partnerId}"][data-action="deletePartner"]`);
+                    const isConfirming = button.dataset.confirming === 'true';
+
+                    if (!isConfirming) {
+                        button.textContent = 'Точно?';
+                        button.classList.add('bg-red-500', 'text-white');
+                        button.dataset.confirming = 'true';
+                        setTimeout(() => {
+                            button.textContent = 'Удал.';
+                            button.classList.remove('bg-red-500', 'text-white');
+                            button.dataset.confirming = 'false';
+                        }, 3000);
+                        return;
+                    }
+
                     const partnerToDelete = App.state.partners.find(p => p.id == partnerId);
                     
                     const success = await App.api.deletePartner(partnerId);
@@ -1007,11 +1036,12 @@
                         if (partnerToDelete.image_url) {
                            await App.api.deletePartnerImage(partnerToDelete.image_url);
                         }
+                        App.ui.showToast('Партнер удален', 'success');
                         await App.api.getPartners();
                         App.ui.renderAdminScreen();
                         App.ui.renderPartnerWidgets();
                     } else {
-                        alert('Не удалось удалить партнера.');
+                        App.ui.showToast('Не удалось удалить партнера.');
                     }
                 },
                 async onPartnerFormSubmit(form) {
@@ -1050,15 +1080,17 @@
                         }
 
                         const savedPartner = await App.api.savePartner(partnerData);
+                        
                         if (savedPartner) {
                             await App.api.getPartners();
                             App.ui.renderPartnerWidgets();
                             App.navigation.back();
+                            App.ui.showToast('Партнер сохранен!', 'success');
                         } else {
                             throw new Error('Не удалось сохранить данные партнера на сервере.');
                         }
                     } catch (error) {
-                        alert(error.message);
+                        App.ui.showToast(error.message);
                     } finally {
                         submitButton.disabled = false;
                         submitButton.textContent = 'Сохранить';
@@ -1160,6 +1192,20 @@
             
             // --- UI & RENDER ---
             ui: {
+                showToast(message, type = 'error') {
+                    const toast = document.getElementById('toast-notification');
+                    const messageEl = document.getElementById('toast-message');
+                    if (!toast || !messageEl) return;
+                    
+                    messageEl.textContent = message;
+                    toast.className = 'fixed top-5 left-1/2 z-50 px-4 py-2 rounded-lg text-white shadow-lg transition-transform duration-300'; // Reset classes
+                    toast.classList.add(type);
+                    toast.classList.add('show');
+                    
+                    setTimeout(() => {
+                        toast.classList.remove('show');
+                    }, 3000);
+                },
                 setAppHeight() {
                     const appContainer = document.getElementById('app-container');
                     if (appContainer && window.Telegram?.WebApp?.viewportStableHeight) {
@@ -1281,7 +1327,7 @@
                            </div>
                            <div class="flex flex-col gap-2 shrink-0">
                                 <button data-action="editPartner" data-partner-id="${p.id}" class="text-xs btn bg-slate-100 text-slate-700 font-semibold py-1 px-3 rounded-md">Изм.</button>
-                                <button data-action="deletePartner" data-partner-id="${p.id}" class="text-xs btn bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-md">Удал.</button>
+                                <button data-action="deletePartner" data-partner-id="${p.id}" data-confirming="false" class="text-xs btn bg-red-100 text-red-700 font-semibold py-1 px-3 rounded-md transition-colors">Удал.</button>
                            </div>
                         </div>
                     `).join('');
