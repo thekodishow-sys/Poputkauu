@@ -113,6 +113,13 @@
             object-fit: cover;
             aspect-ratio: 16 / 9;
         }
+         /* Custom modal for confirmation */
+        #confirmation-modal-overlay {
+            transition: opacity 0.3s ease-in-out;
+        }
+        #confirmation-modal {
+             transition: transform 0.3s ease-in-out, opacity 0.2s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 overflow-hidden">
@@ -166,6 +173,18 @@
             <button id="booking-modal-cancel-btn" class="w-full p-3 mt-2 bg-white rounded-xl text-blue-500 text-lg font-semibold">Отмена</button>
         </div>
     </div>
+    
+    <div id="confirmation-modal-overlay" class="modal-overlay fixed inset-0 bg-black bg-opacity-40 z-40 hidden opacity-0">
+        <div id="confirmation-modal" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-11/12 max-w-sm bg-white rounded-2xl p-6 shadow-lg transform scale-95 opacity-0">
+            <h3 id="confirmation-title" class="text-lg font-bold text-slate-800 text-center">Подтвердите действие</h3>
+            <p id="confirmation-text" class="text-sm text-slate-600 text-center mt-2 mb-6">Вы уверены?</p>
+            <div class="flex gap-3">
+                <button id="confirm-cancel-btn" class="flex-1 text-sm btn bg-slate-100 text-slate-800 font-bold py-2 px-4 rounded-lg hover:bg-slate-200">Отмена</button>
+                <button id="confirm-action-btn" class="flex-1 text-sm btn bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700">Удалить</button>
+            </div>
+        </div>
+    </div>
+
 
     <!-- TEMPLATES -->
     <template id="passenger-home-screen-template">
@@ -387,32 +406,54 @@
 
     <template id="admin-screen-template">
         <div class="p-5">
-            <h2 class="text-lg font-bold mb-4">Админ-панель: Реклама</h2>
-            <form id="ad-form" class="bg-white p-6 rounded-xl border border-slate-200 space-y-4">
-                <div>
-                    <label for="name" class="block text-sm font-medium text-slate-700 mb-1">Имя рекламодателя</label>
-                    <input type="text" id="name" name="name" class="w-full p-2 border border-slate-300 rounded-lg" required>
+            <div id="admin-view">
+                 <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold">Управление Рекламой</h2>
+                    <button data-action="showAdForm" class="text-sm btn bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700">+ Добавить</button>
                 </div>
-                 <div>
-                    <label for="link_url" class="block text-sm font-medium text-slate-700 mb-1">Ссылка на группу/канал</label>
-                    <input type="url" id="link_url" name="link_url" class="w-full p-2 border border-slate-300 rounded-lg" placeholder="https://t.me/yourgroup">
-                </div>
-                <div>
-                    <label for="description" class="block text-sm font-medium text-slate-700 mb-1">Описание</label>
-                    <textarea id="description" name="description" rows="3" class="w-full p-2 border border-slate-300 rounded-lg" required></textarea>
-                </div>
-                <div>
-                    <label for="logo" class="block text-sm font-medium text-slate-700 mb-1">Логотип (1 файл)</label>
-                    <input type="file" id="logo" name="logo" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*">
-                </div>
-                <div>
-                    <label for="images" class="block text-sm font-medium text-slate-700 mb-1">Фото для карусели (несколько файлов)</label>
-                    <input type="file" id="images" name="images" multiple class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100" accept="image/*">
-                </div>
-                <button type="submit" id="ad-submit-btn" class="w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 disabled:bg-slate-400 transition-colors">
-                    Сохранить
-                </button>
-            </form>
+                <div id="admin-ads-list" class="space-y-3"></div>
+            </div>
+           
+            <div id="ad-form-view" class="hidden">
+                 <h2 id="ad-form-title" class="text-lg font-bold mb-4">Новое объявление</h2>
+                <form id="ad-form" class="bg-white p-6 rounded-xl border border-slate-200 space-y-4">
+                    <input type="hidden" id="ad-id" name="id">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-slate-700 mb-1">Имя рекламодателя</label>
+                        <input type="text" id="name" name="name" class="w-full p-2 border border-slate-300 rounded-lg" required>
+                    </div>
+                    <div>
+                        <label for="description" class="block text-sm font-medium text-slate-700 mb-1">Описание</label>
+                        <textarea id="description" name="description" rows-3 class="w-full p-2 border border-slate-300 rounded-lg" required></textarea>
+                    </div>
+
+                    <!-- Dynamic Links Section -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Ссылки на группы/каналы</label>
+                        <div id="links-container" class="space-y-2">
+                            <!-- Link inputs will be injected here by JS -->
+                        </div>
+                        <button type="button" data-action="addLinkInput" class="mt-2 text-sm text-blue-600 hover:text-blue-800 font-semibold">+ Добавить ссылку</button>
+                    </div>
+
+                    <div>
+                        <label for="logo" class="block text-sm font-medium text-slate-700 mb-1">Логотип (1 файл)</label>
+                        <div id="current-logo-container" class="mb-2"></div>
+                        <input type="file" id="logo" name="logo" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*">
+                    </div>
+                    <div>
+                        <label for="images" class="block text-sm font-medium text-slate-700 mb-1">Фото для карусели</label>
+                        <div id="current-images-container" class="flex flex-wrap gap-2 mb-2"></div>
+                        <input type="file" id="images" name="images" multiple class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100" accept="image/*">
+                    </div>
+                    <div class="flex gap-3 pt-4">
+                        <button type="button" data-action="hideAdForm" class="w-1/2 bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-lg hover:bg-slate-200">Отмена</button>
+                        <button type="submit" id="ad-submit-btn" class="w-1/2 bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 disabled:bg-slate-400 transition-colors">
+                            Сохранить
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </template>
 
@@ -439,6 +480,7 @@
                 navigationHistory: ['passenger-home-screen'],
                 allRequests: [],
                 currentFilters: { from: '', to: '', date: '', type: 'all' },
+                allAds: [],
             },
             
             // --- DOM ELEMENTS CACHE ---
@@ -592,10 +634,13 @@
 
                     if (error) {
                         console.error('Ошибка загрузки рекламы:', error);
-                        return;
+                        App.state.allAds = [];
+                    } else {
+                        App.state.allAds = data || [];
                     }
-                    if (data && data.length > 0) {
-                        App.ui.renderAdvertisements(data);
+                    App.ui.renderAdvertisements(App.state.allAds);
+                    if (document.getElementById('admin-screen').classList.contains('active')) {
+                        App.ui.renderAdminAdsList(App.state.allAds);
                     }
                 },
             },
@@ -607,11 +652,12 @@
                     const button = target.closest('button, [data-action]');
                     if (!button) return;
 
+                    e.stopPropagation(); // Prevent nested clicks
                     const { action, screen, ...dataset } = button.dataset;
 
                     const actions = {
                         // Navigation
-                        navigateTo: () => this.navigation.to(screen),
+                        navigateTo: (targetScreen) => this.navigation.to(targetScreen || screen),
                         back: () => this.navigation.back(),
                         backToHub: () => {
                             const hubScreen = this.state.userRole === 'driver' ? 'driver-dashboard-screen' : 'passenger-home-screen';
@@ -658,6 +704,13 @@
                         toggleFilter: this.ui.toggleFilter,
                         applyFilters: this.handlers.onApplyFilters,
                         resetFilters: this.handlers.onResetFilters,
+                        // Admin Actions
+                        showAdForm: () => this.handlers.onShowAdForm(dataset.adId),
+                        hideAdForm: this.handlers.onHideAdForm,
+                        addLinkInput: this.ui.addLinkInput,
+                        removeLinkInput: () => this.ui.removeLinkInput(button.parentElement),
+                        deleteAd: () => this.handlers.onDeleteAd(dataset.adId),
+
                     };
 
                     if (actions[action]) {
@@ -706,89 +759,183 @@
                     }
                 },
 
+                onShowAdForm(adId = null) {
+                    const formView = document.getElementById('ad-form-view');
+                    const listView = document.getElementById('admin-view');
+                    const form = document.getElementById('ad-form');
+                    const title = document.getElementById('ad-form-title');
+
+                    form.reset();
+                    document.getElementById('links-container').innerHTML = '';
+                    document.getElementById('current-logo-container').innerHTML = '';
+                    document.getElementById('current-images-container').innerHTML = '';
+
+                    if (adId) {
+                        const ad = App.state.allAds.find(a => a.id == adId);
+                        if (ad) {
+                            title.textContent = 'Редактировать объявление';
+                            form.querySelector('#ad-id').value = ad.id;
+                            form.querySelector('#name').value = ad.name;
+                            form.querySelector('#description').value = ad.description || '';
+                            if (ad.links) {
+                                ad.links.forEach(link => App.ui.addLinkInput(link.name, link.url));
+                            }
+                            if (ad.logo_url) {
+                                document.getElementById('current-logo-container').innerHTML = `<img src="${ad.logo_url}" class="w-16 h-16 rounded-lg object-cover">`;
+                            }
+                            if (ad.image_urls) {
+                                document.getElementById('current-images-container').innerHTML = ad.image_urls.map(url => `<img src="${url}" class="w-16 h-16 rounded-lg object-cover">`).join('');
+                            }
+                        }
+                    } else {
+                         title.textContent = 'Новое объявление';
+                         App.ui.addLinkInput(); // Add one empty link field for new ads
+                    }
+                    
+                    listView.classList.add('hidden');
+                    formView.classList.remove('hidden');
+                },
+                
+                onHideAdForm() {
+                    document.getElementById('ad-form-view').classList.add('hidden');
+                    document.getElementById('admin-view').classList.remove('hidden');
+                },
+
                 async onAdSubmit(form) {
                     const submitBtn = form.querySelector('#ad-submit-btn');
                     submitBtn.disabled = true;
 
                     const formData = new FormData(form);
+                    const adId = formData.get('id');
                     const name = formData.get('name');
                     const description = formData.get('description');
-                    const linkUrl = formData.get('link_url');
                     const logoFile = formData.get('logo');
-                    const imageFiles = formData.getAll('images');
+                    const imageFiles = formData.getAll('images').filter(f => f.size > 0);
 
-                    let logoUrl = null;
-                    let imageUrls = [];
+                    // Build links array
+                    const links = [];
+                    const linkInputs = form.querySelectorAll('.link-group');
+                    linkInputs.forEach(group => {
+                        const name = group.querySelector('input[name="link_name"]').value.trim();
+                        const url = group.querySelector('input[name="link_url"]').value.trim();
+                        if (name && url) {
+                            links.push({ name, url });
+                        }
+                    });
 
-                    const sanitizeFilename = (filename) => {
-                        return filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+                    let adData = {
+                        name,
+                        description,
+                        links,
                     };
 
+                    const sanitizeFilename = (filename) => filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+
                     try {
+                        let currentAd = null;
+                        if (adId) {
+                            currentAd = App.state.allAds.find(a => a.id == adId);
+                        }
+
                         // 1. Upload Logo
                         if (logoFile && logoFile.size > 0) {
                             submitBtn.textContent = 'Загрузка логотипа...';
-                            const sanitizedName = sanitizeFilename(logoFile.name);
-                            const filePath = `public/logo-${Date.now()}-${sanitizedName}`;
-                            
-                            console.log(`Загрузка лого: ${filePath}`);
-                            const { error: uploadError } = await App.supabase.storage.from('advertisements').upload(filePath, logoFile);
-                            if (uploadError) throw new Error(`Ошибка загрузки логотипа: ${uploadError.message}`);
-                            
+                            const filePath = `public/logo-${Date.now()}-${sanitizeFilename(logoFile.name)}`;
+                            const { error } = await App.supabase.storage.from('advertisements').upload(filePath, logoFile);
+                            if (error) throw new Error(`Ошибка загрузки логотипа: ${error.message}`);
                             const { data: { publicUrl } } = App.supabase.storage.from('advertisements').getPublicUrl(filePath);
-                            logoUrl = publicUrl;
-                             console.log(`Логотип загружен: ${publicUrl}`);
+                            adData.logo_url = publicUrl;
+                        } else if (currentAd) {
+                            adData.logo_url = currentAd.logo_url;
                         }
 
                         // 2. Upload Gallery Images
-                        if (imageFiles && imageFiles.length > 0 && imageFiles[0].size > 0) {
+                        if (imageFiles.length > 0) {
                              submitBtn.textContent = `Загрузка фото (0/${imageFiles.length})...`;
                             const uploadPromises = imageFiles.map((file, index) => {
-                                const sanitizedName = sanitizeFilename(file.name);
-                                const filePath = `public/gallery-${Date.now()}-${sanitizedName}`;
-                                console.log(`Загрузка изображения: ${filePath}`);
+                                const filePath = `public/gallery-${Date.now()}-${sanitizeFilename(file.name)}`;
                                 return App.supabase.storage.from('advertisements').upload(filePath, file)
                                     .then(result => {
                                         submitBtn.textContent = `Загрузка фото (${index + 1}/${imageFiles.length})...`;
                                         return result;
                                     });
                             });
-
                             const uploadResults = await Promise.all(uploadPromises);
-                            
-                            for (const result of uploadResults) {
+                            const newImageUrls = [];
+                             for (const result of uploadResults) {
                                 if (result.error) throw new Error(`Ошибка загрузки изображения: ${result.error.message}`);
                                 const { data: { publicUrl } } = App.supabase.storage.from('advertisements').getPublicUrl(result.data.path);
-                                imageUrls.push(publicUrl);
-                                console.log(`Изображение загружено: ${publicUrl}`);
+                                newImageUrls.push(publicUrl);
                             }
+                            adData.image_urls = currentAd ? [...(currentAd.image_urls || []), ...newImageUrls] : newImageUrls;
+                        } else if (currentAd) {
+                            adData.image_urls = currentAd.image_urls;
                         }
 
-                        // 3. Insert into Database
+                        // 3. Insert or Update Database
                         submitBtn.textContent = 'Сохранение данных...';
-                        const { error: insertError } = await App.supabase.from('advertisements').insert({
-                            name,
-                            description,
-                            link_url: linkUrl,
-                            logo_url: logoUrl,
-                            image_urls: imageUrls,
-                        });
-
-                        if (insertError) throw new Error(`Ошибка сохранения в БД: ${insertError.message}`);
+                        let error;
+                        if (adId) {
+                            const { error: updateError } = await App.supabase.from('advertisements').update(adData).eq('id', adId);
+                            error = updateError;
+                        } else {
+                             const { error: insertError } = await App.supabase.from('advertisements').insert(adData);
+                             error = insertError;
+                        }
+                        
+                        if (error) throw new Error(`Ошибка сохранения в БД: ${error.message}`);
                         
                         App.ui.showToast('Объявление успешно сохранено!', 'success');
-                        form.reset();
+                        App.handlers.onHideAdForm();
                         App.api.loadAdvertisements(); 
-                        App.navigation.back();
 
                     } catch (error) {
                         console.error("Полная ошибка при сохранении рекламы:", error);
-                        console.dir(error); 
                         App.ui.showToast(`Ошибка: ${error.message}`, 'error');
                     } finally {
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Сохранить';
                     }
+                },
+
+                async onDeleteAd(adId) {
+                    App.ui.showConfirmationModal({
+                        title: 'Удалить объявление?',
+                        text: 'Это действие нельзя будет отменить. Все файлы будут удалены из хранилища.',
+                        confirmText: 'Удалить',
+                        onConfirm: async () => {
+                            const ad = App.state.allAds.find(a => a.id == adId);
+                            if (!ad) {
+                                App.ui.showToast('Объявление не найдено.', 'error');
+                                return;
+                            }
+
+                            try {
+                                // Delete files from storage
+                                const filesToDelete = [];
+                                if (ad.logo_url) filesToDelete.push(ad.logo_url);
+                                if (ad.image_urls) filesToDelete.push(...ad.image_urls);
+
+                                if (filesToDelete.length > 0) {
+                                    const filePaths = filesToDelete.map(url => new URL(url).pathname.split('/advertisements/')[1]);
+                                    const { error: storageError } = await App.supabase.storage.from('advertisements').remove(filePaths);
+                                    if (storageError) {
+                                        console.error('Ошибка удаления файлов:', storageError);
+                                        App.ui.showToast('Ошибка удаления файлов, но запись будет удалена.', 'error');
+                                    }
+                                }
+
+                                // Delete DB record
+                                const { error: dbError } = await App.supabase.from('advertisements').delete().eq('id', adId);
+                                if (dbError) throw new Error(dbError.message);
+
+                                App.ui.showToast('Объявление удалено.', 'success');
+                                App.api.loadAdvertisements();
+                            } catch (error) {
+                                 App.ui.showToast(`Ошибка удаления: ${error.message}`, 'error');
+                            }
+                        }
+                    });
                 },
 
                 async onOfferSubmit(form) {
@@ -1109,7 +1256,8 @@
                     
                     // Pre-population logic
                     if (screenId === 'profile-screen') App.ui.populateProfileForm();
-                    if (screenId === 'offer-screen') App.handlers.onRouteDropdownChange(document.querySelector('#offer-form select'))
+                    if (screenId === 'offer-screen') App.handlers.onRouteDropdownChange(document.querySelector('#offer-form select'));
+                    if (screenId === 'admin-screen') App.api.loadAdvertisements();
                 },
                 back() {
                     if (App.state.navigationHistory.length <= 1) return;
@@ -1138,6 +1286,44 @@
                     setTimeout(() => {
                         toast.classList.remove('show');
                     }, 4000);
+                },
+                 showConfirmationModal({ title, text, confirmText, onConfirm }) {
+                    const overlay = document.getElementById('confirmation-modal-overlay');
+                    const modal = document.getElementById('confirmation-modal');
+                    document.getElementById('confirmation-title').textContent = title;
+                    document.getElementById('confirmation-text').textContent = text;
+                    const confirmBtn = document.getElementById('confirm-action-btn');
+                    confirmBtn.textContent = confirmText;
+
+                    overlay.classList.remove('hidden');
+                    
+                    // Clone and replace button to remove old event listeners
+                    const newConfirmBtn = confirmBtn.cloneNode(true);
+                    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+                    newConfirmBtn.onclick = () => {
+                        onConfirm();
+                        this.hideConfirmationModal();
+                    };
+                    document.getElementById('confirm-cancel-btn').onclick = () => this.hideConfirmationModal();
+                     overlay.onclick = (e) => {
+                         if(e.target === overlay) this.hideConfirmationModal();
+                     };
+
+                    requestAnimationFrame(() => {
+                         overlay.classList.remove('opacity-0');
+                         modal.classList.remove('opacity-0', 'scale-95');
+                    });
+                },
+
+                hideConfirmationModal() {
+                    const overlay = document.getElementById('confirmation-modal-overlay');
+                    const modal = document.getElementById('confirmation-modal');
+                    overlay.classList.add('opacity-0');
+                    modal.classList.add('opacity-0', 'scale-95');
+                    setTimeout(() => {
+                        overlay.classList.add('hidden');
+                    }, 300);
                 },
                 setAppHeight() {
                     const appContainer = document.getElementById('app-container');
@@ -1177,14 +1363,23 @@
                 renderAdvertisements(ads) {
                     const container = document.querySelector('#passenger-home-screen #ads-container');
                     if (!container) return;
+                    if (!ads || ads.length === 0) {
+                        container.innerHTML = '';
+                        return;
+                    }
 
                     const adsHtml = ads.map(ad => {
                         const imagesHtml = ad.image_urls && ad.image_urls.length > 0
                             ? `<div class="ad-image-carousel mt-3 scroll-smooth">${ad.image_urls.map(url => `<img src="${url}" alt="Ad image">`).join('')}</div>`
                             : '';
                         
-                        const advertiserLinkOpen = ad.link_url ? `<a href="${ad.link_url}" target="_blank" class="flex items-center">` : `<div class="flex items-center">`;
-                        const advertiserLinkClose = ad.link_url ? `</a>` : `</div>`;
+                        const primaryLink = (ad.links && ad.links.length > 0) ? ad.links[0].url : '#';
+                        const advertiserLinkOpen = ad.links ? `<a href="${primaryLink}" target="_blank" class="flex items-center">` : `<div class="flex items-center">`;
+                        const advertiserLinkClose = ad.links ? `</a>` : `</div>`;
+                        
+                        const linksHtml = ad.links && ad.links.length > 0
+                            ? `<div class="mt-3 flex flex-wrap gap-2">${ad.links.map(link => `<a href="${link.url}" target="_blank" class="text-xs bg-blue-100 text-blue-800 font-semibold px-3 py-1 rounded-full hover:bg-blue-200">${link.name}</a>`).join('')}</div>`
+                            : '';
 
                         return `
                         <div class="ad-card bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
@@ -1197,12 +1392,61 @@
                             ${advertiserLinkClose}
                             ${ad.description ? `<p class="text-sm text-slate-700 mt-2">${ad.description}</p>` : ''}
                             ${imagesHtml}
+                            ${linksHtml}
                         </div>
                         `;
                     }).join('');
 
                     container.innerHTML = `<div class="ads-carousel">${adsHtml}</div>`;
                 },
+
+                renderAdminAdsList(ads) {
+                    const container = document.getElementById('admin-ads-list');
+                    if (!container) return;
+
+                    if (!ads || ads.length === 0) {
+                        container.innerHTML = '<p class="text-center text-slate-500 py-8">Рекламных объявлений пока нет.</p>';
+                        return;
+                    }
+
+                    container.innerHTML = ads.map(ad => `
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between">
+                            <div class="flex items-center overflow-hidden">
+                                <img src="${ad.logo_url || 'https://placehold.co/40x40/e2e8f0/64748b?text=L'}" class="w-10 h-10 rounded-full mr-4 object-cover flex-shrink-0">
+                                <div class="overflow-hidden">
+                                    <p class="font-bold text-slate-800 truncate">${ad.name}</p>
+                                    <p class="text-xs text-slate-500 truncate">${ad.description}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2 flex-shrink-0 ml-4">
+                                <button data-action="showAdForm" data-ad-id="${ad.id}" class="w-9 h-9 flex items-center justify-center bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                                </button>
+                                <button data-action="deleteAd" data-ad-id="${ad.id}" class="w-9 h-9 flex items-center justify-center bg-red-50 text-red-600 rounded-lg hover:bg-red-100">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                },
+                 addLinkInput(name = '', url = '') {
+                    const container = document.getElementById('links-container');
+                    const linkGroup = document.createElement('div');
+                    linkGroup.className = 'link-group flex items-center gap-2';
+                    linkGroup.innerHTML = `
+                        <input type="text" name="link_name" value="${name}" placeholder="Название кнопки" class="w-1/3 p-2 border border-slate-300 rounded-lg text-sm">
+                        <input type="url" name="link_url" value="${url}" placeholder="https://t.me/..." class="flex-grow p-2 border border-slate-300 rounded-lg text-sm">
+                        <button type="button" data-action="removeLinkInput" class="w-8 h-8 flex items-center justify-center bg-red-50 text-red-500 rounded-lg hover:bg-red-100 flex-shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    `;
+                    container.appendChild(linkGroup);
+                },
+
+                removeLinkInput(element) {
+                    element.remove();
+                },
+
                 updateRoleSwitcher() {
                     const switcher = document.getElementById('role-switcher');
                     switcher.classList.toggle('driver', App.state.userRole === 'driver');
