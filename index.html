@@ -498,7 +498,7 @@
                         <input type="file" name="image_files" id="partner-image-files" class="hidden" accept="image/*" multiple>
                     </label>
                 </div>
-                <button id="partner-form-submit-btn" type="submit" class="text-sm btn w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700">Сохранить</button>
+                <button id="partner-form-submit-btn" type="submit" class="text-sm btn w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700">Сохранить и опубликовать</button>
             </form>
         </div>
     </template>
@@ -1239,20 +1239,23 @@
                         
                         // Step 7: Navigate back (which will re-render the admin screen) and show success
                         App.navigation.back();
-                        App.ui.showToast('Партнер сохранен и опубликован!', 'success');
+                        App.ui.showToast('Реклама сохранена и опубликована!', 'success');
 
                     } catch (error) {
                         console.error('Полная ошибка при сохранении партнера:', error);
                         let errorMessage = 'Произошла неизвестная ошибка.';
                         if (error.message && error.message.includes('security policy')) {
                             errorMessage = 'Ошибка прав доступа. Убедитесь, что вы вошли как администратор и скрипт базы данных выполнен.';
-                        } else if (error.message) {
+                        } else if (error.message.includes('storage')) {
+                            errorMessage = 'Ошибка загрузки изображения. Проверьте настройки хранилища в Supabase.'
+                        }
+                        else if (error.message) {
                             errorMessage = error.message;
                         }
                         App.ui.showToast(`Ошибка: ${errorMessage}`);
                     } finally {
                         submitButton.disabled = false;
-                        submitButton.textContent = 'Сохранить';
+                        submitButton.textContent = 'Сохранить и опубликовать';
                     }
                 },
                  onPartnerImageChange(input) {
