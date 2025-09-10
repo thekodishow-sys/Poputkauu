@@ -1208,10 +1208,15 @@
                         const savedPartner = await App.api.savePartner(partnerData);
                         
                         if (savedPartner) {
-                             // Step 5: Refetch all data for admin to ensure consistency
-                            await App.api.getAllPartnersForAdmin();
+                            // Step 5: Update local state directly instead of re-fetching
+                            const existingPartnerIndex = App.state.partners.findIndex(p => p.id === savedPartner.id);
+                            if (existingPartnerIndex !== -1) {
+                                App.state.partners[existingPartnerIndex] = savedPartner;
+                            } else {
+                                App.state.partners.unshift(savedPartner);
+                            }
                             
-                            // Step 6: Update all relevant UI components
+                            // Step 6: Update UI
                             App.ui.renderPartnerWidgets();
                             
                             // Step 7: Navigate back and show success
