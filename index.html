@@ -751,12 +751,12 @@
                     }
                 },
                 async savePartner(partnerData) {
-                    // This function saves partner data. New partners are saved as drafts.
                     const dataToSave = {
                         title: partnerData.title,
                         description: partnerData.description,
                         image_urls: partnerData.image_urls,
                         channel_url: partnerData.channel_url,
+                        is_published: true // Simplified logic: always publish on save/update
                     };
 
                     let query;
@@ -766,10 +766,10 @@
                             .update(dataToSave)
                             .eq('id', partnerData.id)
                             .select();
-                    } else { // Insert new partner as a draft
+                    } else { // Insert new partner
                         query = App.supabase
                             .from('partners')
-                            .insert({ ...dataToSave, is_published: false }) // New partners are unpublished by default
+                            .insert(dataToSave)
                             .select();
                     }
 
@@ -777,7 +777,7 @@
 
                     if (error) {
                         console.error('Ошибка сохранения партнера в API:', error);
-                        throw error; // Пробрасываем ошибку для обработки в UI
+                        throw error;
                     }
                     return data ? data[0] : null;
                 },
@@ -1276,7 +1276,7 @@
                         
                         // Step 7: Navigate back (which will re-render the admin screen) and show success
                         App.navigation.back();
-                        App.ui.showToast('Данные партнера сохранены!', 'success');
+                        App.ui.showToast('Партнер сохранен и опубликован!', 'success');
 
                     } catch (error) {
                         console.error('Полная ошибка при сохранении партнера:', error);
@@ -1809,7 +1809,7 @@
                        return date.toLocaleDateString('ru-RU', options);
                 },
                  formatTime(timeStr) {
-                       return timeStr.substring(0, 5);
+                       return timeStr ? timeStr.substring(0, 5) : '';
                 }
             },
 
