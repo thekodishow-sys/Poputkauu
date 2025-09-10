@@ -782,8 +782,9 @@
                         App.navigation.back();
 
                     } catch (error) {
-                        console.error("Полная ошибка:", error);
-                        App.ui.showToast(error.message, 'error');
+                        console.error("Полная ошибка при сохранении рекламы:", error);
+                        console.dir(error); 
+                        App.ui.showToast(`Ошибка: ${error.message}`, 'error');
                     } finally {
                         submitBtn.disabled = false;
                         submitBtn.textContent = 'Сохранить';
@@ -1389,4 +1390,5 @@
     </script>
 </body>
 </html>
+
 
