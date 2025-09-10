@@ -78,6 +78,41 @@
         }
         #toast-notification.error { background-color: #ef4444; }
         #toast-notification.success { background-color: #22c55e; }
+
+        /* --- Стили для рекламной карусели --- */
+        .ads-carousel {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            scroll-behavior: smooth;
+            -webkit-overflow-scrolling: touch; /* Плавная прокрутка на iOS */
+            scrollbar-width: none; /* Скрыть скроллбар для Firefox */
+        }
+        .ads-carousel::-webkit-scrollbar {
+            display: none; /* Скрыть скроллбар для Chrome, Safari */
+        }
+        .ad-card {
+            flex: 0 0 85%; /* Ширина карточки */
+            scroll-snap-align: start;
+            scroll-snap-stop: always;
+            margin-right: 1rem;
+        }
+        .ad-card:last-child {
+            margin-right: 0;
+        }
+        .ad-image-carousel {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            border-radius: 0.75rem; /* rounded-xl */
+        }
+        .ad-image-carousel img {
+            flex: 0 0 100%;
+            width: 100%;
+            scroll-snap-align: center;
+            object-fit: cover;
+            aspect-ratio: 16 / 9;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 overflow-hidden">
@@ -113,6 +148,7 @@
             <div id="success-screen" class="screen"></div>
             <div id="my-trips-screen" class="screen"></div>
             <div id="profile-screen" class="screen"></div>
+            <div id="admin-screen" class="screen"></div>
         </main>
         
         <footer id="app-footer" class="p-5 border-t border-slate-200 bg-white flex-shrink-0">
@@ -131,8 +167,10 @@
         </div>
     </div>
 
+    <!-- TEMPLATES -->
     <template id="passenger-home-screen-template">
         <div class="p-5">
+            <div id="ads-container" class="mb-6"></div>
             <div class="text-center mb-6"><h2 class="text-xl font-bold mb-1">Что вы хотите сделать?</h2></div>
             <div class="space-y-3">
                 <button data-action="viewDriverOffers" class="text-sm btn w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-slate-800/10 hover:bg-slate-700">Смотреть поездки водителей</button>
@@ -347,6 +385,33 @@
         </div>
     </template>
 
+    <template id="admin-screen-template">
+        <div class="p-5">
+            <h2 class="text-lg font-bold mb-4">Админ-панель</h2>
+            <form id="ad-form" class="bg-white p-6 rounded-xl border border-slate-200 space-y-4">
+                <div>
+                    <label for="name" class="block text-sm font-medium text-slate-700 mb-1">Имя рекламодателя</label>
+                    <input type="text" id="name" name="name" class="w-full p-2 border border-slate-300 rounded-lg" required>
+                </div>
+                <div>
+                    <label for="description" class="block text-sm font-medium text-slate-700 mb-1">Описание</label>
+                    <textarea id="description" name="description" rows="3" class="w-full p-2 border border-slate-300 rounded-lg" required></textarea>
+                </div>
+                <div>
+                    <label for="logo" class="block text-sm font-medium text-slate-700 mb-1">Логотип (1 файл)</label>
+                    <input type="file" id="logo" name="logo" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" accept="image/*">
+                </div>
+                <div>
+                    <label for="images" class="block text-sm font-medium text-slate-700 mb-1">Фото для карусели (несколько файлов)</label>
+                    <input type="file" id="images" name="images" multiple class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100" accept="image/*">
+                </div>
+                <button type="submit" class="w-full bg-slate-800 text-white font-bold py-3 px-4 rounded-lg hover:bg-slate-700 disabled:bg-slate-400 transition-colors">
+                    Сохранить
+                </button>
+            </form>
+        </div>
+    </template>
+
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
     document.addEventListener('DOMContentLoaded', () => {
@@ -359,6 +424,7 @@
                 supabaseAnonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNjcWtwdm1tb2FvbGFocHhpbmphIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU2MDIwNDksImV4cCI6MjA3MTE3ODA0OX0.Uz5L2SF8O1EGf_efkq5FLi6g1yl7LlmnTZi_eLnISMw',
                 prices: { base: 600, parcel: 300, cheboksary: 400, ferrySurcharge: 100 },
                 cities: ['Йошкар-Ола', 'Чебоксары', 'Козьмодемьянск'],
+                adminId: 5017229451,
             },
             
             // --- STATE ---
@@ -409,16 +475,17 @@
                     Telegram.WebApp.expand();
                     this.state.currentUser = Telegram.WebApp.initDataUnsafe?.user;
                      if (!this.state.currentUser) {
-                          throw new Error("Not in Telegram");
+                          // Mock user for local testing if not in Telegram
+                          this.state.currentUser = { id: 5017229451, first_name: 'Admin', username: 'testadmin', photo_url: null };
+                          console.warn("Тестовый режим. Используется мок-пользователь (Админ).");
                     }
                     
                     this.ui.setAppHeight(); 
                     Telegram.WebApp.onEvent('viewportChanged', this.ui.setAppHeight);
 
                 } catch (e) {
-                    console.warn("Тестовый режим. Используется мок-пользователь.");
-                    // Provide a mock user for local testing
-                    this.state.currentUser = { id: 12345678, first_name: 'Тест', username: 'testuser', photo_url: null };
+                     this.state.currentUser = { id: 5017229451, first_name: 'Admin', username: 'testadmin', photo_url: null };
+                     console.warn("Тестовый режим. Используется мок-пользователь (Админ).");
                 }
 
                 if (!this.state.currentUser?.id) {
@@ -430,6 +497,13 @@
                 this.cacheDom();
                 this.bindEvents();
                 this.ui.renderAllScreens();
+                
+                if (this.state.currentUser.id === this.config.adminId) {
+                    this.ui.renderAdminButton();
+                }
+
+                this.api.loadAdvertisements();
+                
                 this.ui.updateRoleSwitcher();
                 this.ui.updateAvatar();
             },
@@ -475,9 +549,7 @@
                         if (!profile.user_uuid) {
                             console.log('Профиль устарел, обновляем...');
                             const { data: updatedProfileData, error: updateError } = await App.supabase.from('profiles')
-                                .update({ 
-                                    user_uuid: userUUID
-                                 })
+                                .update({ user_uuid: userUUID })
                                 .eq('id', App.state.currentUser.id)
                                 .select();
                             
@@ -507,6 +579,20 @@
                         return null;
                     }
                     return data ? data[0] : null;
+                },
+                async loadAdvertisements() {
+                    const { data, error } = await App.supabase
+                        .from('advertisements')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+
+                    if (error) {
+                        console.error('Ошибка загрузки рекламы:', error);
+                        return;
+                    }
+                    if (data && data.length > 0) {
+                        App.ui.renderAdvertisements(data);
+                    }
                 },
             },
 
@@ -586,14 +672,15 @@
                         'offer-form': this.handlers.onOfferSubmit,
                         'passenger-request-form': this.handlers.onPassengerRequestSubmit,
                         'parcel-request-form': this.handlers.onParcelRequestSubmit,
+                        'ad-form': this.handlers.onAdSubmit,
                     };
                     if (formHandlers[e.target.id]) formHandlers[e.target.id](e.target);
                 });
 
                  document.body.addEventListener('change', (e) => {
-                      if (['via-ferry-toggle', 'via-cheboksary-detour-toggle'].includes(e.target.id)) this.handlers.onRouteOptionChange(e.target);
-                      if (['from-select', 'to-select'].includes(e.target.name)) this.handlers.onRouteDropdownChange(e.target);
-                 });
+                       if (['via-ferry-toggle', 'via-cheboksary-detour-toggle'].includes(e.target.id)) this.handlers.onRouteOptionChange(e.target);
+                       if (['from-select', 'to-select'].includes(e.target.name)) this.handlers.onRouteDropdownChange(e.target);
+                });
             },
 
             // --- ACTION HANDLERS (Business Logic) ---
@@ -615,7 +702,75 @@
                     }
                 },
 
+                async onAdSubmit(form) {
+                    const submitBtn = form.querySelector('button[type="submit"]');
+                    submitBtn.disabled = true;
+                    submitBtn.textContent = 'Загрузка...';
+
+                    const formData = new FormData(form);
+                    const name = formData.get('name');
+                    const description = formData.get('description');
+                    const logoFile = formData.get('logo');
+                    const imageFiles = formData.getAll('images');
+
+                    let logoUrl = null;
+                    let imageUrls = [];
+
+                    try {
+                        // 1. Upload Logo
+                        if (logoFile && logoFile.size > 0) {
+                            const filePath = `public/logo-${Date.now()}-${logoFile.name}`;
+                            const { error: uploadError } = await App.supabase.storage.from('advertisements').upload(filePath, logoFile);
+                            if (uploadError) throw new Error(`Ошибка загрузки логотипа: ${uploadError.message}`);
+                            const { data: { publicUrl } } = App.supabase.storage.from('advertisements').getPublicUrl(filePath);
+                            logoUrl = publicUrl;
+                        }
+
+                        // 2. Upload Gallery Images
+                        if (imageFiles && imageFiles.length > 0 && imageFiles[0].size > 0) {
+                            const uploadPromises = imageFiles.map(file => {
+                                const filePath = `public/gallery-${Date.now()}-${file.name}`;
+                                return App.supabase.storage.from('advertisements').upload(filePath, file);
+                            });
+
+                            const uploadResults = await Promise.all(uploadPromises);
+                            
+                            for (const result of uploadResults) {
+                                if (result.error) throw new Error(`Ошибка загрузки изображения: ${result.error.message}`);
+                                const { data: { publicUrl } } = App.supabase.storage.from('advertisements').getPublicUrl(result.data.path);
+                                imageUrls.push(publicUrl);
+                            }
+                        }
+
+                        // 3. Insert into Database
+                        const { error: insertError } = await App.supabase.from('advertisements').insert({
+                            name,
+                            description,
+                            logo_url: logoUrl,
+                            image_urls: imageUrls,
+                        });
+
+                        if (insertError) throw new Error(`Ошибка сохранения данных: ${insertError.message}`);
+                        
+                        App.ui.showToast('Объявление успешно сохранено!', 'success');
+                        form.reset();
+                        App.api.loadAdvertisements(); 
+                        App.navigation.back();
+
+                    } catch (error) {
+                        console.error(error);
+                        App.ui.showToast(error.message, 'error');
+                    } finally {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Сохранить';
+                    }
+                },
+
                 async onOfferSubmit(form) {
+                    // ... (existing code is correct)
+                },
+                // ... (all other existing handlers are correct) ...
+                 async onOfferSubmit(form) {
                     const formData = new FormData(form);
                     const data = Object.fromEntries(formData.entries());
                     
@@ -785,14 +940,14 @@
                 },
                 
                  async onUpdateBookingStatus(bookingId, status) {
-                      const { data: bookingData, error } = await App.supabase.from('bookings').update({ status }).eq('id', bookingId).select('*, offer:ride_offers(*)');
-                      if (error || !bookingData || bookingData.length === 0) { console.error('Ошибка обновления брони:', error); return; }
-                      const booking = bookingData[0];
+                       const { data: bookingData, error } = await App.supabase.from('bookings').update({ status }).eq('id', bookingId).select('*, offer:ride_offers(*)');
+                       if (error || !bookingData || bookingData.length === 0) { console.error('Ошибка обновления брони:', error); return; }
+                       const booking = bookingData[0];
 
-                      const message = status === 'confirmed' ? `*Бронь подтверждена!* ✅` : `*Бронь отклонена* ❌`;
-                      App.utils.sendTelegramNotification(booking.passenger_id, `${message}\nВодитель ответил на вашу заявку на поездку ${booking.offer.from} → ${booking.offer.to}.`);
-                      
-                      App.handlers.onMyTrips(); // Refresh the list
+                       const message = status === 'confirmed' ? `*Бронь подтверждена!* ✅` : `*Бронь отклонена* ❌`;
+                       App.utils.sendTelegramNotification(booking.passenger_id, `${message}\nВодитель ответил на вашу заявку на поездку ${booking.offer.from} → ${booking.offer.to}.`);
+                       
+                       App.handlers.onMyTrips(); // Refresh the list
                 },
 
                 async onCancelBooking(bookingId) {
@@ -985,7 +1140,45 @@
                     const parcelPriceSpan = document.querySelector('#parcel-request-form #parcel-price-info span');
                     if(parcelPriceSpan) parcelPriceSpan.textContent = App.config.prices.parcel;
                 },
+                renderAdminButton() {
+                    const passengerContainer = document.querySelector('#passenger-home-screen .space-y-3');
+                    const driverContainer = document.querySelector('#driver-dashboard-screen .space-y-3');
 
+                    const adminButtonHtml = `
+                        <button data-action="navigateTo" data-screen="admin-screen" class="text-sm mt-8 btn w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-xl hover:bg-indigo-700">
+                            ⚙️ Админ-панель
+                        </button>
+                    `;
+
+                    if(passengerContainer) passengerContainer.insertAdjacentHTML('beforeend', adminButtonHtml);
+                    if(driverContainer) driverContainer.insertAdjacentHTML('beforeend', adminButtonHtml);
+                },
+                renderAdvertisements(ads) {
+                    const container = document.querySelector('#passenger-home-screen #ads-container');
+                    if (!container) return;
+
+                    const adsHtml = ads.map(ad => {
+                        const imagesHtml = ad.image_urls && ad.image_urls.length > 0
+                            ? `<div class="ad-image-carousel mt-3 scroll-smooth">${ad.image_urls.map(url => `<img src="${url}" alt="Ad image">`).join('')}</div>`
+                            : '';
+
+                        return `
+                        <div class="ad-card bg-white border border-slate-200 rounded-xl p-3 shadow-sm">
+                            <div class="flex items-center">
+                                ${ad.logo_url ? `<img src="${ad.logo_url}" class="w-10 h-10 rounded-full mr-3 object-cover flex-shrink-0" alt="Logo">` : '<div class="w-10 h-10 rounded-full mr-3 bg-slate-200 flex-shrink-0"></div>'}
+                                <div class="overflow-hidden">
+                                    <h4 class="font-bold text-sm text-slate-800 truncate">${ad.name}</h4>
+                                    <p class="text-xs text-slate-400">Реклама</p>
+                                </div>
+                            </div>
+                            ${ad.description ? `<p class="text-sm text-slate-700 mt-2">${ad.description}</p>` : ''}
+                            ${imagesHtml}
+                        </div>
+                        `;
+                    }).join('');
+
+                    container.innerHTML = `<div class="ads-carousel">${adsHtml}</div>`;
+                },
                 updateRoleSwitcher() {
                     const switcher = document.getElementById('role-switcher');
                     switcher.classList.toggle('driver', App.state.userRole === 'driver');
@@ -1173,3 +1366,4 @@
     </script>
 </body>
 </html>
+
