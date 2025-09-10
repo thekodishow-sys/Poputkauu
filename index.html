@@ -626,10 +626,12 @@
                     }
                     const userUUID = user.id;
                     const isAdmin = App.state.currentUser.id === App.config.adminId;
+                    console.log(`Проверка пользователя: TG ID=${App.state.currentUser.id}, Is Admin=${isAdmin}`);
 
                     let { data: profile, error } = await App.supabase.from('profiles').select('*').eq('id', App.state.currentUser.id).single();
                     
                     if (error && error.code === 'PGRST116') { // Profile doesn't exist, create it
+                        console.log('Профиль не найден, создаем новый...');
                         const { data: newProfile, error: insertError } = await App.supabase.from('profiles')
                             .insert({ 
                                 id: App.state.currentUser.id, 
@@ -647,9 +649,10 @@
                             return; 
                         }
                         profile = newProfile;
+                        console.log('Новый профиль создан:', profile);
                     } else if (profile) { // Profile exists, check if it's up-to-date
-                        // Check if UUID is missing or admin status is out of sync
                         if (!profile.user_uuid || profile.is_admin !== isAdmin) {
+                            console.log('Профиль устарел, обновляем...');
                             const { data: updatedProfile, error: updateError } = await App.supabase.from('profiles')
                                 .update({ 
                                     user_uuid: userUUID,
@@ -664,6 +667,7 @@
                                  App.ui.showToast(`Ошибка обновления профиля: ${updateError.message}`);
                             }
                             profile = updatedProfile || profile; // Use updated profile if successful
+                            console.log('Профиль обновлен:', profile);
                         }
                     } else if (error) {
                         console.error('Ошибка получения профиля:', error); 
@@ -776,8 +780,8 @@
                     }
 
                     if (result.error) {
-                        console.error('Ошибка сохранения партнера:', result.error);
-                        return null;
+                        console.error('Ошибка сохранения партнера в API:', result.error);
+                        throw result.error; // Пробрасываем ошибку для обработки в UI
                     }
                     return result.data;
                 },
@@ -1264,22 +1268,25 @@
                         submitButton.textContent = 'Сохранение данных...';
                         const savedPartner = await App.api.savePartner(partnerData);
                         
-                        if (savedPartner) {
-                            // Step 5: Refetch all partners to ensure the list is up-to-date.
-                            await App.api.getAllPartnersForAdmin();
-                            
-                            // Step 6: Update UI that depends on the partner list
-                            App.ui.renderPartnerWidgets();
-                            
-                            // Step 7: Navigate back (which will re-render the admin screen) and show success
-                            App.navigation.back();
-                            App.ui.showToast('Данные партнера сохранены!', 'success');
-                        } else {
-                            throw new Error('Не удалось сохранить данные партнера на сервере.');
-                        }
+                        // Step 5: Refetch all partners to ensure the list is up-to-date.
+                        await App.api.getAllPartnersForAdmin();
+                        
+                        // Step 6: Update UI that depends on the partner list
+                        App.ui.renderPartnerWidgets();
+                        
+                        // Step 7: Navigate back (which will re-render the admin screen) and show success
+                        App.navigation.back();
+                        App.ui.showToast('Данные партнера сохранены!', 'success');
+
                     } catch (error) {
-                        console.error('Ошибка при сохранении партнера:', error);
-                        App.ui.showToast(error.message || 'Произошла неизвестная ошибка.');
+                        console.error('Полная ошибка при сохранении партнера:', error);
+                        let errorMessage = 'Произошла неизвестная ошибка.';
+                        if (error.message && error.message.includes('security policy')) {
+                            errorMessage = 'Ошибка прав доступа. Убедитесь, что вы вошли как администратор и скрипт базы данных выполнен.';
+                        } else if (error.message) {
+                            errorMessage = error.message;
+                        }
+                        App.ui.showToast(`Ошибка: ${errorMessage}`);
                     } finally {
                         submitButton.disabled = false;
                         submitButton.textContent = 'Сохранить';
@@ -1421,7 +1428,7 @@
                     
                     setTimeout(() => {
                         toast.classList.remove('show');
-                    }, 3000);
+                    }, 4000); // Increased timeout for better readability
                 },
                 setAppHeight() {
                     const appContainer = document.getElementById('app-container');
