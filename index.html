@@ -85,24 +85,24 @@
             overflow-x: auto;
             scroll-snap-type: x mandatory;
             scroll-behavior: smooth;
-            -webkit-overflow-scrolling: touch; /* Плавная прокрутка на iOS */
-            scrollbar-width: none; /* Скрыть скроллбар для Firefox */
-            padding-bottom: 10px; /* Add some space for the shadow */
-            margin-bottom: -10px; /* Counteract the padding */
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            padding-bottom: 10px;
+            margin-bottom: -10px;
         }
         .ads-carousel::-webkit-scrollbar {
-            display: none; /* Скрыть скроллбар для Chrome, Safari */
+            display: none;
         }
         .ad-card {
-            flex: 0 0 90%; /* Ширина карточки */
+            flex: 0 0 90%;
             scroll-snap-align: start;
             scroll-snap-stop: always;
             margin-right: 1rem;
             background: white;
-            border-radius: 1rem; /* rounded-2xl */
-            border: 1px solid #e2e8f0; /* slate-200 */
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
             box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            overflow: hidden; /* To clip the image corners */
+            overflow: hidden;
             display: flex;
             flex-direction: column;
             transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
@@ -114,30 +114,34 @@
             display: flex;
             overflow-x: auto;
             scroll-snap-type: x mandatory;
-            position: relative;
         }
-        .ad-image-carousel img {
+        .ad-image-wrapper {
             flex: 0 0 100%;
             width: 100%;
             scroll-snap-align: center;
+            position: relative;
+        }
+        .ad-image-carousel img {
+            width: 100%;
+            height: 100%;
             object-fit: cover;
             aspect-ratio: 16 / 9;
         }
         .ad-content {
-            padding: 1rem; /* p-4 */
+            padding: 1rem;
             display: flex;
             flex-direction: column;
             flex-grow: 1;
         }
         .ad-tag {
             position: absolute;
-            top: 0.75rem; /* top-3 */
-            right: 0.75rem; /* right-3 */
+            top: 0.75rem;
+            right: 0.75rem;
             background-color: rgba(0,0,0,0.3);
             color: white;
-            padding: 0.125rem 0.5rem; /* px-2 py-0.5 */
-            border-radius: 9999px; /* rounded-full */
-            font-size: 0.65rem; /* smaller than text-xs */
+            padding: 0.125rem 0.5rem;
+            border-radius: 9999px;
+            font-size: 0.65rem;
             font-weight: 600;
             backdrop-filter: blur(4px);
         }
@@ -235,6 +239,7 @@
                 <button data-action="publishRide" class="text-sm btn w-full bg-slate-100 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-200">Опубликовать свою поездку</button>
                 <button data-action="myTrips" class="text-sm mt-4 btn w-full border border-slate-300 text-slate-800 font-bold py-3 px-4 rounded-xl hover:bg-slate-100">Мои поездки</button>
             </div>
+            <div id="ads-container-driver" class="mt-8"></div>
         </div>
     </template>
     
@@ -666,7 +671,9 @@
                     } else {
                         App.state.allAds = data || [];
                     }
-                    App.ui.renderAdvertisements(App.state.allAds);
+                    App.ui.renderAdvertisements(App.state.allAds, '#passenger-home-screen #ads-container');
+                    App.ui.renderAdvertisements(App.state.allAds, '#driver-dashboard-screen #ads-container-driver');
+                    
                     if (document.getElementById('admin-screen').classList.contains('active')) {
                         App.ui.renderAdminAdsList(App.state.allAds);
                     }
@@ -1396,8 +1403,8 @@
                     if(passengerContainer) passengerContainer.insertAdjacentHTML('beforeend', adminButtonHtml);
                     if(driverContainer) driverContainer.insertAdjacentHTML('beforeend', adminButtonHtml);
                 },
-                renderAdvertisements(ads) {
-                    const container = document.querySelector('#passenger-home-screen #ads-container');
+                renderAdvertisements(ads, containerSelector) {
+                    const container = document.querySelector(containerSelector);
                     if (!container) return;
                     if (!ads || ads.length === 0) {
                         container.innerHTML = '';
@@ -1406,11 +1413,17 @@
 
                     const adsHtml = ads.map(ad => {
                         const imagesHtml = ad.image_urls && ad.image_urls.length > 0
-                            ? `<div class="ad-image-carousel scroll-smooth relative">
-                                   ${ad.image_urls.map(url => `<img src="${url}" alt="Ad image">`).join('')}
-                                   <div class="ad-tag">Реклама</div>
+                            ? `<div class="ad-image-carousel scroll-smooth">
+                                   ${ad.image_urls.map(url => `
+                                       <div class="ad-image-wrapper">
+                                           <img src="${url}" alt="Ad image">
+                                           <div class="ad-tag">Реклама</div>
+                                       </div>
+                                   `).join('')}
                                </div>`
                             : '';
+
+                        const primaryLink = (ad.links && ad.links.length > 0) ? ad.links[0].url : null;
                         
                         const advertiserHtml = `
                             <div class="flex items-center">
@@ -1420,6 +1433,10 @@
                                 </div>
                             </div>`;
                         
+                        const advertiserClickableHtml = primaryLink 
+                            ? `<a href="${primaryLink}" target="_blank">${advertiserHtml}</a>` 
+                            : advertiserHtml;
+                        
                         const linksHtml = ad.links && ad.links.length > 0
                             ? `<div class="mt-4 flex flex-wrap gap-2">${ad.links.map(link => `<a href="${link.url}" target="_blank" class="text-xs bg-blue-100 text-blue-800 font-semibold px-3 py-1.5 rounded-full hover:bg-blue-200 transition-colors">${link.name}</a>`).join('')}</div>`
                             : '';
@@ -1428,7 +1445,7 @@
                         <div class="ad-card">
                             ${imagesHtml}
                             <div class="ad-content">
-                                ${advertiserHtml}
+                                ${advertiserClickableHtml}
                                 ${ad.description ? `<p class="text-sm text-slate-600 mt-3 flex-grow">${ad.description}</p>` : ''}
                                 ${linksHtml}
                             </div>
