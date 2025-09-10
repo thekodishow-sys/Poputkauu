@@ -498,7 +498,7 @@
                         <input type="file" name="image_files" id="partner-image-files" class="hidden" accept="image/*" multiple>
                     </label>
                 </div>
-                <button id="partner-form-submit-btn" type="submit" class="text-sm btn w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700">Сохранить и опубликовать</button>
+                <button id="partner-form-submit-btn" type="submit" class="text-sm btn w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700">Сохранить</button>
             </form>
         </div>
     </template>
@@ -1282,7 +1282,7 @@
                         App.ui.showToast(error.message || 'Произошла неизвестная ошибка.');
                     } finally {
                         submitButton.disabled = false;
-                        submitButton.textContent = 'Сохранить и опубликовать';
+                        submitButton.textContent = 'Сохранить';
                     }
                 },
                  onPartnerImageChange(input) {
