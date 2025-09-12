@@ -459,6 +459,14 @@
                         <label for="description" class="block text-sm font-medium text-slate-700 mb-1">Описание</label>
                         <textarea id="description" name="description" rows-3 class="w-full p-2 border border-slate-300 rounded-lg" required></textarea>
                     </div>
+                    
+                    <div class="flex items-center justify-between bg-slate-50 p-3 rounded-lg">
+                        <label for="show_tag" class="text-sm font-medium text-slate-700 cursor-pointer">Показывать пометку "Реклама"</label>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="show_tag" name="show_tag" class="sr-only peer" checked>
+                            <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+                        </label>
+                    </div>
 
                     <!-- Dynamic Links Section -->
                     <div>
@@ -666,7 +674,8 @@
                         .order('created_at', { ascending: false });
 
                     if (error) {
-                        console.error('Ошибка загрузки рекламы:', error);
+                        console.error('Ошибка загрузки рекламы (полный объект):', JSON.stringify(error, null, 2));
+                        App.ui.showToast(`Ошибка загрузки рекламы: ${error.message}. Проверьте RLS политики в Supabase.`, 'error');
                         App.state.allAds = [];
                     } else {
                         App.state.allAds = data || [];
@@ -684,11 +693,14 @@
             bindEvents() {
                 document.body.addEventListener('click', (e) => {
                     const target = e.target;
-                    const button = target.closest('button, [data-action]');
-                    if (!button) return;
+                    const clickable = target.closest('[data-action]');
+                    if (!clickable) return;
 
-                    e.stopPropagation(); // Prevent nested clicks
-                    const { action, screen, ...dataset } = button.dataset;
+                    const { action, screen, ...dataset } = clickable.dataset;
+                    
+                    if (action) {
+                         e.stopPropagation(); // Prevent nested clicks only if there's an action
+                    }
 
                     const actions = {
                         // Navigation
@@ -729,7 +741,7 @@
                             });
                         },
                         cancelBooking: () => this.handlers.onCancelBooking(dataset.bookingId),
-                        offerRide: () => this.handlers.onOfferRideToRequest(dataset.requestId, button),
+                        offerRide: () => this.handlers.onOfferRideToRequest(dataset.requestId, clickable),
                         updateBookingStatus: () => this.handlers.onUpdateBookingStatus(dataset.bookingId, dataset.status),
                         deleteOffer: () => this.handlers.onDeleteOffer(dataset.offerId),
                         cancelRequest: () => this.handlers.onCancelRequest(dataset.requestId),
@@ -743,17 +755,27 @@
                         showAdForm: () => this.handlers.onShowAdForm(dataset.adId),
                         hideAdForm: this.handlers.onHideAdForm,
                         addLinkInput: this.ui.addLinkInput,
-                        removeLinkInput: () => this.ui.removeLinkInput(button.parentElement),
+                        removeLinkInput: () => this.ui.removeLinkInput(clickable.parentElement),
                         deleteAd: () => this.handlers.onDeleteAd(dataset.adId),
+                        openLink: () => {
+                           if (dataset.url) {
+                               try {
+                                   Telegram.WebApp.openLink(dataset.url);
+                               } catch (e) {
+                                   console.error("Failed to open link via Telegram WebApp, opening in new tab.", e);
+                                   window.open(dataset.url, '_blank');
+                               }
+                           }
+                        },
 
                     };
 
                     if (actions[action]) {
                         actions[action]();
                     } else if (target.closest('#time-interval-buttons')) {
-                        this.handlers.onTimeSelect(button);
-                    } else if (button.classList.contains('filter-type-btn')) {
-                        this.handlers.onFilterTypeSelect(button);
+                        this.handlers.onTimeSelect(clickable);
+                    } else if (clickable.classList.contains('filter-type-btn')) {
+                        this.handlers.onFilterTypeSelect(clickable);
                     }
                 });
 
@@ -812,8 +834,11 @@
                             form.querySelector('#ad-id').value = ad.id;
                             form.querySelector('#name').value = ad.name;
                             form.querySelector('#description').value = ad.description || '';
-                            if (ad.links) {
+                            form.querySelector('#show_tag').checked = ad.show_tag;
+                            if (ad.links && ad.links.length > 0) {
                                 ad.links.forEach(link => App.ui.addLinkInput(link.name, link.url));
+                            } else {
+                                App.ui.addLinkInput(); // Add one empty if none exist
                             }
                             if (ad.logo_url) {
                                 document.getElementById('current-logo-container').innerHTML = `<img src="${ad.logo_url}" class="w-16 h-16 rounded-lg object-cover">`;
@@ -824,6 +849,7 @@
                         }
                     } else {
                          title.textContent = 'Новое объявление';
+                         form.querySelector('#show_tag').checked = true; // Default to checked for new ads
                          App.ui.addLinkInput(); // Add one empty link field for new ads
                     }
                     
@@ -844,6 +870,7 @@
                     const adId = formData.get('id');
                     const name = formData.get('name');
                     const description = formData.get('description');
+                    const showTag = form.querySelector('#show_tag').checked;
                     const logoFile = formData.get('logo');
                     const imageFiles = formData.getAll('images').filter(f => f.size > 0);
 
@@ -851,10 +878,10 @@
                     const links = [];
                     const linkInputs = form.querySelectorAll('.link-group');
                     linkInputs.forEach(group => {
-                        const name = group.querySelector('input[name="link_name"]').value.trim();
+                        const linkName = group.querySelector('input[name="link_name"]').value.trim();
                         const url = group.querySelector('input[name="link_url"]').value.trim();
-                        if (name && url) {
-                            links.push({ name, url });
+                        if (linkName && url) {
+                            links.push({ name: linkName, url });
                         }
                     });
 
@@ -862,6 +889,7 @@
                         name,
                         description,
                         links,
+                        show_tag: showTag,
                     };
 
                     const sanitizeFilename = (filename) => filename.replace(/[^a-zA-Z0-9.\-_]/g, '_');
@@ -918,7 +946,10 @@
                              error = insertError;
                         }
                         
-                        if (error) throw new Error(`Ошибка сохранения в БД: ${error.message}`);
+                        if (error) {
+                            console.error("Database Error:", error);
+                            throw new Error(`Ошибка сохранения в БД: ${error.message}`);
+                        }
                         
                         App.ui.showToast('Объявление успешно сохранено!', 'success');
                         App.handlers.onHideAdForm();
@@ -1417,7 +1448,7 @@
                                    ${ad.image_urls.map(url => `
                                        <div class="ad-image-wrapper">
                                            <img src="${url}" alt="Ad image">
-                                           <div class="ad-tag">Реклама</div>
+                                           ${ad.show_tag ? '<div class="ad-tag">Реклама</div>' : ''}
                                        </div>
                                    `).join('')}
                                </div>`
@@ -1434,8 +1465,8 @@
                             </div>`;
                         
                         const advertiserClickableHtml = primaryLink 
-                            ? `<a href="${primaryLink}" target="_blank">${advertiserHtml}</a>` 
-                            : advertiserHtml;
+                            ? `<div data-action="openLink" data-url="${primaryLink}" class="cursor-pointer">${advertiserHtml}</div>` 
+                            : `<div>${advertiserHtml}</div>`;
                         
                         const linksHtml = ad.links && ad.links.length > 0
                             ? `<div class="mt-4 flex flex-wrap gap-2">${ad.links.map(link => `<a href="${link.url}" target="_blank" class="text-xs bg-blue-100 text-blue-800 font-semibold px-3 py-1.5 rounded-full hover:bg-blue-200 transition-colors">${link.name}</a>`).join('')}</div>`
